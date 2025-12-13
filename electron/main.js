@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 
 // MUDANÇA IMPORTANTE: Usar app.isPackaged é mais seguro para detectar produção
-const isDev = !app.isPackaged; 
+const isDev = !app.isPackaged;
 
 let dbPath;
 
