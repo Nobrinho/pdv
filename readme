@@ -1,0 +1,142 @@
+🏍️ SysControl - Sistema de Controle de Estoque e Vendas
+
+Aplicação Desktop profissional desenvolvida para gestão de pequenas empresas (foco em autopeças e oficinas). O sistema gerencia vendas, estoque, serviços, comissões de funcionários e relatórios financeiros detalhados.
+
+🚀 Funcionalidades
+
+🖥️ Dashboard: Visão geral do dia com faturamento, lucro, alertas de estoque baixo e gráficos semanais.
+
+🛒 PDV (Ponto de Venda): Registro de vendas com busca rápida de produtos, cálculo automático de troco e baixa de estoque.
+
+Suporte a Mão de Obra na venda.
+
+Suporte a Descontos (Valor Fixo R$ ou Porcentagem %).
+
+Seleção obrigatória de responsável técnico se houver serviço.
+
+🔧 Gestão de Serviços: Módulo dedicado para registrar serviços avulsos (ex: manutenções rápidas) sem venda de peças.
+
+👥 Gestão de Pessoas: Cadastro de Vendedores e Trocadores (Mecânicos) com definição de comissões individuais ou padrão.
+
+📦 Controle de Estoque: CRUD completo de produtos.
+
+📄 Relatórios Financeiros:
+
+Filtros por período e responsável.
+
+Resumo de Mão de Obra por funcionário.
+
+Exportação profissional para PDF.
+
+🧾 Recibos: Histórico completo de vendas com opção de reimpressão de comprovante não fiscal.
+
+🔐 Segurança: Sistema de Login com senha criptografada e configuração inicial de Administrador.
+
+🛠️ Tecnologias Utilizadas (Stack)
+
+Core: Electron (Framework Desktop)
+
+Frontend: React + Vite
+
+Estilização: Tailwind CSS
+
+Banco de Dados: SQLite3 (via better-sqlite3)
+
+Query Builder: Knex.js (Migrações e Queries)
+
+Relatórios: jsPDF + autoTable
+
+Build/Instalador: Electron Builder (Gera .exe e instalador NSIS)
+
+⚙️ Pré-requisitos (Ambiente Windows)
+
+Para rodar ou compilar este projeto, você precisa ter instalado:
+
+Node.js (Versão LTS v20 Recomendada): Baixar Node.js
+
+Visual Studio Build Tools: Necessário para compilar o banco de dados nativo (better-sqlite3) no Windows.
+
+Baixar Build Tools
+
+Durante a instalação, marque a opção: "Desenvolvimento para desktop com C++".
+
+📥 Instalação e Execução (Desenvolvimento)
+
+Siga estes passos para rodar o projeto e editar o código:
+
+Instalar dependências:
+
+npm install
+
+
+Iniciar o App (Modo Dev):
+Este comando inicia o servidor Vite (React) e abre a janela do Electron.
+
+npm run electron:dev
+
+
+Nota: Na primeira execução, o sistema criará automaticamente o arquivo do banco de dados syscontrol.sqlite3 na raiz do projeto e executará as migrações (tabelas). O sistema pedirá para criar o primeiro usuário Administrador.
+
+📦 Gerar Executável (Build para Produção)
+
+Para criar o instalador .exe para distribuir aos clientes:
+
+Preparar Dependências Nativas:
+Este passo é crucial para garantir que o SQLite funcione dentro do .exe.
+
+npm run postinstall
+
+
+Compilar e Empacotar:
+
+npm run dist
+
+
+Localizar o Arquivo:
+O instalador estará na pasta:
+./dist_electron/SysControl Setup 1.0.0.exe
+
+🗄️ Estrutura do Banco de Dados
+
+O banco de dados é local (syscontrol.sqlite3).
+
+Desenvolvimento: O arquivo fica na raiz do projeto.
+
+Produção (Instalado): O arquivo fica na pasta de dados do usuário (%APPDATA%/SysControl/).
+
+Tabelas Principais:
+
+produtos: Estoque, preços e custos.
+
+pessoas: Funcionários, cargos e comissões.
+
+vendas & venda_itens: Registro financeiro e itens vendidos.
+
+servicos_avulsos: Registro de mão de obra direta.
+
+usuarios: Acesso ao sistema (Admin).
+
+❓ Solução de Problemas Comuns
+
+Erro: node-gyp ou Could not find any Visual Studio installation
+
+Isso ocorre ao tentar instalar o better-sqlite3 sem ter os compiladores C++ no Windows.
+
+Solução: Instale o Visual Studio Build Tools com a carga de trabalho "C++" e reinicie o computador.
+
+Erro: Cannot find module 'better-sqlite3' após instalar o .exe
+
+Isso ocorre se a dependência nativa não foi recompilada para a versão do Electron.
+
+Solução: Rode npm run postinstall antes de rodar npm run dist.
+
+Tela Branca ao abrir o .exe
+
+Geralmente causado por erros de caminho ou banco de dados.
+
+Solução: Verifique se o electron/main.js está configurado corretamente para detectar o ambiente de produção (!app.isPackaged) e apontar para o caminho correto das migrações em process.resourcesPath.
+
+📝 Licença
+
+Este projeto é de uso proprietário.
+Copyright © 2024 SysControl.

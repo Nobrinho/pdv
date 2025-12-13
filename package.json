@@ -1,17 +1,64 @@
 {
   "name": "syscontrol-desktop",
+  "productName": "SysControl",
   "version": "1.0.0",
+  "description": "Sistema de Controle de Estoque e Vendas",
   "main": "electron/main.js",
+  "author": "Seu Nome",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "electron": "electron .",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "dist": "vite build && electron-builder",
+    "postinstall": "electron-builder install-app-deps",
     "migrate:make": "knex migrate:make --knexfile ./database/knexfile.js",
-    "migrate:latest": "knex migrate:latest --knexfile ./database/knexfile.js",
-    "migrate:rollback": "knex migrate:rollback --knexfile ./database/knexfile.js"
+    "migrate:latest": "knex migrate:latest --knexfile ./database/knexfile.js"
+  },
+  "build": {
+    "appId": "com.syscontrol.app",
+    "productName": "SysControl",
+    "copyright": "Copyright © 2024 Seu Nome",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "database/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "./database",
+        "to": "database",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SysControl"
+    }
   },
   "dependencies": {
+    "better-sqlite3": "^9.4.0",
     "chart.js": "^4.4.1",
     "dayjs": "^1.11.10",
     "knex": "^3.1.0",
@@ -19,18 +66,19 @@
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.3",
-    "sqlite3": "^5.1.7"
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.5.23"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
-    "electron": "^39.2.6",
+    "electron": "^28.2.0",
     "electron-builder": "^24.9.1",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
-    "vite": "^7.2.6",
+    "vite": "^5.0.12",
     "wait-on": "^7.2.0"
   }
 }
