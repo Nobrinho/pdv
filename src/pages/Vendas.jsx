@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect, useRef } from "react";
 
 const Vendas = () => {
@@ -15,7 +16,7 @@ const Vendas = () => {
   // Estados de Valores
   const [laborValue, setLaborValue] = useState(0);
   const [selectedMechanic, setSelectedMechanic] = useState("");
-  const [discountValue, setDiscountValue] = useState(0);
+  const [discountValue, setDiscountValue] = useState("");
   const [discountType, setDiscountType] = useState("percent"); // 'percent' ou 'fixed'
   const [paymentMethod, setPaymentMethod] = useState("Dinheiro");
 
@@ -23,10 +24,19 @@ const Vendas = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState(null);
 
+  // Estado do Alerta Customizado (Substitui o window.alert)
+  const [alertState, setAlertState] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
+
   const searchInputRef = useRef(null);
 
   useEffect(() => {
     loadData();
+    // Foca no campo de busca ao abrir a tela
+    if (searchInputRef.current) searchInputRef.current.focus();
   }, []);
 
   const loadData = async () => {
@@ -38,7 +48,20 @@ const Vendas = () => {
     setMechanics(people.filter((p) => p.cargo_nome === "Trocador"));
   };
 
-  // Lógica de Busca
+  // Função auxiliar para mostrar alertas sem perder o foco da janela
+  const showAlert = (message, title = "Atenção") => {
+    setAlertState({ open: true, title, message });
+  };
+
+  const closeAlert = () => {
+    setAlertState({ ...alertState, open: false });
+    // Recupera o foco para o input de busca automaticamente
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+  };
+
+  // Lógica de Busca Visual (Dropdown)
   useEffect(() => {
     if (searchTerm.length < 2) {
       setSearchResults([]);
@@ -53,6 +76,41 @@ const Vendas = () => {
     setSearchResults(results);
   }, [searchTerm, products]);
 
+  // --- LÓGICA DO LEITOR DE CÓDIGO DE BARRAS ---
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Evita submit de formulário se houver
+
+      if (!searchTerm) return;
+
+      // 1. Tenta achar o código exato (Comportamento do Leitor)
+      const exactMatch = products.find(
+        (p) => p.codigo.trim() === searchTerm.trim()
+      );
+
+      if (exactMatch) {
+        if (exactMatch.estoque_atual > 0) {
+          addToCart(exactMatch);
+        } else {
+          showAlert(
+            `Produto sem estoque: ${exactMatch.descricao}`,
+            "Estoque Insuficiente"
+          );
+          setSearchTerm(""); // Limpa para tentar outro
+        }
+        return;
+      }
+
+      // 2. Se não achou exato, mas a busca visual tem apenas 1 resultado, adiciona ele
+      if (searchResults.length === 1) {
+        addToCart(searchResults[0]);
+        return;
+      }
+
+      // Se não achou nada ou tem muitos resultados, não faz nada (usuário deve selecionar na lista)
+    }
+  };
+
   const addToCart = (product) => {
     const existing = cart.find((item) => item.id === product.id);
     if (existing) {
@@ -63,14 +121,19 @@ const Vendas = () => {
           )
         );
       } else {
-        alert("Estoque máximo atingido para este item.");
+        showAlert("Estoque máximo atingido para este item.");
       }
     } else {
       setCart([...cart, { ...product, qty: 1 }]);
     }
+
+    // Limpa o campo e foca novamente para o próximo "bip"
     setSearchTerm("");
     setSearchResults([]);
-    searchInputRef.current?.focus();
+    // Pequeno timeout para garantir que o React renderizou e o foco não se perca
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 10);
   };
 
   const removeFromCart = (id) => {
@@ -84,51 +147,69 @@ const Vendas = () => {
   );
 
   let discountAmount = 0;
-  if (discountValue > 0) {
+  const distVal = parseFloat(discountValue) || 0;
+  if (distVal > 0) {
     discountAmount =
-      discountType === "fixed"
-        ? discountValue
-        : (subtotal * discountValue) / 100;
+      discountType === "fixed" ? distVal : (subtotal * distVal) / 100;
   }
 
-  const total = subtotal + parseFloat(laborValue || 0) - discountAmount;
+  const labor = parseFloat(laborValue) || 0;
+  const total = subtotal + labor - discountAmount;
+
+  // Lógica de Visibilidade do Trocador
+  const showMechanicSelect = labor > 0;
 
   // Finalizar Venda
   const handleFinishSale = async () => {
-    if (cart.length === 0) return alert("Carrinho vazio!");
-    if (!selectedSeller) return alert("Selecione um vendedor!");
-    if (laborValue > 0 && !selectedMechanic)
-      return alert("Selecione o responsável pela mão de obra!");
+    if (cart.length === 0) return showAlert("O carrinho está vazio!", "Aviso");
+    if (!selectedSeller) return showAlert("Selecione um vendedor!", "Aviso");
+    if (labor > 0 && !selectedMechanic)
+      return showAlert("Selecione o responsável pela mão de obra!", "Aviso");
 
     const saleData = {
       vendedor_id: selectedSeller,
-      trocador_id: selectedMechanic || null,
+      trocador_id: showMechanicSelect ? selectedMechanic : null,
       subtotal: subtotal,
-      mao_de_obra: parseFloat(laborValue),
-      desconto_valor: discountAmount,
+      mao_de_obra: labor,
+      desconto_valor: distVal,
       desconto_tipo: discountType,
       total_final: total,
       forma_pagamento: paymentMethod,
       itens: cart,
     };
 
-    const result = await window.api.createSale(saleData);
+    try {
+      const result = await window.api.createSale(saleData);
 
-    if (result.success) {
-      setLastSale({
-        ...saleData,
-        id: result.id,
-        date: new Date().toLocaleString(),
-      });
-      setShowReceipt(true);
-      // Limpar tela
-      setCart([]);
-      setLaborValue(0);
-      setDiscountValue(0);
-      setSearchTerm("");
-      loadData(); // Atualizar estoque
-    } else {
-      alert("Erro ao salvar venda: " + result.error);
+      if (result.success) {
+        const sellerName = sellers.find((s) => s.id == selectedSeller)?.nome;
+        const mechanicName = mechanics.find(
+          (m) => m.id == selectedMechanic
+        )?.nome;
+
+        setLastSale({
+          ...saleData,
+          id: result.id,
+          date: new Date().toLocaleString(),
+          vendedor_nome: sellerName,
+          trocador_nome: mechanicName,
+        });
+        setShowReceipt(true);
+
+        // Limpar tela
+        setCart([]);
+        setLaborValue("");
+        setDiscountValue("");
+        setSelectedMechanic("");
+        setSearchTerm("");
+        loadData(); // Atualizar estoque
+        // O foco será retornado quando o modal de recibo fechar
+      } else {
+        showAlert("Erro ao salvar venda: " + result.error, "Erro");
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert("Erro de comunicação com o sistema.", "Erro Crítico");
     }
   };
 
@@ -137,14 +218,14 @@ const Vendas = () => {
       {/* Esquerda: Produtos e Carrinho */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Barra de Busca */}
-        <div className="bg-white p-4 rounded-xl shadow-sm relative">
+        <div className="bg-white p-4 rounded-xl shadow-sm relative z-20">
           <div className="flex gap-4">
-            <div className="flex-1">
+            <div className="w-1/3">
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                 Vendedor
               </label>
               <select
-                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 value={selectedSeller}
                 onChange={(e) => setSelectedSeller(e.target.value)}
               >
@@ -156,28 +237,34 @@ const Vendas = () => {
                 ))}
               </select>
             </div>
-            <div className="flex-[3] relative">
+            <div className="flex-1 relative">
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Buscar Produto (Código ou Nome)
+                Buscar Produto (Bipar ou Digitar)
               </label>
-              <input
-                ref={searchInputRef}
-                className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Digite para buscar..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {/* Resultados da Busca */}
+              <div className="relative">
+                <input
+                  ref={searchInputRef}
+                  className="w-full border border-gray-300 rounded-lg p-2 pl-9 focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Código de barras ou nome..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  autoComplete="off"
+                />
+                <i className="fas fa-barcode absolute left-3 top-3 text-gray-400"></i>
+              </div>
+
+              {/* Resultados da Busca Visual */}
               {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 z-10 max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto">
                   {searchResults.map((p) => (
                     <div
                       key={p.id}
                       onClick={() => addToCart(p)}
-                      className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 flex justify-between items-center"
+                      className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 flex justify-between items-center group"
                     >
                       <div>
-                        <div className="font-medium text-gray-800">
+                        <div className="font-medium text-gray-800 group-hover:text-blue-700">
                           {p.descricao}
                         </div>
                         <div className="text-xs text-gray-500">{p.codigo}</div>
@@ -199,7 +286,7 @@ const Vendas = () => {
         </div>
 
         {/* Tabela do Carrinho */}
-        <div className="bg-white rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col">
+        <div className="bg-white rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col z-10">
           <div className="overflow-y-auto flex-1">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 sticky top-0">
@@ -226,12 +313,12 @@ const Vendas = () => {
                       {item.descricao}
                     </td>
                     <td className="px-6 py-4 text-center text-sm">
-                      <span className="bg-gray-100 px-2 py-1 rounded font-medium">
-                        {item.qty}
-                      </span>
+                      <div className="inline-flex items-center border rounded bg-gray-50">
+                        <span className="px-3 py-1 font-bold">{item.qty}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right text-sm text-gray-500">
-                      R$ {item.preco_venda}
+                      R$ {item.preco_venda.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
                       R$ {(item.preco_venda * item.qty).toFixed(2)}
@@ -239,17 +326,24 @@ const Vendas = () => {
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-400 hover:text-red-600 transition"
                       >
-                        <i className="fas fa-times"></i>
+                        <i className="fas fa-trash-alt"></i>
                       </button>
                     </td>
                   </tr>
                 ))}
                 {cart.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="text-center py-10 text-gray-400">
-                      Carrinho vazio
+                    <td
+                      colSpan="5"
+                      className="text-center py-20 text-gray-400 flex flex-col items-center"
+                    >
+                      <i className="fas fa-shopping-basket text-4xl mb-2 opacity-20"></i>
+                      <span>Carrinho vazio</span>
+                      <span className="text-xs mt-1">
+                        Bipe um produto ou digite para buscar
+                      </span>
                     </td>
                   </tr>
                 )}
@@ -260,39 +354,45 @@ const Vendas = () => {
       </div>
 
       {/* Direita: Totais e Pagamento */}
-      <div className="w-96 bg-white rounded-xl shadow-md p-6 flex flex-col h-full">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">Resumo</h2>
+      <div className="w-96 bg-white rounded-xl shadow-md p-6 flex flex-col h-full border border-gray-100">
+        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <i className="fas fa-cash-register text-blue-600"></i> Resumo
+        </h2>
 
-        <div className="space-y-4 flex-1">
-          <div className="flex justify-between text-gray-600">
-            <span>Subtotal</span>
-            <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
+        <div className="space-y-5 flex-1 overflow-y-auto pr-1">
+          <div className="flex justify-between text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <span className="font-medium">Subtotal</span>
+            <span className="font-bold text-gray-800">
+              R$ {subtotal.toFixed(2)}
+            </span>
           </div>
 
-          <div className="border-t pt-4">
+          <div className="border-t border-dashed pt-4">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
               Mão de Obra (R$)
             </label>
             <input
               type="number"
-              className="w-full border border-gray-300 rounded-lg p-2 text-right font-medium"
+              className="w-full border border-gray-300 rounded-lg p-2.5 text-right font-medium focus:ring-2 focus:ring-blue-500 outline-none transition"
               value={laborValue}
               onChange={(e) => setLaborValue(e.target.value)}
               min="0"
+              placeholder="0.00"
             />
           </div>
 
-          {/* Select de Trocador (Sempre visível para facilitar, obrigatório se valor > 0) */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Responsável Serviço
+          {/* Select de Trocador (Sempre visível, obrigatório se valor > 0) */}
+          <div className="animate-fade-in-down">
+            <label className="block text-xs font-bold text-blue-600 uppercase mb-1">
+              Responsável Serviço {labor > 0 && "*"}
             </label>
             <select
-              className="w-full border border-gray-300 rounded-lg p-2 bg-gray-50"
+              className="w-full border-2 border-blue-100 rounded-lg p-2.5 bg-blue-50 text-blue-900 focus:border-blue-500 outline-none"
               value={selectedMechanic}
               onChange={(e) => setSelectedMechanic(e.target.value)}
+              required={labor > 0}
             >
-              <option value="">Nenhum</option>
+              <option value="">Selecione...</option>
               {mechanics.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.nome}
@@ -301,28 +401,28 @@ const Vendas = () => {
             </select>
           </div>
 
-          <div className="border-t pt-4">
+          <div className="border-t border-dashed pt-4">
             <div className="flex justify-between items-center mb-1">
               <label className="block text-xs font-bold text-gray-500 uppercase">
                 Desconto
               </label>
-              <div className="flex bg-gray-100 rounded p-1">
+              <div className="flex bg-gray-100 rounded p-0.5 border border-gray-200">
                 <button
                   onClick={() => setDiscountType("fixed")}
-                  className={`text-xs px-2 py-0.5 rounded ${
+                  className={`text-xs px-2 py-0.5 rounded transition ${
                     discountType === "fixed"
-                      ? "bg-white shadow text-blue-600"
-                      : "text-gray-500"
+                      ? "bg-white shadow-sm text-blue-600 font-bold"
+                      : "text-gray-400"
                   }`}
                 >
                   R$
                 </button>
                 <button
                   onClick={() => setDiscountType("percent")}
-                  className={`text-xs px-2 py-0.5 rounded ${
+                  className={`text-xs px-2 py-0.5 rounded transition ${
                     discountType === "percent"
-                      ? "bg-white shadow text-blue-600"
-                      : "text-gray-500"
+                      ? "bg-white shadow-sm text-blue-600 font-bold"
+                      : "text-gray-400"
                   }`}
                 >
                   %
@@ -331,19 +431,25 @@ const Vendas = () => {
             </div>
             <input
               type="number"
-              className="w-full border border-gray-300 rounded-lg p-2 text-right font-medium text-red-600"
+              className="w-full border border-gray-300 rounded-lg p-2.5 text-right font-medium text-red-600 focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none"
               value={discountValue}
               onChange={(e) => setDiscountValue(e.target.value)}
               min="0"
+              placeholder="0"
             />
+            {discountAmount > 0 && (
+              <p className="text-xs text-right text-red-400 mt-1">
+                - R$ {discountAmount.toFixed(2)}
+              </p>
+            )}
           </div>
 
-          <div className="border-t pt-4">
+          <div className="border-t border-dashed pt-4">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
               Pagamento
             </label>
             <select
-              className="w-full border border-gray-300 rounded-lg p-2"
+              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
             >
@@ -357,18 +463,23 @@ const Vendas = () => {
           </div>
         </div>
 
-        <div className="mt-6 border-t pt-4">
+        <div className="mt-6 pt-4 border-t-2 border-gray-100">
           <div className="flex justify-between items-end mb-4">
-            <span className="text-gray-500 font-medium">Total Final</span>
-            <span className="text-3xl font-bold text-blue-700">
-              R$ {total.toFixed(2)}
+            <span className="text-gray-500 font-medium text-sm mb-1">
+              Total Final
+            </span>
+            <span className="text-4xl font-extrabold text-gray-800 tracking-tight">
+              <span className="text-2xl text-gray-400 font-normal mr-1">
+                R$
+              </span>
+              {total.toFixed(2)}
             </span>
           </div>
           <button
             onClick={handleFinishSale}
-            className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 shadow-lg transition transform active:scale-95"
+            className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 shadow-lg hover:shadow-xl transition transform active:scale-95 flex items-center justify-center gap-2"
           >
-            FINALIZAR VENDA
+            <span>FINALIZAR</span> <i className="fas fa-check"></i>
           </button>
         </div>
       </div>
@@ -376,27 +487,27 @@ const Vendas = () => {
       {/* Modal de Recibo */}
       {showReceipt && lastSale && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 print:bg-white print:p-0">
-          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm print:shadow-none print:w-full">
+          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm print:shadow-none print:w-full max-h-[90vh] overflow-y-auto">
             <div className="text-center border-b pb-4 mb-4 border-dashed border-gray-300">
-              <h2 className="text-2xl font-bold">RECIBO DE VENDA</h2>
-              <p className="text-sm text-gray-500">{lastSale.date}</p>
-              <p className="text-sm text-gray-500 font-mono mt-1">
-                ID: #{lastSale.id}
+              <h2 className="text-2xl font-bold text-gray-800">RECIBO</h2>
+              <p className="text-sm text-gray-500 mt-1">{lastSale.date}</p>
+              <p className="text-xs text-gray-400 font-mono mt-1">
+                #{lastSale.id}
               </p>
             </div>
 
             <div className="space-y-1 mb-4 text-sm">
               <div className="flex justify-between">
-                <span>Vendedor:</span>
-                <span className="font-bold">
-                  {sellers.find((s) => s.id == lastSale.vendedor_id)?.nome}
+                <span className="text-gray-500">Vendedor:</span>
+                <span className="font-bold text-gray-800">
+                  {lastSale.vendedor_nome}
                 </span>
               </div>
               {lastSale.trocador_id && (
                 <div className="flex justify-between">
-                  <span>Serviço/M.O.:</span>
-                  <span className="font-bold">
-                    {mechanics.find((m) => m.id == lastSale.trocador_id)?.nome}
+                  <span className="text-gray-500">Serviço:</span>
+                  <span className="font-bold text-gray-800">
+                    {lastSale.trocador_nome}
                   </span>
                 </div>
               )}
@@ -404,18 +515,18 @@ const Vendas = () => {
 
             <table className="w-full text-sm mb-4">
               <thead>
-                <tr className="border-b border-gray-300">
-                  <th className="text-left py-1">Item</th>
-                  <th className="text-center py-1">Qtd</th>
-                  <th className="text-right py-1">Total</th>
+                <tr className="border-b border-gray-300 text-gray-500">
+                  <th className="text-left py-1 font-normal">Item</th>
+                  <th className="text-center py-1 font-normal">Qtd</th>
+                  <th className="text-right py-1 font-normal">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {lastSale.itens.map((item, idx) => (
                   <tr key={idx}>
-                    <td className="py-1">{item.descricao}</td>
-                    <td className="text-center py-1">{item.qty}</td>
-                    <td className="text-right py-1">
+                    <td className="py-1.5">{item.descricao}</td>
+                    <td className="text-center py-1.5">{item.qty}</td>
+                    <td className="text-right py-1.5">
                       {(item.preco_venda * item.qty).toFixed(2)}
                     </td>
                   </tr>
@@ -424,43 +535,91 @@ const Vendas = () => {
             </table>
 
             <div className="border-t border-dashed border-gray-300 pt-4 space-y-1">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
                 <span>{lastSale.subtotal.toFixed(2)}</span>
               </div>
               {lastSale.mao_de_obra > 0 && (
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-sm text-gray-600">
                   <span>Mão de Obra (+)</span>
                   <span>{lastSale.mao_de_obra.toFixed(2)}</span>
                 </div>
               )}
               {lastSale.desconto_valor > 0 && (
                 <div className="flex justify-between text-sm text-red-500">
-                  <span>Desconto (-)</span>
-                  <span>{lastSale.desconto_valor.toFixed(2)}</span>
+                  <span>
+                    Desconto{" "}
+                    {lastSale.desconto_tipo === "percent" ? "(%)" : "(R$)"} (-)
+                  </span>
+                  <span>
+                    {lastSale.desconto_tipo === "percent"
+                      ? (
+                          (lastSale.subtotal * lastSale.desconto_valor) /
+                          100
+                        ).toFixed(2)
+                      : lastSale.desconto_valor.toFixed(2)}
+                  </span>
                 </div>
               )}
-              <div className="flex justify-between text-xl font-bold mt-2 pt-2 border-t border-gray-800">
+              <div className="flex justify-between text-2xl font-bold mt-3 pt-3 border-t-2 border-gray-800">
                 <span>TOTAL</span>
                 <span>R$ {lastSale.total_final.toFixed(2)}</span>
               </div>
-              <div className="text-center text-xs text-gray-500 mt-4">
+              <div className="text-center text-xs text-gray-500 mt-4 uppercase tracking-wide">
                 Pagamento: {lastSale.forma_pagamento}
               </div>
             </div>
 
-            <div className="mt-8 flex gap-2 print:hidden">
+            <div className="mt-8 flex gap-3 print:hidden">
               <button
                 onClick={() => window.print()}
-                className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow"
               >
-                <i className="fas fa-print mr-2"></i> Imprimir
+                <i className="fas fa-print mr-2"></i> IMPRIMIR
               </button>
               <button
                 onClick={() => setShowReceipt(false)}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 rounded hover:bg-gray-300"
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition"
               >
-                Fechar
+                FECHAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Alerta Customizado (Substitui window.alert) */}
+      {alertState.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-full transform transition-all scale-100">
+            <div className="flex items-center mb-4">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                  alertState.title.includes("Erro")
+                    ? "bg-red-100 text-red-500"
+                    : "bg-yellow-100 text-yellow-600"
+                }`}
+              >
+                <i
+                  className={`fas ${
+                    alertState.title.includes("Erro")
+                      ? "fa-times"
+                      : "fa-exclamation"
+                  } text-xl`}
+                ></i>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">
+                {alertState.title}
+              </h3>
+            </div>
+            <p className="text-gray-600 mb-6">{alertState.message}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={closeAlert}
+                className="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                autoFocus
+              >
+                Entendido
               </button>
             </div>
           </div>

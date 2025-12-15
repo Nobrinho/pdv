@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -80,7 +80,8 @@ app.on("window-all-closed", () => {
 // --- PRODUTOS ---
 ipcMain.handle("get-products", async () => {
   try {
-    return await knex("produtos").select("*");
+    // Agora só busca produtos onde 'ativo' é verdadeiro (1)
+    return await knex("produtos").where("ativo", true).select("*");
   } catch (error) {
     console.error("Erro get-products:", error);
     return [];
@@ -93,7 +94,9 @@ ipcMain.handle("save-product", async (event, product) => {
       await knex("produtos").where("id", product.id).update(product);
       return { id: product.id, success: true };
     } else {
-      const [id] = await knex("produtos").insert(product);
+      // Garante que nasce ativo
+      const produtoNovo = { ...product, ativo: true };
+      const [id] = await knex("produtos").insert(produtoNovo);
       return { id, success: true };
     }
   } catch (error) {
@@ -104,7 +107,10 @@ ipcMain.handle("save-product", async (event, product) => {
 
 ipcMain.handle("delete-product", async (event, id) => {
   try {
-    await knex("produtos").where("id", id).del();
+    // NÃO APAGA MAIS. Apenas esconde (Soft Delete).
+    // Isso permite manter o histórico de vendas intacto.
+    await knex("produtos").where("id", id).update({ ativo: false });
+
     return { success: true };
   } catch (error) {
     console.error("Erro delete-product:", error);
@@ -112,11 +118,12 @@ ipcMain.handle("delete-product", async (event, id) => {
   }
 });
 
-// --- PESSOAS ---
+// --- PESSOAS (Vendedores/Trocadores) - COM SOFT DELETE ---
 ipcMain.handle("get-people", async () => {
   try {
     return await knex("pessoas")
       .leftJoin("cargos", "pessoas.cargo_id", "cargos.id")
+      .where("pessoas.ativo", true) // <--- FILTRO DE ATIVOS
       .select("pessoas.*", "cargos.nome as cargo_nome");
   } catch (error) {
     console.error("Erro get-people:", error);
@@ -130,7 +137,9 @@ ipcMain.handle("save-person", async (event, person) => {
       await knex("pessoas").where("id", person.id).update(person);
       return { id: person.id, success: true };
     } else {
-      const [id] = await knex("pessoas").insert(person);
+      // Garante que nasce ativo
+      const novaPessoa = { ...person, ativo: true };
+      const [id] = await knex("pessoas").insert(novaPessoa);
       return { id, success: true };
     }
   } catch (error) {
@@ -141,7 +150,9 @@ ipcMain.handle("save-person", async (event, person) => {
 
 ipcMain.handle("delete-person", async (event, id) => {
   try {
-    await knex("pessoas").where("id", id).del();
+    // SOFT DELETE: Apenas marca como inativo
+    await knex("pessoas").where("id", id).update({ ativo: false });
+
     return { success: true };
   } catch (error) {
     console.error("Erro delete-person:", error);
@@ -576,5 +587,77 @@ ipcMain.handle("login-attempt", async (event, { username, password }) => {
   } catch (error) {
     console.error("Erro no login:", error);
     return { success: false, error: "Erro interno no servidor." };
+  }
+});
+// backup
+ipcMain.handle("backup-database", async () => {
+  try {
+    // 1. Pergunta onde salvar
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: "Salvar Cópia de Segurança",
+      defaultPath: `syscontrol_backup_${
+        new Date().toISOString().split("T")[0]
+      }.sqlite3`,
+      filters: [{ name: "Banco de Dados SQLite", extensions: ["sqlite3"] }],
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, message: "Backup cancelado." };
+    }
+
+    // 2. Copia o arquivo do banco atual para o destino escolhido
+    // dbPath é a variável global que definimos no início do arquivo main.js
+    await fs.promises.copyFile(dbPath, filePath);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao fazer backup:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+// --- SISTEMA DE RESTAURAÇÃO ---
+ipcMain.handle("restore-database", async () => {
+  try {
+    // 1. Alertar o utilizador que isso substitui os dados atuais
+    const choice = await dialog.showMessageBox(mainWindow, {
+      type: "warning",
+      buttons: ["Cancelar", "Sim, Restaurar"],
+      title: "Atenção!",
+      message:
+        "A restauração irá substituir TODOS os dados atuais pelos do backup.\nO sistema será reiniciado automaticamente.\n\nDeseja continuar?",
+    });
+
+    if (choice.response === 0)
+      return { success: false, message: "Cancelado pelo utilizador." };
+
+    // 2. Selecionar o arquivo de backup
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: "Selecione o arquivo de Backup",
+      filters: [
+        { name: "Banco de Dados SQLite", extensions: ["sqlite3"] },
+        { name: "Todos os Arquivos", extensions: ["*"] },
+      ],
+      properties: ["openFile"],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, message: "Nenhum arquivo selecionado." };
+    }
+
+    const backupFile = filePaths[0];
+
+    // 3. Substituir o banco atual (dbPath definido no início do arquivo)
+    // Precisamos fechar a conexão do Knex antes? O SQLite tolera, mas reiniciar o app é mais seguro.
+    await fs.promises.copyFile(backupFile, dbPath);
+
+    // 4. Reiniciar a aplicação para carregar os novos dados
+    app.relaunch();
+    app.exit(0); // Fecha a instância atual
+
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao restaurar:", error);
+    return { success: false, error: error.message };
   }
 });

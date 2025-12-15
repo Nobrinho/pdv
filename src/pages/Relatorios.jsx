@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable"; // Importação corrigida para Vite
+import autoTable from "jspdf-autotable";
+import { useAlert } from "../context/AlertSystem";
 
 const Relatorios = () => {
   // Dados brutos
@@ -265,10 +266,10 @@ const Relatorios = () => {
 
       // Salvar Arquivo
       doc.save(`relatorio_${dayjs().format("YYYY-MM-DD_HH-mm")}.pdf`);
-      alert("PDF gerado com sucesso! Verifique sua pasta de downloads.");
+      showAlert("PDF gerado com sucesso! Verifique sua pasta de downloads.");
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
-      alert(
+      showAlert(
         "Ocorreu um erro ao gerar o PDF. Verifique o console para mais detalhes."
       );
     }

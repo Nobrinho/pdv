@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useAlert } from "../context/AlertSystem";
+
 
 const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { showAlert } = useAlert();
+
 
   // Login State
   const [username, setUsername] = useState("");
@@ -27,7 +31,7 @@ const Login = ({ onLoginSuccess }) => {
       setIsSetupMode(!hasUsers);
     } catch (error) {
       console.error("Erro de conexão:", error);
-      alert("Erro ao conectar com o banco de dados. Reinicie o sistema.");
+      showAlert("Erro ao conectar com o banco de dados. Reinicie o sistema.");
     } finally {
       setLoading(false);
     }
@@ -35,7 +39,7 @@ const Login = ({ onLoginSuccess }) => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!username || !password) return alert("Preencha todos os campos.");
+    if (!username || !password) return showAlert("Preencha todos os campos.");
 
     try {
       const result = await window.api.loginAttempt({ username, password });
@@ -43,11 +47,11 @@ const Login = ({ onLoginSuccess }) => {
       if (result.success) {
         onLoginSuccess(result.user);
       } else {
-        alert(result.error || "Erro desconhecido no login.");
+        showAlert(result.error || "Erro desconhecido no login.");
       }
     } catch (error) {
       console.error(error);
-      alert(
+      showAlert(
         "Erro técnico ao tentar logar. Verifique se o Backend foi reiniciado."
       );
     }
@@ -56,9 +60,9 @@ const Login = ({ onLoginSuccess }) => {
   const handleSetup = async (e) => {
     e.preventDefault();
     if (setupData.password !== setupData.confirmPassword)
-      return alert("As senhas não coincidem.");
+      return showAlert("As senhas não coincidem.");
     if (setupData.password.length < 4)
-      return alert("A senha deve ter pelo menos 4 caracteres.");
+      return showAlert("A senha deve ter pelo menos 4 caracteres.");
 
     try {
       const result = await window.api.registerUser({
@@ -69,15 +73,15 @@ const Login = ({ onLoginSuccess }) => {
       });
 
       if (result.success) {
-        alert("Administrador criado com sucesso! Faça login.");
+        showAlert("Administrador criado com sucesso! Faça login.");
         setIsSetupMode(false);
         setUsername(setupData.username);
         setPassword("");
       } else {
-        alert("Erro: " + result.error);
+        showAlert("Erro: " + result.error);
       }
     } catch (error) {
-      alert("Erro ao criar usuário. Tente novamente.");
+      showAlert("Erro ao criar usuário. Tente novamente.");
     }
   };
 

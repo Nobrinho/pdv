@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
+import { useAlert } from "../context/AlertSystem";
 
 const Servicos = () => {
   // Dados Gerais
   const [services, setServices] = useState([]);
   const [mechanics, setMechanics] = useState([]);
+  const { showAlert } = useAlert();
+
 
   // Estado do Formulário (Registro)
   const [formData, setFormData] = useState({
@@ -53,7 +56,7 @@ const Servicos = () => {
     e.preventDefault();
 
     if (!formData.trocadorId || !formData.descricao || !formData.valor) {
-      return alert("Preencha todos os campos obrigatórios!");
+      return showAlert("Preencha todos os campos obrigatórios!");
     }
 
     const serviceData = {
@@ -66,13 +69,13 @@ const Servicos = () => {
     const result = await window.api.createService(serviceData);
 
     if (result.success) {
-      alert("Serviço registrado com sucesso!");
+      showAlert("Serviço registrado com sucesso!");
       // Limpar campos
       setFormData({ ...formData, descricao: "", valor: "" });
       // Recarregar lista
       loadData();
     } else {
-      alert("Erro ao registrar: " + result.error);
+      showAlert("Erro ao registrar: " + result.error);
     }
   };
 

@@ -30,15 +30,20 @@ contextBridge.exposeInMainWorld("api", {
   getWeeklySales: () => ipcRenderer.invoke("get-weekly-sales"),
   getLowStock: () => ipcRenderer.invoke("get-low-stock"),
 
-    // --- NOVAS FUNÇÕES DE CONFIG ---
-  getRoles: () => ipcRenderer.invoke('get-roles'),
-  saveRole: (name) => ipcRenderer.invoke('save-role', name),
-  deleteRole: (id) => ipcRenderer.invoke('delete-role', id),
-  getConfig: (key) => ipcRenderer.invoke('get-config', key),
-  saveConfig: (key, value) => ipcRenderer.invoke('save-config', key, value),
+  // --- NOVAS FUNÇÕES DE CONFIG ---
+  getRoles: () => ipcRenderer.invoke("get-roles"),
+  saveRole: (name) => ipcRenderer.invoke("save-role", name),
+  deleteRole: (id) => ipcRenderer.invoke("delete-role", id),
+  getConfig: (key) => ipcRenderer.invoke("get-config", key),
+  saveConfig: (key, value) => ipcRenderer.invoke("save-config", key, value),
 
-    // --- AUTH (NOVO) ---
-  checkUsersExist: () => ipcRenderer.invoke('check-users-exist'),
-  registerUser: (data) => ipcRenderer.invoke('register-user', data),
-  loginAttempt: (data) => ipcRenderer.invoke('login-attempt', data),
+  // --- AUTH (NOVO) ---
+  checkUsersExist: () => ipcRenderer.invoke("check-users-exist"),
+  registerUser: (data) => ipcRenderer.invoke("register-user", data),
+  loginAttempt: (data) => ipcRenderer.invoke("login-attempt", data),
+
+  // --- BACKUP (NOVO) ---
+  backupDatabase: () => ipcRenderer.invoke("backup-database"),
+  // --- RESTAURAR (NOVO) ---
+  restoreDatabase: () => ipcRenderer.invoke("restore-database"),
 });

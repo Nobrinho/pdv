@@ -11,7 +11,7 @@ exports.up = function (knex) {
     .createTable("pessoas", (table) => {
       table.increments("id").primary();
       table.string("nome").notNullable();
-      table.decimal("comissao_fixa", 10, 2).nullable(); // Se null, usa a padrão
+      table.decimal("comissao_fixa", 10, 2).nullable();
       table
         .integer("cargo_id")
         .references("id")
@@ -27,6 +27,7 @@ exports.up = function (knex) {
       table.decimal("custo", 10, 2).notNullable();
       table.decimal("preco_venda", 10, 2).notNullable();
       table.integer("estoque_atual").defaultTo(0);
+      table.boolean("ativo").defaultTo(true);
     })
     .createTable("vendas", (table) => {
       table.increments("id").primary();
@@ -39,7 +40,7 @@ exports.up = function (knex) {
       table.decimal("subtotal", 10, 2).notNullable();
       table.decimal("mao_de_obra", 10, 2).defaultTo(0);
       table.decimal("desconto_valor", 10, 2).defaultTo(0);
-      table.string("desconto_tipo").defaultTo("fixed"); // 'fixed' ou 'percent'
+      table.string("desconto_tipo").defaultTo("fixed");
       table.decimal("total_final", 10, 2).notNullable();
       table.string("forma_pagamento").notNullable();
       table.datetime("data_venda").defaultTo(knex.fn.now());
@@ -54,7 +55,7 @@ exports.up = function (knex) {
       table.integer("produto_id").references("id").inTable("produtos");
       table.integer("quantidade").notNullable();
       table.decimal("preco_unitario", 10, 2).notNullable();
-      table.decimal("custo_unitario", 10, 2).notNullable(); // Snapshot do custo no momento da venda
+      table.decimal("custo_unitario", 10, 2).notNullable();
     })
     .createTable("servicos_avulsos", (table) => {
       table.increments("id").primary();
@@ -67,6 +68,16 @@ exports.up = function (knex) {
     .createTable("configuracoes", (table) => {
       table.string("chave").primary();
       table.string("valor");
+    })
+    .createTable("usuarios", (table) => {
+      table.increments("id").primary();
+      table.string("nome").notNullable();
+      table.string("username").unique().notNullable();
+      table.string("password_hash").notNullable();
+      table.string("salt").notNullable();
+      table.string("cargo").defaultTo("admin");
+      table.boolean("ativo").defaultTo(true);
+      table.datetime("criado_em").defaultTo(knex.fn.now());
     })
     .then(() => {
       // Dados Iniciais (Seeds)
@@ -88,6 +99,7 @@ exports.up = function (knex) {
  */
 exports.down = function (knex) {
   return knex.schema
+    .dropTableIfExists("usuarios")
     .dropTableIfExists("configuracoes")
     .dropTableIfExists("servicos_avulsos")
     .dropTableIfExists("venda_itens")
