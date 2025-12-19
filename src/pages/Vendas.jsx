@@ -29,6 +29,7 @@ const Vendas = () => {
     open: false,
     title: "",
     message: "",
+    type: "info",
   });
 
   const searchInputRef = useRef(null);
@@ -49,8 +50,8 @@ const Vendas = () => {
   };
 
   // Função auxiliar para mostrar alertas sem perder o foco da janela
-  const showAlert = (message, title = "Atenção") => {
-    setAlertState({ open: true, title, message });
+  const showAlert = (message, title = "Atenção", type = "info") => {
+    setAlertState({ open: true, title, message, type });
   };
 
   const closeAlert = () => {
@@ -59,6 +60,39 @@ const Vendas = () => {
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 100);
+  };
+
+  // --- IMPRESSÃO SILENCIOSA ---
+  const handleSilentPrint = async () => {
+    // 1. Verificar se o elemento existe (Correção do erro null)
+    const receiptElement = document.getElementById("recibo-content");
+
+    if (!receiptElement) {
+      return showAlert(
+        "Erro interno: Elemento do recibo não encontrado.",
+        "Erro Técnico",
+        "error"
+      );
+    }
+
+    // 2. Pegar o conteúdo HTML
+    const receiptContent = receiptElement.innerHTML;
+
+    // 3. Buscar nome da impressora salva nas configurações
+    const printerName = await window.api.getConfig("impressora_padrao");
+
+    // 4. Enviar para o Backend
+    const result = await window.api.printSilent(receiptContent, printerName);
+
+    if (result.success) {
+      showAlert(
+        "Comando de impressão enviado com sucesso.",
+        "Imprimindo",
+        "success"
+      );
+    } else {
+      showAlert("Erro na impressão: " + result.error, "Erro", "error");
+    }
   };
 
   // Lógica de Busca Visual (Dropdown)
@@ -79,11 +113,10 @@ const Vendas = () => {
   // --- LÓGICA DO LEITOR DE CÓDIGO DE BARRAS ---
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
-      e.preventDefault(); // Evita submit de formulário se houver
+      e.preventDefault();
 
       if (!searchTerm) return;
 
-      // 1. Tenta achar o código exato (Comportamento do Leitor)
       const exactMatch = products.find(
         (p) => p.codigo.trim() === searchTerm.trim()
       );
@@ -94,20 +127,18 @@ const Vendas = () => {
         } else {
           showAlert(
             `Produto sem estoque: ${exactMatch.descricao}`,
-            "Estoque Insuficiente"
+            "Estoque Insuficiente",
+            "error"
           );
-          setSearchTerm(""); // Limpa para tentar outro
+          setSearchTerm("");
         }
         return;
       }
 
-      // 2. Se não achou exato, mas a busca visual tem apenas 1 resultado, adiciona ele
       if (searchResults.length === 1) {
         addToCart(searchResults[0]);
         return;
       }
-
-      // Se não achou nada ou tem muitos resultados, não faz nada (usuário deve selecionar na lista)
     }
   };
 
@@ -121,16 +152,14 @@ const Vendas = () => {
           )
         );
       } else {
-        showAlert("Estoque máximo atingido para este item.");
+        showAlert("Estoque máximo atingido para este item.", "Aviso");
       }
     } else {
       setCart([...cart, { ...product, qty: 1 }]);
     }
 
-    // Limpa o campo e foca novamente para o próximo "bip"
     setSearchTerm("");
     setSearchResults([]);
-    // Pequeno timeout para garantir que o React renderizou e o foco não se perca
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 10);
@@ -156,7 +185,6 @@ const Vendas = () => {
   const labor = parseFloat(laborValue) || 0;
   const total = subtotal + labor - discountAmount;
 
-  // Lógica de Visibilidade do Trocador
   const showMechanicSelect = labor > 0;
 
   // Finalizar Venda
@@ -196,20 +224,18 @@ const Vendas = () => {
         });
         setShowReceipt(true);
 
-        // Limpar tela
         setCart([]);
         setLaborValue("");
         setDiscountValue("");
         setSelectedMechanic("");
         setSearchTerm("");
-        loadData(); // Atualizar estoque
-        // O foco será retornado quando o modal de recibo fechar
+        loadData();
       } else {
-        showAlert("Erro ao salvar venda: " + result.error, "Erro");
+        showAlert("Erro ao salvar venda: " + result.error, "Erro", "error");
       }
     } catch (err) {
       console.error(err);
-      showAlert("Erro de comunicação com o sistema.", "Erro Crítico");
+      showAlert("Erro de comunicação com o sistema.", "Erro Crítico", "error");
     }
   };
 
@@ -254,7 +280,6 @@ const Vendas = () => {
                 <i className="fas fa-barcode absolute left-3 top-3 text-gray-400"></i>
               </div>
 
-              {/* Resultados da Busca Visual */}
               {searchResults.length > 0 && (
                 <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto">
                   {searchResults.map((p) => (
@@ -381,7 +406,7 @@ const Vendas = () => {
             />
           </div>
 
-          {/* Select de Trocador (Sempre visível, obrigatório se valor > 0) */}
+          {/* Select de Trocador (Sempre visível) */}
           <div className="animate-fade-in-down">
             <label className="block text-xs font-bold text-blue-600 uppercase mb-1">
               Responsável Serviço {labor > 0 && "*"}
@@ -487,7 +512,10 @@ const Vendas = () => {
       {/* Modal de Recibo */}
       {showReceipt && lastSale && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 print:bg-white print:p-0">
-          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm print:shadow-none print:w-full max-h-[90vh] overflow-y-auto">
+          <div
+            id="recibo-content"
+            className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm print:shadow-none print:w-full max-h-[90vh] overflow-y-auto"
+          >
             <div className="text-center border-b pb-4 mb-4 border-dashed border-gray-300">
               <h2 className="text-2xl font-bold text-gray-800">RECIBO</h2>
               <p className="text-sm text-gray-500 mt-1">{lastSale.date}</p>
@@ -572,7 +600,7 @@ const Vendas = () => {
 
             <div className="mt-8 flex gap-3 print:hidden">
               <button
-                onClick={() => window.print()}
+                onClick={handleSilentPrint}
                 className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow"
               >
                 <i className="fas fa-print mr-2"></i> IMPRIMIR
@@ -595,16 +623,14 @@ const Vendas = () => {
             <div className="flex items-center mb-4">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
-                  alertState.title.includes("Erro")
+                  alertState.type === "error"
                     ? "bg-red-100 text-red-500"
                     : "bg-yellow-100 text-yellow-600"
                 }`}
               >
                 <i
                   className={`fas ${
-                    alertState.title.includes("Erro")
-                      ? "fa-times"
-                      : "fa-exclamation"
+                    alertState.type === "error" ? "fa-times" : "fa-exclamation"
                   } text-xl`}
                 ></i>
               </div>

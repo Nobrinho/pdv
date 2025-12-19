@@ -53,7 +53,7 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
-    // mainWindow.webContents.openDevTools(); // Apenas em desenvolvimento
+    mainWindow.webContents.openDevTools(); // Apenas em desenvolvimento
   } else {
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
     // NENHUMA linha de openDevTools aqui garante que não abre em produção
@@ -660,4 +660,103 @@ ipcMain.handle("restore-database", async () => {
     console.error("Erro ao restaurar:", error);
     return { success: false, error: error.message };
   }
+});
+
+// --- IMPRESSÃO SILENCIOSA ---
+
+// 1. Listar Impressoras Disponíveis
+ipcMain.handle('get-printers', async () => {
+    try {
+        const printers = await mainWindow.webContents.getPrintersAsync();
+        return printers;
+    } catch (error) {
+        console.error("Erro ao listar impressoras:", error);
+        return [];
+    }
+});
+
+// 2. Imprimir Silenciosamente
+ipcMain.handle('print-silent', async (event, contentHtml, printerName) => {
+    try {
+        // Criar uma janela invisível temporária para renderizar o cupom
+        let printWindow = new BrowserWindow({ 
+            show: false, 
+            width: 300, // Largura típica de cupom (80mm)
+            height: 600,
+            webPreferences: { nodeIntegration: false }
+        });
+
+        // Carregar o HTML do recibo
+        // Adicionamos um estilo básico para garantir que fique bonito no papel térmico
+        const fullHtml = `
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 5px; }
+                    .text-center { text-align: center; }
+                    .text-right { text-align: right; }
+                    .font-bold { font-weight: bold; }
+                    .border-b { border-bottom: 1px dashed #000; }
+                    .mb-2 { margin-bottom: 5px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    td, th { padding: 2px 0; }
+                </style>
+            </head>
+            <body>
+                ${contentHtml}
+            </body>
+            </html>
+        `;
+
+        await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(fullHtml)}`);
+
+        // Enviar comando de impressão
+        const options = {
+            silent: true,
+            printBackground: false,
+            deviceName: printerName // Nome da impressora escolhida
+        };
+
+        // Se não tiver nome (padrão), remove a propriedade para usar a default do Windows
+        if (!printerName) delete options.deviceName;
+
+        await printWindow.webContents.print(options);
+
+        // Fechar janela após impressão
+        printWindow.close();
+        return { success: true };
+
+    } catch (error) {
+        console.error("Erro na impressão silenciosa:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+
+// --- GESTÃO DE USUÁRIOS DO SISTEMA ---
+ipcMain.handle('get-users', async () => {
+    try {
+        return await knex('usuarios').select('id', 'nome', 'username', 'cargo', 'ativo');
+    } catch (error) {
+        console.error("Erro get-users:", error);
+        return [];
+    }
+});
+
+ipcMain.handle('delete-user', async (event, id) => {
+    try {
+        // Proteção: Não deixar apagar o último admin
+        const admins = await knex('usuarios').where({ cargo: 'admin', ativo: true });
+        const userToDelete = await knex('usuarios').where('id', id).first();
+
+        if (userToDelete && userToDelete.cargo === 'admin' && admins.length <= 1) {
+            return { success: false, error: "Não é possível excluir o único administrador." };
+        }
+
+        await knex('usuarios').where('id', id).del();
+        return { success: true };
+    } catch (error) {
+        console.error("Erro delete-user:", error);
+        return { success: false, error: error.message };
+    }
 });
