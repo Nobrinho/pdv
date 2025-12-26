@@ -1,11 +1,15 @@
 {
   "name": "syscontrol-desktop",
   "productName": "SysControl",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Sistema de Controle de Estoque e Vendas",
   "main": "electron/main.js",
-  "author": "Seu Nome",
+  "author": "Emerson Nobre",
   "license": "MIT",
+    "repository": {
+    "type": "git",
+    "url": "https://github.com/Nobrinho/pdv.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -18,8 +22,15 @@
   },
   "build": {
     "appId": "com.syscontrol.app",
+     "publish": [
+      {
+        "provider": "github",
+        "owner": "Nobrinho",
+        "repo": "pdv"
+      }
+    ],
     "productName": "SysControl",
-    "copyright": "Copyright © 2024 Seu Nome",
+    "copyright": "Copyright © 2025 Emerson Nobre. All rights reserved.",
     "directories": {
       "output": "dist_electron"
     },
@@ -62,6 +73,7 @@
     "better-sqlite3": "^9.4.0",
     "chart.js": "^4.4.1",
     "dayjs": "^1.11.10",
+    "electron-updater": "^6.6.2",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.23",
     "knex": "^3.1.0",

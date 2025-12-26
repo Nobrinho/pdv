@@ -1,6 +1,5 @@
 // @ts-nocheck
-import React, { useState } from "react";
-import { useAlert } from "./context/AlertSystem";
+import React, { useState, useEffect } from "react";
 import {
   Routes,
   Route,
@@ -16,22 +15,94 @@ import Recibos from "./pages/Recibos";
 import Dashboard from "./pages/Dashboard";
 import Config from "./pages/Config";
 import Login from "./pages/Login";
-import Relatorios from "./pages/Relatorios";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
+import Updater from "./components/Updater";
+import Relatorios from "./pages/Relatorios";
+
+// Definição de permissões por cargo
+const PERMISSOES_CAIXA = [
+  "/",
+  "/vendas",
+  "/servicos",
+  "/recibos",
+  "/historico",
+];
 
 function App() {
-  const { showAlert } = useAlert();
   const [user, setUser] = useState(null);
+  const [appVersion, setAppVersion] = useState(""); // Estado para a versão
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
-  const [unlockedRoutes, setUnlockedRoutes] = useState([]); // Nova lista de rotas liberadas
+  const [unlockedRoutes, setUnlockedRoutes] = useState([]);
 
-  // Estados para o Modal de Supervisor
   const [adminUser, setAdminUser] = useState("");
   const [adminPass, setAdminPass] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Buscar a versão assim que o componente montar
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const ver = await window.api.getAppVersion();
+        setAppVersion(ver);
+      } catch (error) {
+        console.error("Erro ao obter versão", error);
+        setAppVersion("Dev");
+      }
+    };
+    fetchVersion();
+  }, []);
+
+  const hasAccess = (path) => {
+    if (user?.cargo === "admin") return true;
+    const item = menuItems.find((i) => i.path === path);
+    if (item && !item.restricted) return true;
+    if (unlockedRoutes.includes(path)) return true;
+    return false;
+  };
+
+  const handleMenuClick = (path) => {
+    if (hasAccess(path)) {
+      navigate(path);
+    } else {
+      setPendingRoute(path);
+      setAdminUser("");
+      setAdminPass("");
+      setShowSupervisorModal(true);
+    }
+  };
+
+  const handleSupervisorAuth = async (e) => {
+    e.preventDefault();
+    if (!adminUser || !adminPass)
+      return alert("Preencha os dados do administrador.");
+
+    try {
+      const result = await window.api.loginAttempt({
+        username: adminUser,
+        password: adminPass,
+      });
+
+      if (result.success && result.user.cargo === "admin") {
+        setUnlockedRoutes((prev) => [...prev, pendingRoute]);
+        setShowSupervisorModal(false);
+        navigate(pendingRoute);
+      } else if (result.success) {
+        alert("Este usuário não tem permissão de Administrador.");
+      } else {
+        alert("Senha ou usuário incorretos.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao validar permissão.");
+    }
+  };
+
+  if (!user) {
+    return <Login onLoginSuccess={(userData) => setUser(userData)} />;
+  }
 
   const menuItems = [
     {
@@ -58,19 +129,18 @@ function App() {
       icon: "fa-receipt",
       restricted: false,
     },
-    {
-      path: "/historico",
-      label: "Auditoria de Preços",
-      icon: "fa-history",
-      restricted: false,
-    },
 
-    // Áreas Restritas
     {
       path: "/produtos",
       label: "Produtos",
       icon: "fa-box-open",
       restricted: true,
+    },
+    {
+      path: "/historico",
+      label: "Auditoria de Preços",
+      icon: "fa-history",
+      restricted: false,
     },
     { path: "/pessoas", label: "Equipe", icon: "fa-users", restricted: true },
     {
@@ -87,76 +157,14 @@ function App() {
     },
   ];
 
-  // --- LÓGICA DE NAVEGAÇÃO SEGURA ---
-
-  // Verifica se o usuário tem acesso a uma rota específica
-  const hasAccess = (path) => {
-    // 1. Se for admin, tem acesso a tudo
-    if (user?.cargo === "admin") return true;
-
-    // 2. Se a rota não for restrita, tem acesso
-    const item = menuItems.find((i) => i.path === path);
-    if (item && !item.restricted) return true;
-
-    // 3. Se a rota foi desbloqueada pelo supervisor nesta sessão
-    if (unlockedRoutes.includes(path)) return true;
-
-    return false;
-  };
-
-  const handleMenuClick = (path) => {
-    if (hasAccess(path)) {
-      navigate(path);
-    } else {
-      // Bloqueado: Pede senha
-      setPendingRoute(path);
-      setAdminUser("");
-      setAdminPass("");
-      setShowSupervisorModal(true);
-    }
-  };
-
-  const handleSupervisorAuth = async (e) => {
-    e.preventDefault();
-    if (!adminUser || !adminPass)
-      return showAlert("Preencha os dados do administrador.");
-
-    try {
-      const result = await window.api.loginAttempt({
-        username: adminUser,
-        password: adminPass,
-      });
-
-      if (result.success && result.user.cargo === "admin") {
-        // SUCESSO: Adiciona a rota na lista de permitidas e navega
-        setUnlockedRoutes((prev) => [...prev, pendingRoute]);
-        setShowSupervisorModal(false);
-        navigate(pendingRoute);
-      } else if (result.success) {
-        showAlert("Este usuário não tem permissão de Administrador.");
-      } else {
-        showAlert("Senha ou usuário incorretos.");
-      }
-    } catch (error) {
-      console.error(error);
-      showAlert("Erro ao validar permissão.");
-    }
-  };
-
-  if (!user) {
-    return <Login onLoginSuccess={(userData) => setUser(userData)} />;
-  }
-
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 font-sans text-gray-900">
-      {/* Sidebar */}
       <aside className="w-64 bg-gray-800 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-10">
         <div className="h-16 flex items-center justify-center border-b border-gray-700 bg-gray-900 shadow-md">
           <i className="fas fa-cubes text-blue-500 mr-2 text-xl"></i>
           <span className="text-lg font-bold tracking-wide">SysControl</span>
         </div>
 
-        {/* Info do Usuário */}
         <div className="px-4 py-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
           <div className="flex items-center">
             <div
@@ -202,7 +210,7 @@ function App() {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
-            const isLocked = !hasAccess(item.path); // Usa a função centralizada para verificar cadeado
+            const isLocked = !hasAccess(item.path);
 
             return (
               <button
@@ -235,12 +243,14 @@ function App() {
             );
           })}
         </nav>
-        <div className="p-4 border-t border-gray-700 bg-gray-900">
-          <p className="text-xs text-gray-600 text-center">Versão 1.1.0</p>
+        {/* VERSÃO DINÂMICA AQUI */}
+        <div className="p-4 border-t border-gray-700 bg-gray-900 flex justify-between items-center">
+          <p className="text-xs text-gray-500">Versão {appVersion || "..."}</p>
+          {/* Indicador de status (bolinha verde se conectado) */}
+          <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -249,7 +259,6 @@ function App() {
           <Route path="/recibos" element={<Recibos />} />
           <Route path="/historico" element={<HistoricoPrecos />} />
 
-          {/* ROTAS PROTEGIDAS COM NOVA LÓGICA */}
           <Route
             path="/produtos"
             element={
@@ -275,7 +284,7 @@ function App() {
         </Routes>
       </main>
 
-      {/* Modal de Supervisor */}
+      {/* Modal Supervisor */}
       {showSupervisorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] animate-fade-in backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-8 w-96 max-w-[90%] transform transition-all scale-100 border border-gray-200">
@@ -287,8 +296,7 @@ function App() {
                 Acesso Restrito
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                É necessária autorização de administrador para acessar esta
-                área.
+                É necessária autorização de administrador.
               </p>
             </div>
 
@@ -317,12 +325,11 @@ function App() {
                   onChange={(e) => setAdminPass(e.target.value)}
                 />
               </div>
-
               <button
                 type="submit"
                 className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-lg"
               >
-                LIBERAR ACESSO TEMPORÁRIO
+                LIBERAR ACESSO
               </button>
               <button
                 type="button"
@@ -335,6 +342,9 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Auto Updater Component */}
+      <Updater />
     </div>
   );
 }

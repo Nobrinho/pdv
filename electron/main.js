@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 
@@ -87,54 +88,56 @@ ipcMain.handle("get-products", async () => {
   }
 });
 
-ipcMain.handle('save-product', async (event, product) => {
-    try {
-        if (product.id) {
-            // 1. Buscar dados atuais antes de atualizar
-            const atual = await knex('produtos').where('id', product.id).first();
+ipcMain.handle("save-product", async (event, product) => {
+  try {
+    if (product.id) {
+      // 1. Buscar dados atuais antes de atualizar
+      const atual = await knex("produtos").where("id", product.id).first();
 
-            // 2. Atualizar o produto
-            await knex('produtos').where('id', product.id).update(product);
+      // 2. Atualizar o produto
+      await knex("produtos").where("id", product.id).update(product);
 
-            // 3. Verificar mudanças e registrar histórico
-            const mudouPreco = parseFloat(atual.preco_venda) !== parseFloat(product.preco_venda);
-            const mudouEstoque = parseInt(atual.estoque_atual) !== parseInt(product.estoque_atual);
+      // 3. Verificar mudanças e registrar histórico
+      const mudouPreco =
+        parseFloat(atual.preco_venda) !== parseFloat(product.preco_venda);
+      const mudouEstoque =
+        parseInt(atual.estoque_atual) !== parseInt(product.estoque_atual);
 
-            if (mudouPreco || mudouEstoque) {
-                await knex('historico_produtos').insert({
-                    produto_id: product.id,
-                    preco_antigo: atual.preco_venda,
-                    preco_novo: product.preco_venda,
-                    estoque_antigo: atual.estoque_atual,
-                    estoque_novo: product.estoque_atual,
-                    tipo_alteracao: mudouPreco ? 'alteracao_preco' : 'reposicao_estoque',
-                    data_alteracao: Date.now()
-                });
-            }
+      if (mudouPreco || mudouEstoque) {
+        await knex("historico_produtos").insert({
+          produto_id: product.id,
+          preco_antigo: atual.preco_venda,
+          preco_novo: product.preco_venda,
+          estoque_antigo: atual.estoque_atual,
+          estoque_novo: product.estoque_atual,
+          tipo_alteracao: mudouPreco ? "alteracao_preco" : "reposicao_estoque",
+          data_alteracao: Date.now(),
+        });
+      }
 
-            return { id: product.id, success: true };
-        } else {
-            // Produto Novo
-            const novoProduto = { ...product, ativo: true };
-            const [id] = await knex('produtos').insert(novoProduto);
+      return { id: product.id, success: true };
+    } else {
+      // Produto Novo
+      const novoProduto = { ...product, ativo: true };
+      const [id] = await knex("produtos").insert(novoProduto);
 
-            // Log inicial (opcional, mas bom para rastreio)
-            await knex('historico_produtos').insert({
-                produto_id: id,
-                preco_antigo: 0,
-                preco_novo: product.preco_venda,
-                estoque_antigo: 0,
-                estoque_novo: product.estoque_atual,
-                tipo_alteracao: 'cadastro_inicial',
-                data_alteracao: Date.now()
-            });
+      // Log inicial (opcional, mas bom para rastreio)
+      await knex("historico_produtos").insert({
+        produto_id: id,
+        preco_antigo: 0,
+        preco_novo: product.preco_venda,
+        estoque_antigo: 0,
+        estoque_novo: product.estoque_atual,
+        tipo_alteracao: "cadastro_inicial",
+        data_alteracao: Date.now(),
+      });
 
-            return { id, success: true };
-        }
-    } catch (error) {
-        console.error("Erro save-product:", error);
-        return { success: false, error: error.message };
+      return { id, success: true };
     }
+  } catch (error) {
+    console.error("Erro save-product:", error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle("delete-product", async (event, id) => {
@@ -695,30 +698,30 @@ ipcMain.handle("restore-database", async () => {
 // --- IMPRESSÃO SILENCIOSA ---
 
 // 1. Listar Impressoras Disponíveis
-ipcMain.handle('get-printers', async () => {
-    try {
-        const printers = await mainWindow.webContents.getPrintersAsync();
-        return printers;
-    } catch (error) {
-        console.error("Erro ao listar impressoras:", error);
-        return [];
-    }
+ipcMain.handle("get-printers", async () => {
+  try {
+    const printers = await mainWindow.webContents.getPrintersAsync();
+    return printers;
+  } catch (error) {
+    console.error("Erro ao listar impressoras:", error);
+    return [];
+  }
 });
 
 // 2. Imprimir Silenciosamente
-ipcMain.handle('print-silent', async (event, contentHtml, printerName) => {
-    try {
-        // Criar uma janela invisível temporária para renderizar o cupom
-        let printWindow = new BrowserWindow({ 
-            show: false, 
-            width: 300, // Largura típica de cupom (80mm)
-            height: 600,
-            webPreferences: { nodeIntegration: false }
-        });
+ipcMain.handle("print-silent", async (event, contentHtml, printerName) => {
+  try {
+    // Criar uma janela invisível temporária para renderizar o cupom
+    let printWindow = new BrowserWindow({
+      show: false,
+      width: 300, // Largura típica de cupom (80mm)
+      height: 600,
+      webPreferences: { nodeIntegration: false },
+    });
 
-        // Carregar o HTML do recibo
-        // Adicionamos um estilo básico para garantir que fique bonito no papel térmico
-        const fullHtml = `
+    // Carregar o HTML do recibo
+    // Adicionamos um estilo básico para garantir que fique bonito no papel térmico
+    const fullHtml = `
             <html>
             <head>
                 <style>
@@ -738,108 +741,167 @@ ipcMain.handle('print-silent', async (event, contentHtml, printerName) => {
             </html>
         `;
 
-        await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(fullHtml)}`);
+    await printWindow.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(fullHtml)}`
+    );
 
-        // Enviar comando de impressão
-        const options = {
-            silent: true,
-            printBackground: false,
-            deviceName: printerName // Nome da impressora escolhida
-        };
+    // Enviar comando de impressão
+    const options = {
+      silent: true,
+      printBackground: false,
+      deviceName: printerName, // Nome da impressora escolhida
+    };
 
-        // Se não tiver nome (padrão), remove a propriedade para usar a default do Windows
-        if (!printerName) delete options.deviceName;
+    // Se não tiver nome (padrão), remove a propriedade para usar a default do Windows
+    if (!printerName) delete options.deviceName;
 
-        await printWindow.webContents.print(options);
+    await printWindow.webContents.print(options);
 
-        // Fechar janela após impressão
-        printWindow.close();
-        return { success: true };
-
-    } catch (error) {
-        console.error("Erro na impressão silenciosa:", error);
-        return { success: false, error: error.message };
-    }
+    // Fechar janela após impressão
+    printWindow.close();
+    return { success: true };
+  } catch (error) {
+    console.error("Erro na impressão silenciosa:", error);
+    return { success: false, error: error.message };
+  }
 });
-
 
 // --- GESTÃO DE USUÁRIOS DO SISTEMA ---
-ipcMain.handle('get-users', async () => {
-    try {
-        return await knex('usuarios').select('id', 'nome', 'username', 'cargo', 'ativo');
-    } catch (error) {
-        console.error("Erro get-users:", error);
-        return [];
-    }
+ipcMain.handle("get-users", async () => {
+  try {
+    return await knex("usuarios").select(
+      "id",
+      "nome",
+      "username",
+      "cargo",
+      "ativo"
+    );
+  } catch (error) {
+    console.error("Erro get-users:", error);
+    return [];
+  }
 });
 
-ipcMain.handle('delete-user', async (event, id) => {
-    try {
-        // Proteção: Não deixar apagar o último admin
-        const admins = await knex('usuarios').where({ cargo: 'admin', ativo: true });
-        const userToDelete = await knex('usuarios').where('id', id).first();
+ipcMain.handle("delete-user", async (event, id) => {
+  try {
+    // Proteção: Não deixar apagar o último admin
+    const admins = await knex("usuarios").where({
+      cargo: "admin",
+      ativo: true,
+    });
+    const userToDelete = await knex("usuarios").where("id", id).first();
 
-        if (userToDelete && userToDelete.cargo === 'admin' && admins.length <= 1) {
-            return { success: false, error: "Não é possível excluir o único administrador." };
-        }
-
-        await knex('usuarios').where('id', id).del();
-        return { success: true };
-    } catch (error) {
-        console.error("Erro delete-user:", error);
-        return { success: false, error: error.message };
+    if (userToDelete && userToDelete.cargo === "admin" && admins.length <= 1) {
+      return {
+        success: false,
+        error: "Não é possível excluir o único administrador.",
+      };
     }
+
+    await knex("usuarios").where("id", id).del();
+    return { success: true };
+  } catch (error) {
+    console.error("Erro delete-user:", error);
+    return { success: false, error: error.message };
+  }
 });
 
 // --- CANCELAMENTO DE VENDA ---
-ipcMain.handle('cancel-sale', async (event, { vendaId, motivo }) => {
-    const trx = await knex.transaction();
-    try {
-        // 1. Verificar se já está cancelada
-        const venda = await trx('vendas').where('id', vendaId).first();
-        if (!venda) throw new Error('Venda não encontrada.');
-        if (venda.cancelada) throw new Error('Venda já está cancelada.');
+ipcMain.handle("cancel-sale", async (event, { vendaId, motivo }) => {
+  const trx = await knex.transaction();
+  try {
+    // 1. Verificar se já está cancelada
+    const venda = await trx("vendas").where("id", vendaId).first();
+    if (!venda) throw new Error("Venda não encontrada.");
+    if (venda.cancelada) throw new Error("Venda já está cancelada.");
 
-        // 2. Buscar itens para devolver ao estoque
-        const itens = await trx('venda_itens').where('venda_id', vendaId);
+    // 2. Buscar itens para devolver ao estoque
+    const itens = await trx("venda_itens").where("venda_id", vendaId);
 
-        // 3. Devolver estoque (Incrementar)
-        for (const item of itens) {
-            await trx('produtos')
-                .where('id', item.produto_id)
-                .increment('estoque_atual', item.quantidade);
-        }
-
-        // 4. Marcar venda como cancelada
-        await trx('vendas').where('id', vendaId).update({
-            cancelada: true,
-            motivo_cancelamento: motivo,
-            data_cancelamento: Date.now()
-        });
-
-        await trx.commit();
-        return { success: true };
-
-    } catch (error) {
-        await trx.rollback();
-        console.error("Erro ao cancelar venda:", error);
-        return { success: false, error: error.message };
+    // 3. Devolver estoque (Incrementar)
+    for (const item of itens) {
+      await trx("produtos")
+        .where("id", item.produto_id)
+        .increment("estoque_atual", item.quantidade);
     }
+
+    // 4. Marcar venda como cancelada
+    await trx("vendas").where("id", vendaId).update({
+      cancelada: true,
+      motivo_cancelamento: motivo,
+      data_cancelamento: Date.now(),
+    });
+
+    await trx.commit();
+    return { success: true };
+  } catch (error) {
+    await trx.rollback();
+    console.error("Erro ao cancelar venda:", error);
+    return { success: false, error: error.message };
+  }
 });
 
 // --- NOVO: BUSCAR HISTÓRICO DE PREÇOS ---
-ipcMain.handle('get-product-history', async () => {
-    try {
-        return await knex('historico_produtos')
-            .join('produtos', 'historico_produtos.produto_id', 'produtos.id')
-            .select(
-                'historico_produtos.*',
-                'produtos.descricao',
-                'produtos.codigo'
-            )
-            .orderBy('historico_produtos.data_alteracao', 'desc');
-    } catch (error) {
-        console.error("Erro get-product-history:", error);
-        return [];
-    }
+ipcMain.handle("get-product-history", async () => {
+  try {
+    return await knex("historico_produtos")
+      .join("produtos", "historico_produtos.produto_id", "produtos.id")
+      .select("historico_produtos.*", "produtos.descricao", "produtos.codigo")
+      .orderBy("historico_produtos.data_alteracao", "desc");
+  } catch (error) {
+    console.error("Erro get-product-history:", error);
+    return [];
+  }
+});
+
+// --- SISTEMA DE AUTO-UPDATE ---
+
+// Configuração básica
+autoUpdater.autoDownload = false; // Vamos perguntar antes de baixar
+autoUpdater.autoInstallOnAppQuit = true;
+
+// 1. Verificar se há atualizações
+ipcMain.handle("check-for-updates", () => {
+  if (!isDev) {
+    autoUpdater.checkForUpdates();
+  }
+});
+
+// 2. Baixar a atualização
+ipcMain.handle("download-update", () => {
+  autoUpdater.downloadUpdate();
+});
+
+// 3. Instalar e Reiniciar
+ipcMain.handle("quit-and-install", () => {
+  autoUpdater.quitAndInstall();
+});
+
+// --- Eventos do AutoUpdater ---
+
+// Enviar mensagens para o Frontend (React)
+autoUpdater.on("update-available", (info) => {
+  if (mainWindow) mainWindow.webContents.send("update_available", info.version);
+});
+
+autoUpdater.on("update-not-available", () => {
+  if (mainWindow) mainWindow.webContents.send("update_not_available");
+});
+
+autoUpdater.on("download-progress", (progressObj) => {
+  if (mainWindow)
+    mainWindow.webContents.send("update_progress", progressObj.percent);
+});
+
+autoUpdater.on("update-downloaded", () => {
+  if (mainWindow) mainWindow.webContents.send("update_downloaded");
+});
+
+autoUpdater.on("error", (err) => {
+  if (mainWindow) mainWindow.webContents.send("update_error", err.message);
+});
+
+// --- SISTEMA ---
+ipcMain.handle("get-app-version", () => {
+  return app.getVersion();
 });
