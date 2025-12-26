@@ -21,7 +21,6 @@ const knex = require("knex")({
   },
   useNullAsDefault: true,
   migrations: {
-    // Em produção, as migrations ficam dentro dos resources
     directory: isDev
       ? path.join(__dirname, "../database/migrations")
       : path.join(process.resourcesPath, "database", "migrations"),
@@ -88,27 +87,58 @@ ipcMain.handle("get-products", async () => {
   }
 });
 
-ipcMain.handle("save-product", async (event, product) => {
-  try {
-    if (product.id) {
-      await knex("produtos").where("id", product.id).update(product);
-      return { id: product.id, success: true };
-    } else {
-      // Garante que nasce ativo
-      const produtoNovo = { ...product, ativo: true };
-      const [id] = await knex("produtos").insert(produtoNovo);
-      return { id, success: true };
+ipcMain.handle('save-product', async (event, product) => {
+    try {
+        if (product.id) {
+            // 1. Buscar dados atuais antes de atualizar
+            const atual = await knex('produtos').where('id', product.id).first();
+
+            // 2. Atualizar o produto
+            await knex('produtos').where('id', product.id).update(product);
+
+            // 3. Verificar mudanças e registrar histórico
+            const mudouPreco = parseFloat(atual.preco_venda) !== parseFloat(product.preco_venda);
+            const mudouEstoque = parseInt(atual.estoque_atual) !== parseInt(product.estoque_atual);
+
+            if (mudouPreco || mudouEstoque) {
+                await knex('historico_produtos').insert({
+                    produto_id: product.id,
+                    preco_antigo: atual.preco_venda,
+                    preco_novo: product.preco_venda,
+                    estoque_antigo: atual.estoque_atual,
+                    estoque_novo: product.estoque_atual,
+                    tipo_alteracao: mudouPreco ? 'alteracao_preco' : 'reposicao_estoque',
+                    data_alteracao: Date.now()
+                });
+            }
+
+            return { id: product.id, success: true };
+        } else {
+            // Produto Novo
+            const novoProduto = { ...product, ativo: true };
+            const [id] = await knex('produtos').insert(novoProduto);
+
+            // Log inicial (opcional, mas bom para rastreio)
+            await knex('historico_produtos').insert({
+                produto_id: id,
+                preco_antigo: 0,
+                preco_novo: product.preco_venda,
+                estoque_antigo: 0,
+                estoque_novo: product.estoque_atual,
+                tipo_alteracao: 'cadastro_inicial',
+                data_alteracao: Date.now()
+            });
+
+            return { id, success: true };
+        }
+    } catch (error) {
+        console.error("Erro save-product:", error);
+        return { success: false, error: error.message };
     }
-  } catch (error) {
-    console.error("Erro save-product:", error);
-    return { success: false, error: error.message };
-  }
 });
 
 ipcMain.handle("delete-product", async (event, id) => {
   try {
-    // NÃO APAGA MAIS. Apenas esconde (Soft Delete).
-    // Isso permite manter o histórico de vendas intacto.
     await knex("produtos").where("id", id).update({ ativo: false });
 
     return { success: true };
@@ -758,5 +788,58 @@ ipcMain.handle('delete-user', async (event, id) => {
     } catch (error) {
         console.error("Erro delete-user:", error);
         return { success: false, error: error.message };
+    }
+});
+
+// --- CANCELAMENTO DE VENDA ---
+ipcMain.handle('cancel-sale', async (event, { vendaId, motivo }) => {
+    const trx = await knex.transaction();
+    try {
+        // 1. Verificar se já está cancelada
+        const venda = await trx('vendas').where('id', vendaId).first();
+        if (!venda) throw new Error('Venda não encontrada.');
+        if (venda.cancelada) throw new Error('Venda já está cancelada.');
+
+        // 2. Buscar itens para devolver ao estoque
+        const itens = await trx('venda_itens').where('venda_id', vendaId);
+
+        // 3. Devolver estoque (Incrementar)
+        for (const item of itens) {
+            await trx('produtos')
+                .where('id', item.produto_id)
+                .increment('estoque_atual', item.quantidade);
+        }
+
+        // 4. Marcar venda como cancelada
+        await trx('vendas').where('id', vendaId).update({
+            cancelada: true,
+            motivo_cancelamento: motivo,
+            data_cancelamento: Date.now()
+        });
+
+        await trx.commit();
+        return { success: true };
+
+    } catch (error) {
+        await trx.rollback();
+        console.error("Erro ao cancelar venda:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+// --- NOVO: BUSCAR HISTÓRICO DE PREÇOS ---
+ipcMain.handle('get-product-history', async () => {
+    try {
+        return await knex('historico_produtos')
+            .join('produtos', 'historico_produtos.produto_id', 'produtos.id')
+            .select(
+                'historico_produtos.*',
+                'produtos.descricao',
+                'produtos.codigo'
+            )
+            .orderBy('historico_produtos.data_alteracao', 'desc');
+    } catch (error) {
+        console.error("Erro get-product-history:", error);
+        return [];
     }
 });

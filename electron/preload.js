@@ -24,14 +24,12 @@ contextBridge.exposeInMainWorld('api', {
   getRoles: () => ipcRenderer.invoke('get-roles'),
   saveRole: (name) => ipcRenderer.invoke('save-role', name),
   deleteRole: (id) => ipcRenderer.invoke('delete-role', id),
-  
   getConfig: (key) => ipcRenderer.invoke('get-config', key),
   saveConfig: (key, value) => ipcRenderer.invoke('save-config', key, value),
-  
   getDashboardStats: () => ipcRenderer.invoke('get-dashboard-stats'),
   getWeeklySales: () => ipcRenderer.invoke('get-weekly-sales'),
   getLowStock: () => ipcRenderer.invoke('get-low-stock'),
-  
+
   // --- AUTENTICAÇÃO & USUÁRIOS (O QUE FALTAVA) ---
   checkUsersExist: () => ipcRenderer.invoke('check-users-exist'),
   registerUser: (data) => ipcRenderer.invoke('register-user', data),
@@ -44,4 +42,10 @@ contextBridge.exposeInMainWorld('api', {
   restoreDatabase: () => ipcRenderer.invoke('restore-database'),
   getPrinters: () => ipcRenderer.invoke('get-printers'),
   printSilent: (html, printer) => ipcRenderer.invoke('print-silent', html, printer),
+
+    // --- CANCELAR ---
+  cancelSale: (data) => ipcRenderer.invoke('cancel-sale', data),
+
+    // --- NOVO: HISTÓRICO ---
+  getProductHistory: () => ipcRenderer.invoke('get-product-history'),
 });

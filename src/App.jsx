@@ -17,7 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import Config from "./pages/Config";
 import Login from "./pages/Login";
 import Relatorios from "./pages/Relatorios";
-
+import HistoricoPrecos from "./pages/HistoricoPrecos";
 
 function App() {
   const { showAlert } = useAlert();
@@ -56,6 +56,12 @@ function App() {
       path: "/recibos",
       label: "Recibos",
       icon: "fa-receipt",
+      restricted: false,
+    },
+    {
+      path: "/historico",
+      label: "Auditoria de Preços",
+      icon: "fa-history",
       restricted: false,
     },
 
@@ -241,6 +247,7 @@ function App() {
           <Route path="/vendas" element={<Vendas />} />
           <Route path="/servicos" element={<Servicos />} />
           <Route path="/recibos" element={<Recibos />} />
+          <Route path="/historico" element={<HistoricoPrecos />} />
 
           {/* ROTAS PROTEGIDAS COM NOVA LÓGICA */}
           <Route
