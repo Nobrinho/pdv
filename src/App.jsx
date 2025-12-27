@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
 import Updater from "./components/Updater";
 import Relatorios from "./pages/Relatorios";
+import { useAlert } from "./context/AlertSystem";
 
 // Definição de permissões por cargo
 const PERMISSOES_CAIXA = [
@@ -34,6 +35,7 @@ function App() {
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
+  const { showAlert } = useAlert();
 
   const [adminUser, setAdminUser] = useState("");
   const [adminPass, setAdminPass] = useState("");
@@ -77,7 +79,7 @@ function App() {
   const handleSupervisorAuth = async (e) => {
     e.preventDefault();
     if (!adminUser || !adminPass)
-      return alert("Preencha os dados do administrador.");
+      return showAlert("Preencha os dados do administrador.");
 
     try {
       const result = await window.api.loginAttempt({
@@ -90,13 +92,13 @@ function App() {
         setShowSupervisorModal(false);
         navigate(pendingRoute);
       } else if (result.success) {
-        alert("Este usuário não tem permissão de Administrador.");
+        showAlert("Este usuário não tem permissão de Administrador.");
       } else {
-        alert("Senha ou usuário incorretos.");
+        showAlert("Senha ou usuário incorretos.");
       }
     } catch (error) {
       console.error(error);
-      alert("Erro ao validar permissão.");
+      showAlert("Erro ao validar permissão.");
     }
   };
 

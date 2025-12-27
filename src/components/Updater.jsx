@@ -1,11 +1,14 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
+import { useAlert } from '../context/AlertSystem';
 
 const Updater = () => {
   // Estados: idle, checking, available, starting, downloading, ready, error
   const [status, setStatus] = useState("idle");
   const [version, setVersion] = useState("");
   const [progress, setProgress] = useState(0);
+  const { showAlert } = useAlert();
+
 
   useEffect(() => {
     if (window.api && window.api.checkForUpdates) {
@@ -44,7 +47,7 @@ const Updater = () => {
 
     // 3. Se falhar no início (antes de começar o progresso)
     if (!result || !result.success) {
-      alert(
+      showAlert(
         "Não foi possível iniciar o download: " +
           (result?.error || "Erro desconhecido")
       );
