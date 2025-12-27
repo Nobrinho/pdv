@@ -31,7 +31,7 @@ const PERMISSOES_CAIXA = [
 
 function App() {
   const [user, setUser] = useState(null);
-  const [appVersion, setAppVersion] = useState(""); // Estado para a versão
+  const [appVersion, setAppVersion] = useState("")
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);

@@ -6,6 +6,7 @@ const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const { showAlert } = useAlert();
+  const [appVersion, setAppVersion] = useState("")
 
 
   // Login State
@@ -23,6 +24,19 @@ const Login = ({ onLoginSuccess }) => {
   useEffect(() => {
     checkSystemStatus();
   }, []);
+
+    useEffect(() => {
+      const fetchVersion = async () => {
+        try {
+          const ver = await window.api.getAppVersion();
+          setAppVersion(ver);
+        } catch (error) {
+          console.error("Erro ao obter versão", error);
+          setAppVersion("Dev");
+        }
+      };
+      fetchVersion();
+    }, []);
 
   const checkSystemStatus = async () => {
     try {
@@ -240,7 +254,7 @@ const Login = ({ onLoginSuccess }) => {
           )}
         </div>
         <div className="bg-gray-50 p-4 text-center text-xs text-gray-400 border-t">
-          SysControl v1.0 &copy; {new Date().getFullYear()}
+          SysControl v{appVersion} &copy;
         </div>
       </div>
     </div>
