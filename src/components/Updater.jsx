@@ -2,64 +2,66 @@
 import React, { useEffect, useState } from "react";
 
 const Updater = () => {
-  const [status, setStatus] = useState("idle"); // idle, checking, available, downloading, ready, error
+  // Estados: idle, checking, available, starting, downloading, ready, error
+  const [status, setStatus] = useState("idle");
   const [version, setVersion] = useState("");
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    // 1. Verificar atualizações assim que o componente carrega
     if (window.api && window.api.checkForUpdates) {
       window.api.checkForUpdates();
     }
 
-    // 2. Configurar os ouvintes (listeners)
-
-    // Atualização disponível
-    const removeAvailable = window.api.onUpdateAvailable((ver) => {
-      console.log("Atualização disponível:", ver);
+    // Listeners
+    window.api.onUpdateAvailable((ver) => {
       setVersion(ver);
       setStatus("available");
     });
 
-    // Progresso do download
-    const removeProgress = window.api.onUpdateProgress((percent) => {
+    window.api.onUpdateProgress((percent) => {
+      // Só muda para downloading se já não estiver (evita flickering)
       setStatus("downloading");
       setProgress(Math.round(percent));
     });
 
-    // Download concluído
-    const removeDownloaded = window.api.onUpdateDownloaded(() => {
+    window.api.onUpdateDownloaded(() => {
       setStatus("ready");
     });
 
-    // Erro
-    const removeError = window.api.onUpdateError((err) => {
-      console.error("Erro no update:", err);
-      // Opcional: setStatus('error'); para mostrar erro na tela
+    window.api.onUpdateError((err) => {
+      console.error("Erro update:", err);
+      // Opcional: mostrar erro se desejar, ou apenas resetar para idle
+      // setStatus('error');
     });
-
-    // Limpeza ao desmontar (boa prática)
-    return () => {
-      // Se a sua ponte preload suportar removeListener, use aqui.
-      // Como simplificamos a ponte, apenas garantimos que não duplique lógica.
-    };
   }, []);
 
-  const startDownload = () => {
-    window.api.downloadUpdate();
+  const startDownload = async () => {
+    // 1. Feedback imediato
+    setStatus("starting");
+
+    // 2. Chama o backend
+    const result = await window.api.downloadUpdate();
+
+    // 3. Se falhar no início (antes de começar o progresso)
+    if (!result || !result.success) {
+      alert(
+        "Não foi possível iniciar o download: " +
+          (result?.error || "Erro desconhecido")
+      );
+      setStatus("available"); // Volta para permitir tentar de novo
+    }
   };
 
   const installNow = () => {
     window.api.quitAndInstall();
   };
 
-  // Se não estiver a acontecer nada, não mostra nada na tela
   if (status === "idle" || status === "checking" || status === "error")
     return null;
 
   return (
     <div className="fixed bottom-5 right-5 bg-white p-5 rounded-xl shadow-2xl border border-blue-100 w-80 animate-fade-in z-[9999]">
-      {/* 1. Nova Encontrada */}
+      {/* 1. Nova Versão Encontrada */}
       {status === "available" && (
         <div>
           <div className="flex items-center gap-3 mb-3">
@@ -90,7 +92,17 @@ const Updater = () => {
         </div>
       )}
 
-      {/* 2. Baixando... */}
+      {/* 2. Iniciando (Novo Estado) */}
+      {status === "starting" && (
+        <div className="text-center py-2">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-xs text-gray-500 font-medium">
+            Iniciando download...
+          </p>
+        </div>
+      )}
+
+      {/* 3. Baixando... */}
       {status === "downloading" && (
         <div>
           <div className="flex justify-between items-end mb-2">
@@ -108,7 +120,7 @@ const Updater = () => {
         </div>
       )}
 
-      {/* 3. Pronto para Instalar */}
+      {/* 4. Pronto para Instalar */}
       {status === "ready" && (
         <div className="text-center">
           <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3 text-xl">

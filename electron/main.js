@@ -854,6 +854,11 @@ ipcMain.handle("get-product-history", async () => {
   }
 });
 
+// --- SISTEMA ---
+ipcMain.handle("get-app-version", () => {
+  return app.getVersion();
+});
+
 // --- SISTEMA DE AUTO-UPDATE ---
 
 // Configuração básica
@@ -863,13 +868,25 @@ autoUpdater.autoInstallOnAppQuit = true;
 // 1. Verificar se há atualizações
 ipcMain.handle("check-for-updates", () => {
   if (!isDev) {
-    autoUpdater.checkForUpdates();
+    try {
+      autoUpdater.checkForUpdates();
+    } catch (error) {
+      console.error("Erro ao verificar updates:", error);
+    }
   }
 });
 
-// 2. Baixar a atualização
-ipcMain.handle("download-update", () => {
-  autoUpdater.downloadUpdate();
+// 2. Baixar a atualização (ATUALIZADO COM TRATAMENTO DE ERRO)
+ipcMain.handle("download-update", async () => {
+  try {
+    // Retorna o resultado da promessa de download
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao iniciar download:", error);
+    // Retorna o erro para o frontend mostrar na tela
+    return { success: false, error: error.message };
+  }
 });
 
 // 3. Instalar e Reiniciar
@@ -899,9 +916,4 @@ autoUpdater.on("update-downloaded", () => {
 
 autoUpdater.on("error", (err) => {
   if (mainWindow) mainWindow.webContents.send("update_error", err.message);
-});
-
-// --- SISTEMA ---
-ipcMain.handle("get-app-version", () => {
-  return app.getVersion();
 });
