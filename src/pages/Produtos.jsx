@@ -1,11 +1,10 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
-import { useAlert } from "../context/AlertSystem"; // 1. Importar o hook
+import { useAlert } from "../context/AlertSystem";
 
 const Produtos = () => {
-  const { showAlert, showConfirm } = useAlert(); // 2. Usar o hook
+  const { showAlert, showConfirm } = useAlert();
   const [products, setProducts] = useState([]);
-  // Modais Locais (Apenas para formulários complexos)
   const [showProductModal, setShowProductModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
 
@@ -37,6 +36,15 @@ const Produtos = () => {
   // --- CRUD PRODUTO ---
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // VALIDAÇÃO NOVA: Não deixa salvar se o código estiver vazio (a menos que queira gerar auto)
+    if (!formData.codigo.trim()) {
+      // Se quiser obrigar o usuário a digitar:
+      return showAlert("O campo Código é obrigatório.", "Erro", "error");
+
+      // OU, se quiser deixar passar para o backend gerar automático, apenas remova este if.
+    }
+
     const productToSave = {
       ...formData,
       custo: parseFloat(formData.custo),
@@ -46,11 +54,18 @@ const Produtos = () => {
 
     if (editingId) productToSave.id = editingId;
 
-    await window.api.saveProduct(productToSave);
-    setShowProductModal(false);
-    resetForm();
-    loadProducts();
-    showAlert("Produto salvo com sucesso!", "Sucesso", "success"); // Alerta bonito
+    const result = await window.api.saveProduct(productToSave); // Agora pegamos o resultado
+
+    if (result.success) {
+      setShowProductModal(false);
+      resetForm();
+      loadProducts();
+      // Se tiver usando o hook useAlert, chame showAlert aqui
+      showAlert("Produto salvo!", "Sucesso", "success");
+    } else {
+      // Mostra o erro amigável que criamos no backend
+      showAlert(result.error, "Erro", "error");
+    }
   };
 
   const handleEdit = (product) => {
@@ -252,6 +267,7 @@ const Produtos = () => {
                     setFormData({ ...formData, codigo: e.target.value })
                   }
                   autoFocus
+                  required
                 />
               </div>
               <div>

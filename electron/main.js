@@ -91,37 +91,15 @@ ipcMain.handle("get-products", async () => {
 ipcMain.handle("save-product", async (event, product) => {
   try {
     if (product.id) {
-      // 1. Buscar dados atuais antes de atualizar
-      const atual = await knex("produtos").where("id", product.id).first();
-
-      // 2. Atualizar o produto
       await knex("produtos").where("id", product.id).update(product);
-
-      // 3. Verificar mudanças e registrar histórico
-      const mudouPreco =
-        parseFloat(atual.preco_venda) !== parseFloat(product.preco_venda);
-      const mudouEstoque =
-        parseInt(atual.estoque_atual) !== parseInt(product.estoque_atual);
-
-      if (mudouPreco || mudouEstoque) {
-        await knex("historico_produtos").insert({
-          produto_id: product.id,
-          preco_antigo: atual.preco_venda,
-          preco_novo: product.preco_venda,
-          estoque_antigo: atual.estoque_atual,
-          estoque_novo: product.estoque_atual,
-          tipo_alteracao: mudouPreco ? "alteracao_preco" : "reposicao_estoque",
-          data_alteracao: Date.now(),
-        });
-      }
-
       return { id: product.id, success: true };
     } else {
-      // Produto Novo
-      const novoProduto = { ...product, ativo: true };
-      const [id] = await knex("produtos").insert(novoProduto);
+      if (!product.codigo || product.codigo.trim() === "") {
+        product.codigo = "AUTO-" + Date.now();
+      }
 
-      // Log inicial (opcional, mas bom para rastreio)
+      const [id] = await knex("produtos").insert(product);
+      // Registrar histórico inicial
       await knex("historico_produtos").insert({
         produto_id: id,
         preco_antigo: 0,
@@ -136,7 +114,16 @@ ipcMain.handle("save-product", async (event, product) => {
     }
   } catch (error) {
     console.error("Erro save-product:", error);
-    return { success: false, error: error.message };
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return {
+        success: false,
+        error: "Já existe um produto com este Código. Por favor, use outro.",
+      };
+    }
+    return {
+      success: false,
+      error: "Erro no banco de dados: " + error.message,
+    };
   }
 });
 
