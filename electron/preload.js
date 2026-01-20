@@ -71,4 +71,6 @@ contextBridge.exposeInMainWorld("api", {
 
   // --- VERSÃO DO SISTEMA---
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
+
+    getInventoryStats: () => ipcRenderer.invoke('get-inventory-stats'),
 });
