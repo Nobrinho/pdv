@@ -19,6 +19,7 @@ const Config = () => {
     password: "",
     cargo: "vendedor",
   });
+  const [showPassword, setShowPassword] = useState(false); // NOVO: Controle de visibilidade da senha
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,7 +58,7 @@ const Config = () => {
       showAlert(
         "Comissão padrão atualizada com sucesso!",
         "Sucesso",
-        "success"
+        "success",
       );
     } else {
       showAlert("Erro ao salvar: " + result.error, "Erro", "error");
@@ -82,7 +83,7 @@ const Config = () => {
 
   const handleDeleteRole = async (id) => {
     const confirmed = await showConfirm(
-      "Tem a certeza que deseja excluir este cargo?"
+      "Tem a certeza que deseja excluir este cargo?",
     );
     if (confirmed) {
       const result = await window.api.deleteRole(id);
@@ -106,22 +107,19 @@ const Config = () => {
   };
 
   const handleRestore = async () => {
-    // O backend já tem um dialog nativo para confirmação crítica,
-    // mas podemos adicionar uma camada extra aqui se desejar.
-    // Por enquanto, chamamos direto pois o backend reinicia o app.
     await window.api.restoreDatabase();
   };
 
   const handleSavePrinter = async () => {
     const result = await window.api.saveConfig(
       "impressora_padrao",
-      selectedPrinter
+      selectedPrinter,
     );
     if (result.success) {
       showAlert(
         "Impressora padrão salva com sucesso!",
         "Configuração",
-        "success"
+        "success",
       );
     } else {
       showAlert("Erro ao salvar impressora.", "Erro", "error");
@@ -138,7 +136,7 @@ const Config = () => {
       return showAlert(
         "A senha deve ter pelo menos 4 caracteres.",
         "Senha Fraca",
-        "warning"
+        "warning",
       );
     }
 
@@ -155,7 +153,7 @@ const Config = () => {
 
   const handleDeleteUser = async (id) => {
     const confirmed = await showConfirm(
-      "Tem a certeza que deseja excluir este usuário de acesso?"
+      "Tem a certeza que deseja excluir este usuário de acesso?",
     );
     if (confirmed) {
       const result = await window.api.deleteUser(id);
@@ -347,21 +345,35 @@ const Config = () => {
                   required
                 />
               </div>
+
+              {/* CAMPO DE SENHA COM OLHINHO */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Senha
                 </label>
-                <input
-                  type="password"
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="******"
-                  value={newUser.password}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, password: e.target.value })
-                  }
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="w-full border border-gray-300 rounded-lg p-2 pr-10 outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="******"
+                    value={newUser.password}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, password: e.target.value })
+                    }
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-2 text-gray-400 hover:text-indigo-600 focus:outline-none"
+                  >
+                    <i
+                      className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"}`}
+                    ></i>
+                  </button>
+                </div>
               </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Permissão
@@ -420,11 +432,7 @@ const Config = () => {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span
-                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.cargo === "admin"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${user.cargo === "admin" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}
                         >
                           {user.cargo === "admin" ? "Admin" : "Caixa"}
                         </span>

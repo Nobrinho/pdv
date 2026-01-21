@@ -71,7 +71,13 @@ const Dashboard = () => {
     setInventoryStats(invStats);
   };
 
-  const formatCurrency = (val) => `R$ ${val?.toFixed(2).replace(".", ",")}`;
+  // --- FORMATAÇÃO BANCÁRIA (R$ 1.234,56) ---
+  const formatCurrency = (val) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val || 0);
+  };
 
   const chartOptions = {
     responsive: true,
@@ -167,7 +173,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* --- SECÇÃO 2: INTELIGÊNCIA DE ESTOQUE (NOVO) --- */}
+      {/* --- SECÇÃO 2: INTELIGÊNCIA DE ESTOQUE (PATRIMÔNIO) --- */}
       <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center">
         <i className="fas fa-boxes mr-2"></i> Valorização de Estoque
         (Patrimônio)
@@ -177,7 +183,7 @@ const Dashboard = () => {
           <p className="text-xs text-gray-300 font-bold uppercase mb-1">
             Custo Total (Investido)
           </p>
-          <p className="text-2xl font-bold">
+          <p className="text-2xl font-bold tracking-tight">
             {formatCurrency(inventoryStats.custoTotal)}
           </p>
           <p className="text-xs text-gray-400 mt-2">
@@ -188,7 +194,7 @@ const Dashboard = () => {
           <p className="text-xs text-gray-500 font-bold uppercase mb-1">
             Venda Potencial
           </p>
-          <p className="text-2xl font-bold text-blue-600">
+          <p className="text-2xl font-bold text-blue-600 tracking-tight">
             {formatCurrency(inventoryStats.vendaPotencial)}
           </p>
           <p className="text-xs text-gray-400 mt-2">
@@ -199,7 +205,7 @@ const Dashboard = () => {
           <p className="text-xs text-gray-500 font-bold uppercase mb-1">
             Lucro Projetado
           </p>
-          <p className="text-2xl font-bold text-green-600">
+          <p className="text-2xl font-bold text-green-600 tracking-tight">
             {formatCurrency(inventoryStats.lucroProjetado)}
           </p>
           <p className="text-xs text-gray-400 mt-2">Margem bruta acumulada</p>

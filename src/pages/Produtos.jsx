@@ -1,14 +1,20 @@
 // @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAlert } from "../context/AlertSystem";
 
 const Produtos = () => {
   const { showAlert, showConfirm } = useAlert();
   const [products, setProducts] = useState([]);
+
+  // Modais
   const [showProductModal, setShowProductModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
 
-  // Estados de Dados
+  // Filtros e Ordenação (Novos Estados)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("descricao"); // descricao, estoque_asc, estoque_desc, preco_asc
+
+  // Estados de Dados (Formulários)
   const [formData, setFormData] = useState({
     codigo: "",
     descricao: "",
@@ -16,12 +22,14 @@ const Produtos = () => {
     preco_venda: "",
     estoque_atual: "",
   });
+
   const [stockData, setStockData] = useState({
     id: null,
     nome: "",
     quantidade_atual: 0,
     quantidade_adicionar: "",
   });
+
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
@@ -32,6 +40,36 @@ const Produtos = () => {
     const data = await window.api.getProducts();
     setProducts(data);
   };
+
+  // --- LÓGICA DE FILTRO E ORDENAÇÃO (NOVO) ---
+  const filteredAndSortedProducts = useMemo(() => {
+    // 1. Filtrar
+    let result = products.filter(
+      (p) =>
+        p.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.codigo.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+
+    // 2. Ordenar
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "descricao":
+          return a.descricao.localeCompare(b.descricao);
+        case "estoque_asc":
+          return a.estoque_atual - b.estoque_atual;
+        case "estoque_desc":
+          return b.estoque_atual - a.estoque_atual;
+        case "preco_asc":
+          return a.preco_venda - b.preco_venda;
+        case "preco_desc":
+          return b.preco_venda - a.preco_venda;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [products, searchTerm, sortBy]);
 
   // --- CRUD PRODUTO ---
   const handleSubmit = async (e) => {
@@ -129,8 +167,9 @@ const Produtos = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col w-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
+    <div className="p-4 md:p-6 h-full flex flex-col w-full overflow-hidden">
+      {/* Cabeçalho e Botão Novo */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">
           Gerenciar Estoque
         </h1>
@@ -139,14 +178,42 @@ const Produtos = () => {
             resetForm();
             setShowProductModal(true);
           }}
-          className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center shadow-md text-sm md:text-base"
+          className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center shadow-md text-sm md:text-base whitespace-nowrap"
         >
           <i className="fas fa-box-open mr-2"></i> Novo Produto
         </button>
       </div>
 
+      {/* Barra de Filtros e Busca (NOVO) */}
+      <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 mb-4 flex flex-col md:flex-row gap-3">
+        <div className="flex-1 relative">
+          <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+          <input
+            type="text"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="Buscar por nome ou código..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="w-full md:w-48">
+          <select
+            className="w-full border border-gray-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="descricao">Nome (A-Z)</option>
+            <option value="estoque_asc">Estoque (Menor Primeiro)</option>
+            <option value="estoque_desc">Estoque (Maior Primeiro)</option>
+            <option value="preco_asc">Preço (Menor Primeiro)</option>
+            <option value="preco_desc">Preço (Maior Primeiro)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Tabela Responsiva */}
       <div className="bg-white rounded-xl shadow-md flex-1 overflow-hidden border border-gray-100 flex flex-col">
-        <div className="overflow-auto flex-1">
+        <div className="overflow-auto flex-1 custom-scrollbar">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
               <tr>
@@ -156,7 +223,6 @@ const Produtos = () => {
                 <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[150px]">
                   Descrição
                 </th>
-                {/* Coluna Custo oculta em telas pequenas para economizar espaço */}
                 <th className="hidden md:table-cell px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
                   Custo
                 </th>
@@ -166,29 +232,29 @@ const Produtos = () => {
                 <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
                   Saldo
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-24">
+                <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-28">
                   Ações
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((p) => (
+              {filteredAndSortedProducts.map((p) => (
                 <tr
                   key={p.id}
                   className={`hover:bg-gray-50 transition-colors ${
                     p.estoque_atual === 0 ? "bg-red-50" : ""
                   }`}
                 >
-                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-500">
                     {p.codigo}
                   </td>
-                  <td className="px-3 py-3 text-xs md:text-sm text-gray-700 break-words whitespace-normal">
+                  <td className="px-3 py-3 text-xs md:text-sm text-gray-800 break-words whitespace-normal font-medium">
                     {p.descricao}
                   </td>
                   <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right text-gray-500">
                     R$ {p.custo.toFixed(2)}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right font-medium text-gray-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right font-bold text-gray-900">
                     R$ {p.preco_venda.toFixed(2)}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-center">
@@ -198,61 +264,70 @@ const Produtos = () => {
                           ? "bg-green-100 text-green-800"
                           : p.estoque_atual > 0
                             ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-200 text-red-900"
+                            : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {p.estoque_atual}
+                      {p.estoque_atual} un
                     </span>
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-center text-sm font-medium">
                     <div className="flex justify-center items-center gap-1 md:gap-2">
                       <button
                         onClick={() => openStockModal(p)}
-                        className="text-white bg-green-500 hover:bg-green-600 p-1.5 rounded transition shadow-sm"
+                        className="text-white bg-green-500 hover:bg-green-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
                         title="Repor Estoque"
                       >
-                        <i className="fas fa-plus w-3 h-3 md:w-4 md:h-4 flex items-center justify-center"></i>
+                        <i className="fas fa-plus text-xs"></i>
                       </button>
                       <button
                         onClick={() => handleEdit(p)}
-                        className="text-blue-600 hover:text-blue-900 p-1.5 hover:bg-blue-50 rounded transition"
+                        className="text-white bg-blue-500 hover:bg-blue-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
                         title="Editar"
                       >
-                        <i className="fas fa-edit w-4 h-4 md:w-5 md:h-5"></i>
+                        <i className="fas fa-edit text-xs"></i>
                       </button>
                       <button
                         onClick={() => handleDelete(p.id)}
-                        className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition"
+                        className="text-white bg-red-500 hover:bg-red-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
                         title="Excluir"
                       >
-                        <i className="fas fa-trash w-4 h-4 md:w-5 md:h-5"></i>
+                        <i className="fas fa-trash text-xs"></i>
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {products.length === 0 && (
+              {filteredAndSortedProducts.length === 0 && (
                 <tr>
                   <td
                     colSpan="6"
-                    className="px-6 py-10 text-center text-gray-500 flex flex-col items-center justify-center"
+                    className="px-6 py-12 text-center text-gray-400 flex flex-col items-center justify-center"
                   >
-                    <i className="fas fa-box-open text-4xl mb-2 opacity-30"></i>
-                    <span className="text-sm">Nenhum produto cadastrado.</span>
+                    <i className="fas fa-search text-3xl mb-2 opacity-30"></i>
+                    <span className="text-sm">Nenhum produto encontrado.</span>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        <div className="bg-gray-50 border-t border-gray-200 p-2 text-xs text-gray-500 text-right">
+          Total de itens listados: {filteredAndSortedProducts.length}
+        </div>
       </div>
 
       {/* --- MODAL DE PRODUTO (CRIAR/EDITAR) --- */}
       {showProductModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
-              {editingId ? "Editar Produto" : "Cadastrar Produto"}
+            <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 flex items-center justify-between">
+              <span>{editingId ? "Editar Produto" : "Cadastrar Produto"}</span>
+              <button
+                onClick={() => setShowProductModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <i className="fas fa-times"></i>
+              </button>
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -260,12 +335,12 @@ const Produtos = () => {
                   Código
                 </label>
                 <input
-                  className="block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
                   value={formData.codigo}
                   onChange={(e) =>
                     setFormData({ ...formData, codigo: e.target.value })
                   }
-                  placeholder="Ex: 12345"
+                  placeholder="Ex: 12345 (Deixe vazio para automático)"
                   autoFocus
                 />
               </div>
@@ -274,7 +349,7 @@ const Produtos = () => {
                   Descrição
                 </label>
                 <input
-                  className="block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
                   value={formData.descricao}
                   onChange={(e) =>
                     setFormData({ ...formData, descricao: e.target.value })
@@ -291,7 +366,7 @@ const Produtos = () => {
                   <input
                     type="number"
                     step="0.01"
-                    className="block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
                     value={formData.custo}
                     onChange={(e) =>
                       setFormData({ ...formData, custo: e.target.value })
@@ -306,7 +381,7 @@ const Produtos = () => {
                   <input
                     type="number"
                     step="0.01"
-                    className="block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
                     value={formData.preco_venda}
                     onChange={(e) =>
                       setFormData({ ...formData, preco_venda: e.target.value })
@@ -321,7 +396,7 @@ const Produtos = () => {
                 </label>
                 <input
                   type="number"
-                  className="block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
                   value={formData.estoque_atual}
                   onChange={(e) =>
                     setFormData({ ...formData, estoque_atual: e.target.value })
@@ -329,17 +404,17 @@ const Produtos = () => {
                   required
                 />
               </div>
-              <div className="flex justify-end gap-3 mt-6 pt-2 border-t">
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                 <button
                   type="button"
                   onClick={() => setShowProductModal(false)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+                  className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold"
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold text-sm shadow-md"
                 >
                   Salvar
                 </button>
@@ -351,7 +426,7 @@ const Produtos = () => {
 
       {/* --- MODAL DE REPOSIÇÃO DE ESTOQUE (+) --- */}
       {showStockModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100">
             <h2 className="text-lg font-bold mb-1 text-green-700 flex items-center">
               <i className="fas fa-plus-circle mr-2"></i> Entrada de Estoque
@@ -383,7 +458,7 @@ const Produtos = () => {
                 <input
                   type="number"
                   min="1"
-                  className="block w-full border-2 border-green-100 rounded-lg p-3 text-xl font-bold text-center text-green-700 focus:border-green-500 focus:ring-0 outline-none"
+                  className="block w-full border-2 border-green-100 rounded-lg p-3 text-xl font-bold text-center text-green-700 focus:border-green-500 focus:ring-0 outline-none transition"
                   value={stockData.quantidade_adicionar}
                   onChange={(e) =>
                     setStockData({
@@ -399,13 +474,13 @@ const Produtos = () => {
                 <button
                   type="button"
                   onClick={() => setShowStockModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium"
+                  className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold"
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm shadow-md"
                 >
                   Confirmar
                 </button>

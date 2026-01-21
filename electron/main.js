@@ -48,7 +48,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    // autoHideMenuBar: true, // Opcional
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -58,7 +58,7 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
-    // mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
@@ -204,19 +204,28 @@ ipcMain.handle("delete-role", async (e, id) => {
 ipcMain.handle("create-sale", async (event, saleData) => {
   const trx = await knex.transaction();
   try {
+    // Definir forma de pagamento principal para o histórico antigo
+    // Se tiver mais de um pagamento, grava como "Múltiplos"
+    const formaPagamentoResumo =
+      saleData.pagamentos.length > 1
+        ? "Múltiplos"
+        : saleData.pagamentos[0].metodo;
+
+    // 1. Inserir a Venda
     const [saleId] = await trx("vendas").insert({
       vendedor_id: saleData.vendedor_id,
-      trocador_id: saleData.trocador_id || null,
+      trocador_id: null, // Removido fluxo de trocador nesta tela
       subtotal: saleData.subtotal,
-      mao_de_obra: saleData.mao_de_obra,
+      mao_de_obra: 0, // Removido
       acrescimo: saleData.acrescimo_valor || 0,
       desconto_valor: saleData.desconto_valor || 0,
       desconto_tipo: saleData.desconto_tipo || "percent",
       total_final: saleData.total_final,
-      forma_pagamento: saleData.forma_pagamento,
+      forma_pagamento: formaPagamentoResumo,
       data_venda: Date.now(),
     });
 
+    // 2. Inserir os Itens
     const items = saleData.itens.map((item) => ({
       venda_id: saleId,
       produto_id: item.id,
@@ -233,6 +242,19 @@ ipcMain.handle("create-sale", async (event, saleData) => {
           .decrement("estoque_atual", item.quantidade);
       }
     }
+
+    // 3. Inserir os Pagamentos (NOVO)
+    const pagamentos = saleData.pagamentos.map((p) => ({
+      venda_id: saleId,
+      metodo: p.metodo,
+      valor: p.valor,
+      detalhes: p.detalhes || "",
+    }));
+
+    if (pagamentos.length > 0) {
+      await trx("venda_pagamentos").insert(pagamentos);
+    }
+
     await trx.commit();
     return { success: true, id: saleId };
   } catch (error) {
@@ -250,7 +272,7 @@ ipcMain.handle("get-sales", async () => {
       .select(
         "vendas.*",
         "vendedor.nome as vendedor_nome",
-        "trocador.nome as trocador_nome"
+        "trocador.nome as trocador_nome",
       )
       .orderBy("data_venda", "desc");
 
@@ -321,14 +343,14 @@ ipcMain.handle("create-service", async (e, data) => {
   return { success: true, id };
 });
 
-// --- DASHBOARD (CORRIGIDO) ---
+// --- DASHBOARD ---
 ipcMain.handle("get-dashboard-stats", async () => {
   try {
     const now = new Date();
     const startOfDay = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate()
+      now.getDate(),
     ).getTime();
     const endOfDay = new Date(
       now.getFullYear(),
@@ -337,18 +359,16 @@ ipcMain.handle("get-dashboard-stats", async () => {
       23,
       59,
       59,
-      999
+      999,
     ).getTime();
 
-    // 1. Vendas de Hoje (IGNORA CANCELADAS)
     const vendas = await knex("vendas")
       .whereBetween("data_venda", [startOfDay, endOfDay])
       .where("cancelada", 0);
 
-    // 2. Serviços de Hoje
     const servicos = await knex("servicos_avulsos").whereBetween(
       "data_servico",
-      [startOfDay, endOfDay]
+      [startOfDay, endOfDay],
     );
 
     const config = await knex("configuracoes")
@@ -364,53 +384,61 @@ ipcMain.handle("get-dashboard-stats", async () => {
         : [];
 
     let totalFaturamento = 0;
-    let totalMaoDeObra = 0;
+    let totalCustoProdutos = 0;
+    let totalMaoDeObra = 0; // Agora é CUSTO
     let totalComissoes = 0;
-    let totalCustoProdutos = 0; // <--- VARIÁVEL DECLARADA AQUI (A Correção)
 
     // Cálculos
     vendas.forEach((venda) => {
-      totalFaturamento += venda.total_final;
+      // 1. Faturamento Real: (Total Final - Mão de Obra).
+      // O Total Final no banco inclui a MO, então precisamos subtrair para saber quanto entrou de PEÇA.
+      const faturamentoVenda = venda.total_final - (venda.mao_de_obra || 0);
+      totalFaturamento += faturamentoVenda;
+
+      // 2. Mão de Obra (Despesa)
       if (venda.mao_de_obra) totalMaoDeObra += venda.mao_de_obra;
 
-      // Comissão
+      // 3. Comissões
       const vendedor = pessoas.find((p) => p.id === venda.vendedor_id);
       const taxa =
         vendedor && vendedor.comissao_fixa
           ? vendedor.comissao_fixa / 100
           : comissaoPadrao;
 
-      const itensVenda = itens.filter((i) => i.venda_id === venda.id);
-      const custoVenda = itensVenda.reduce(
-        (acc, item) => acc + item.custo_unitario * item.quantidade,
-        0
-      );
-
-      // Soma ao total de custos
-      totalCustoProdutos += custoVenda;
       let desconto = 0;
       if (venda.desconto_tipo === "fixed") desconto = venda.desconto_valor;
       else desconto = (venda.subtotal * venda.desconto_valor) / 100;
 
+      // A receita de produtos já desconta o desconto dado na venda
       const receitaProdutos = venda.subtotal - desconto;
 
       if (receitaProdutos > 0) {
         totalComissoes += receitaProdutos * taxa;
       }
+
+      // 4. Custo das Peças
+      const itensVenda = itens.filter((i) => i.venda_id === venda.id);
+      const custoVenda = itensVenda.reduce(
+        (acc, item) => acc + item.custo_unitario * item.quantidade,
+        0,
+      );
+      totalCustoProdutos += custoVenda;
     });
 
+    // Serviços Avulsos também são DESPESA agora (a loja paga o serviço)
     servicos.forEach((s) => {
-      totalFaturamento += s.valor;
       totalMaoDeObra += s.valor;
     });
 
-    const lucro = totalFaturamento - totalCustoProdutos - totalComissoes;
+    // LUCRO = (Dinheiro que entrou das peças) - (Custo das peças + O que pagou de Mão de Obra + Comissões)
+    const lucro =
+      totalFaturamento - (totalCustoProdutos + totalMaoDeObra + totalComissoes);
 
     return {
       faturamento: totalFaturamento,
       lucro: lucro,
       vendasCount: vendas.length,
-      maoDeObra: totalMaoDeObra,
+      maoDeObra: totalMaoDeObra, // Enviamos para mostrar no card de "Despesas com MO"
       comissoes: totalComissoes,
     };
   } catch (error) {
@@ -436,17 +464,16 @@ ipcMain.handle("get-weekly-sales", async () => {
     const nextD = new Date(d);
     nextD.setDate(d.getDate() + 1);
 
+    // Soma apenas o valor dos produtos (Total Final - Mão de Obra)
     const vendas = await knex("vendas")
       .whereBetween("data_venda", [d.getTime(), nextD.getTime()])
       .where("cancelada", 0)
-      .sum("total_final as total");
+      .sum({ total: knex.raw("total_final - mao_de_obra") }); // <--- CORREÇÃO AQUI
 
-    const servicos = await knex("servicos_avulsos")
-      .whereBetween("data_servico", [d.getTime(), nextD.getTime()])
-      .sum("valor as total");
+    // Não somamos serviços avulsos ao gráfico de vendas pois agora são despesa
 
     labels.push(d.toLocaleDateString("pt-BR", { weekday: "short" }));
-    data.push((vendas[0].total || 0) + (servicos[0].total || 0));
+    data.push(vendas[0].total || 0);
   }
   return { labels, data };
 });
@@ -476,12 +503,34 @@ function verifyPassword(password, salt, storedHash) {
 
 ipcMain.handle(
   "check-users-exist",
-  async () => (await knex("usuarios").count("id as total").first()).total > 0
+  async () => (await knex("usuarios").count("id as total").first()).total > 0,
 );
-ipcMain.handle("register-user", async (e, d) => {
-  const { salt, hash } = hashPassword(d.password);
-  await knex("usuarios").insert({ ...d, password_hash: hash, salt });
-  return { success: true };
+ipcMain.handle("register-user", async (event, userData) => {
+  try {
+    const { salt, hash } = hashPassword(userData.password);
+
+    // CORREÇÃO: Não usamos mais spread operator ({...userData})
+    // Definimos manualmente os campos para evitar enviar 'password' crua
+    await knex("usuarios").insert({
+      nome: userData.nome,
+      username: userData.username,
+      password_hash: hash, // Salva o hash
+      salt: salt, // Salva o sal
+      cargo: userData.cargo || "admin",
+      ativo: true,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao registrar usuário:", error);
+
+    // Tratamento para usuário duplicado
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return { success: false, error: "Este nome de usuário já existe." };
+    }
+
+    return { success: false, error: error.message };
+  }
 });
 ipcMain.handle("login-attempt", async (e, { username, password }) => {
   const user = await knex("usuarios").where("username", username).first();
@@ -501,7 +550,7 @@ ipcMain.handle("login-attempt", async (e, { username, password }) => {
 });
 ipcMain.handle(
   "get-users",
-  async () => await knex("usuarios").select("id", "nome", "username", "cargo")
+  async () => await knex("usuarios").select("id", "nome", "username", "cargo"),
 );
 ipcMain.handle("delete-user", async (e, id) => {
   await knex("usuarios").where("id", id).del();
@@ -510,7 +559,8 @@ ipcMain.handle("delete-user", async (e, id) => {
 
 ipcMain.handle(
   "get-config",
-  async (e, k) => (await knex("configuracoes").where("chave", k).first())?.valor
+  async (e, k) =>
+    (await knex("configuracoes").where("chave", k).first())?.valor,
 );
 ipcMain.handle("save-config", async (e, k, v) => {
   const ex = await knex("configuracoes").where("chave", k).first();
@@ -540,7 +590,7 @@ ipcMain.handle("restore-database", async () => {
 });
 
 ipcMain.handle("get-printers", async () =>
-  mainWindow.webContents.getPrintersAsync()
+  mainWindow.webContents.getPrintersAsync(),
 );
 ipcMain.handle("print-silent", async (e, html, printer) => {
   let win = new BrowserWindow({ show: false });
@@ -567,54 +617,62 @@ ipcMain.handle("download-update", async () => {
 });
 ipcMain.handle("quit-and-install", () => autoUpdater.quitAndInstall());
 autoUpdater.on("update-available", (info) =>
-  mainWindow.webContents.send("update_available", info.version)
+  mainWindow.webContents.send("update_available", info.version),
 );
 autoUpdater.on("download-progress", (p) =>
-  mainWindow.webContents.send("update_progress", p.percent)
+  mainWindow.webContents.send("update_progress", p.percent),
 );
 autoUpdater.on("update-downloaded", () =>
-  mainWindow.webContents.send("update_downloaded")
+  mainWindow.webContents.send("update_downloaded"),
 );
 autoUpdater.on("error", (err) =>
-  mainWindow.webContents.send("update_error", err.message)
+  mainWindow.webContents.send("update_error", err.message),
 );
 
 // --- ESTATÍSTICAS DE ESTOQUE (NOVO) ---
-ipcMain.handle('get-inventory-stats', async () => {
-    try {
-        // Busca todos os produtos ativos
-        const produtos = await knex('produtos').where('ativo', true).select('custo', 'preco_venda', 'estoque_atual');
+ipcMain.handle("get-inventory-stats", async () => {
+  try {
+    // Busca todos os produtos ativos
+    const produtos = await knex("produtos")
+      .where("ativo", true)
+      .select("custo", "preco_venda", "estoque_atual");
 
-        let custoTotal = 0;
-        let vendaPotencial = 0;
-        let qtdZerados = 0;
-        let qtdBaixoEstoque = 0; // <= 5 unidades
-        let totalItensFisicos = 0;
+    let custoTotal = 0;
+    let vendaPotencial = 0;
+    let qtdZerados = 0;
+    let qtdBaixoEstoque = 0; // <= 5 unidades
+    let totalItensFisicos = 0;
 
-        produtos.forEach(p => {
-            const qtd = p.estoque_atual || 0;
-            const custo = p.custo || 0;
-            const venda = p.preco_venda || 0;
+    produtos.forEach((p) => {
+      const qtd = p.estoque_atual || 0;
+      const custo = p.custo || 0;
+      const venda = p.preco_venda || 0;
 
-            if (qtd <= 0) qtdZerados++;
-            if (qtd > 0 && qtd <= 5) qtdBaixoEstoque++;
+      if (qtd <= 0) qtdZerados++;
+      if (qtd > 0 && qtd <= 5) qtdBaixoEstoque++;
 
-            totalItensFisicos += qtd;
-            custoTotal += (custo * qtd);
-            vendaPotencial += (venda * qtd);
-        });
+      totalItensFisicos += qtd;
+      custoTotal += custo * qtd;
+      vendaPotencial += venda * qtd;
+    });
 
-        return {
-            custoTotal,
-            vendaPotencial,
-            lucroProjetado: vendaPotencial - custoTotal,
-            qtdZerados,
-            qtdBaixoEstoque,
-            totalItensFisicos
-        };
-
-    } catch (error) {
-        console.error("Erro inventory stats:", error);
-        return { custoTotal: 0, vendaPotencial: 0, lucroProjetado: 0, qtdZerados: 0, qtdBaixoEstoque: 0, totalItensFisicos: 0 };
-    }
+    return {
+      custoTotal,
+      vendaPotencial,
+      lucroProjetado: vendaPotencial - custoTotal,
+      qtdZerados,
+      qtdBaixoEstoque,
+      totalItensFisicos,
+    };
+  } catch (error) {
+    console.error("Erro inventory stats:", error);
+    return {
+      custoTotal: 0,
+      vendaPotencial: 0,
+      lucroProjetado: 0,
+      qtdZerados: 0,
+      qtdBaixoEstoque: 0,
+      totalItensFisicos: 0,
+    };
+  }
 });

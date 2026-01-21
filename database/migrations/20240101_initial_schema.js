@@ -88,7 +88,7 @@ exports.up = function (knex) {
     })
     .then(() => {
       return knex("configuracoes").insert([
-        { chave: "comissao_padrao", valor: "0.30" },
+        { chave: "comissao_padrao", valor: "0.04" },
       ]);
     });
 };
