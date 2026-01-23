@@ -592,19 +592,107 @@ ipcMain.handle("restore-database", async () => {
 ipcMain.handle("get-printers", async () =>
   mainWindow.webContents.getPrintersAsync(),
 );
-ipcMain.handle("print-silent", async (e, html, printer) => {
-  let win = new BrowserWindow({ show: false });
-  await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-  const options = {
-    silent: true,
-    printBackground: false,
-    deviceName: printer || undefined,
-  };
-  await win.webContents.print(options);
-  win.close();
-  return { success: true };
-});
+// 2. Imprimir Silenciosamente (VERSÃO DE DIAGNÓSTICO E CORREÇÃO)
+ipcMain.handle("print-silent", async (event, contentHtml, printerName) => {
+  console.log(`🖨️ Tentando imprimir: "${printerName}"`);
 
+  // Verifica se a impressora existe (se nome for fornecido)
+  if (printerName && printerName !== "Padrão do Windows") {
+    const printers = await mainWindow.webContents.getPrintersAsync();
+    const exists = printers.find((p) => p.name === printerName);
+    if (!exists) return { success: false, error: "Impressora não encontrada." };
+  }
+
+  let printWindow = new BrowserWindow({
+    show: false,
+    width: 300, // Largura padrão 80mm
+    height: 600,
+    webPreferences: { nodeIntegration: false },
+  });
+
+  // CSS "Força Bruta" para garantir legibilidade em térmicas ruins
+  const fullHtml = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page { margin: 0; size: auto; }
+            * {
+                box-sizing: border-box;
+                color: #000 !important; /* Força preto absoluto */
+                text-shadow: 0 0 0 #000; /* Engrossa a fonte artificialmente */
+            }
+            body {
+                font-family: 'Courier New', Courier, monospace; /* Monospace é melhor para alinhar */
+                font-size: 13px; /* Fonte um pouco maior */
+                font-weight: 700; /* Negrito em tudo */
+                margin: 0;
+                padding: 5px;
+                width: 280px;
+                background-color: #fff;
+            }
+            /* Classes de utilidade mapeadas do Tailwind para CSS puro */
+            .flex { display: flex; }
+            .justify-between { justify-content: space-between; }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: 900; } /* Mais negrito */
+            .border-b { border-bottom: 2px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+            .border-t { border-top: 2px dashed #000; padding-top: 5px; margin-top: 5px; }
+            .mb-2 { margin-bottom: 5px; }
+            .mb-4 { margin-bottom: 10px; }
+            .mt-2 { margin-top: 5px; }
+            .mt-4 { margin-top: 10px; }
+            .uppercase { text-transform: uppercase; }
+            .text-xs { font-size: 11px; }
+            .text-sm { font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; }
+            td, th { padding: 2px 0; vertical-align: top; }
+        </style>
+    </head>
+    <body>
+        ${contentHtml}
+    </body>
+    </html>
+  `;
+
+  try {
+    await printWindow.loadURL(
+      `data:text/html;charset=utf-8,${encodeURIComponent(fullHtml)}`,
+    );
+
+    // Pequeno delay para renderizar
+    await new Promise((r) => setTimeout(r, 500));
+
+    const options = {
+      silent: true,
+      printBackground: false, // Em térmicas, fundo geralmente atrapalha
+      color: false, // Força P&B
+      margins: { marginType: "none" },
+      landscape: false,
+      scaleFactor: 100,
+      copies: 1,
+    };
+
+    if (printerName && printerName !== "Padrão do Windows") {
+      options.deviceName = printerName;
+    }
+
+    await printWindow.webContents.print(options);
+
+    // Espera o spooler pegar antes de matar a janela
+    setTimeout(() => {
+      if (!printWindow.isDestroyed()) printWindow.close();
+    }, 2000);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Erro print:", error);
+    if (!printWindow.isDestroyed()) printWindow.close();
+    return { success: false, error: error.message };
+  }
+});
 ipcMain.handle("get-app-version", () => app.getVersion());
 
 // Auto Update

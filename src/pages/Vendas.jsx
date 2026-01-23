@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import dayjs from "dayjs"; // Necessário para a data no recibo
 import { useAlert } from "../context/AlertSystem";
 
 const Vendas = () => {
@@ -8,6 +9,7 @@ const Vendas = () => {
   // --- DADOS ---
   const [products, setProducts] = useState([]);
   const [sellers, setSellers] = useState([]);
+  const [mechanics, setMechanics] = useState([]);
 
   // --- CARRINHO & SELEÇÃO ---
   const [cart, setCart] = useState([]);
@@ -22,13 +24,48 @@ const Vendas = () => {
   const [surchargeType, setSurchargeType] = useState("fixed");
 
   // --- PAGAMENTO MULTIPLO ---
-  const [payments, setPayments] = useState([]); // Lista de pagamentos adicionados { metodo, valor, detalhes }
+  const [payments, setPayments] = useState([]);
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState("Dinheiro");
-  const [currentPaymentValue, setCurrentPaymentValue] = useState(""); // Valor que está sendo digitado
-  const [installments, setInstallments] = useState(1); // Para cartão de crédito
+  const [currentPaymentValue, setCurrentPaymentValue] = useState("");
+  const [installments, setInstallments] = useState(1);
+
+  // --- RECIBO ---
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastSale, setLastSale] = useState(null);
 
   const searchInputRef = useRef(null);
   const paymentInputRef = useRef(null);
+
+  // --- ESTILOS DE IMPRESSÃO (Inline para garantir formatação na térmica) ---
+  const styles = {
+    container: {
+      backgroundColor: "#fff",
+      color: "#000",
+      fontFamily: "'Courier New', monospace",
+      fontSize: "12px",
+      padding: "10px",
+      width: "100%",
+      maxWidth: "300px",
+    },
+    center: { textAlign: "center" },
+    right: { textAlign: "right" },
+    bold: { fontWeight: "bold" },
+    borderBottom: {
+      borderBottom: "1px dashed #000",
+      marginBottom: "5px",
+      paddingBottom: "5px",
+    },
+    table: { width: "100%", borderCollapse: "collapse" },
+    td: { padding: "2px 0", verticalAlign: "top" },
+    textSmall: { fontSize: "10px" },
+    cancelado: {
+      border: "2px solid #000",
+      padding: "5px",
+      textAlign: "center",
+      fontWeight: "bold",
+      marginTop: "10px",
+    },
+  };
 
   useEffect(() => {
     loadData();
@@ -41,8 +78,29 @@ const Vendas = () => {
       const people = await window.api.getPeople();
       setProducts(prods || []);
       setSellers(people.filter((p) => p.cargo_nome === "Vendedor"));
+      setMechanics(people.filter((p) => p.cargo_nome === "Trocador"));
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+    }
+  };
+
+  // --- IMPRESSÃO SILENCIOSA ---
+  const handleSilentPrint = async () => {
+    // Busca pelo ID correto do novo layout
+    const receiptElement = document.getElementById("cupom-fiscal");
+
+    if (!receiptElement) {
+      return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
+    }
+
+    const receiptContent = receiptElement.outerHTML;
+    const printerName = await window.api.getConfig("impressora_padrao");
+    const result = await window.api.printSilent(receiptContent, printerName);
+
+    if (result.success) {
+      showAlert("Enviado para impressão.", "Sucesso", "success");
+    } else {
+      showAlert("Erro na impressão: " + result.error, "Erro", "error");
     }
   };
 
@@ -155,7 +213,6 @@ const Vendas = () => {
     setTimeout(() => searchInputRef.current?.focus(), 10);
   };
 
-  // --- ALTERAR QUANTIDADE (EDÇÃO DIRETA) ---
   const handleQuantityChange = (id, newQtyStr) => {
     const newQty = parseInt(newQtyStr);
     if (isNaN(newQty) || newQty < 1) return;
@@ -169,7 +226,6 @@ const Vendas = () => {
         "Aviso",
         "warning",
       );
-      // Atualiza para o máximo possível
       setCart(
         cart.map((item) =>
           item.id === id
@@ -205,7 +261,6 @@ const Vendas = () => {
       );
     }
 
-    // Detalhes (Ex: 3x)
     let detalhes = "";
     if (currentPaymentMethod.includes("Crédito")) {
       detalhes = `${installments}x`;
@@ -215,7 +270,7 @@ const Vendas = () => {
       ...payments,
       { metodo: currentPaymentMethod, valor, detalhes },
     ]);
-    setCurrentPaymentValue(""); // Limpa input
+    setCurrentPaymentValue("");
   };
 
   const removePayment = (index) => {
@@ -236,8 +291,6 @@ const Vendas = () => {
     if (!selectedSeller)
       return showAlert("Selecione um vendedor!", "Erro", "error");
 
-    // Validação de Pagamento Total
-    // Permitimos uma margem de erro de 0.01 centavos para arredondamento
     if (totals.remaining > 0.01) {
       return showAlert(
         `Falta receber R$ ${totals.remaining.toFixed(2)}`,
@@ -253,7 +306,7 @@ const Vendas = () => {
       desconto_valor: totals.discountAmount,
       desconto_tipo: discountType,
       total_final: totals.total,
-      pagamentos: payments, // Array de pagamentos
+      pagamentos: payments,
       itens: cart,
     };
 
@@ -261,9 +314,21 @@ const Vendas = () => {
       const result = await window.api.createSale(saleData);
 
       if (result.success) {
+        const sellerName = sellers.find((s) => s.id == selectedSeller)?.nome;
+
+        // Dados para o recibo
+        setLastSale({
+          ...saleData,
+          id: result.id,
+          // Usa data atual para exibição imediata
+          data_venda: new Date(),
+          vendedor_nome: sellerName,
+        });
+
+        setShowReceipt(true);
         showAlert("Venda realizada com sucesso!", "Sucesso", "success");
-        // Aqui você pode chamar a função de imprimir recibo passando os dados
-        // Resetar tudo
+
+        // Limpar tela (mantém recibo aberto)
         setCart([]);
         setPayments([]);
         setDiscountValue("");
@@ -281,9 +346,9 @@ const Vendas = () => {
 
   return (
     <div className="flex h-full gap-4 p-4 bg-gray-100">
-      {/* --- COLUNA ESQUERDA: LISTA E BUSCA --- */}
+      {/* Esquerda: Produtos e Carrinho */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Busca e Vendedor */}
+        {/* Barra de Busca */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex gap-4 items-end">
           <div className="w-1/3">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -316,7 +381,6 @@ const Vendas = () => {
             />
             <i className="fas fa-barcode absolute left-3 top-9 text-gray-400 text-lg"></i>
 
-            {/* Dropdown de Busca */}
             {searchResults.length > 0 && (
               <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto z-50">
                 {searchResults.map((p) => (
@@ -346,8 +410,8 @@ const Vendas = () => {
           </div>
         </div>
 
-        {/* Lista de Itens */}
-        <div className="bg-white rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col border border-gray-200">
+        {/* Tabela do Carrinho */}
+        <div className="bg-white rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col z-10 border border-gray-100">
           <div className="overflow-y-auto flex-1 p-2">
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50 sticky top-0">
@@ -374,7 +438,7 @@ const Vendas = () => {
                       <input
                         type="number"
                         min="1"
-                        className="w-16 text-center border rounded p-1 text-sm font-bold bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-16 text-center border rounded p-1 text-sm font-bold bg-gray-50 focus:bg-white outline-none"
                         value={item.qty}
                         onChange={(e) =>
                           handleQuantityChange(item.id, e.target.value)
@@ -387,7 +451,7 @@ const Vendas = () => {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition"
+                        className="text-red-400 hover:text-red-600 p-1"
                       >
                         <i className="fas fa-trash-alt"></i>
                       </button>
@@ -397,17 +461,13 @@ const Vendas = () => {
                 {cart.length === 0 && (
                   <tr>
                     <td colSpan="4" className="text-center py-20 text-gray-400">
-                      <div className="flex flex-col items-center">
-                        <i className="fas fa-shopping-cart text-4xl mb-2 opacity-20"></i>
-                        <span>Carrinho Vazio</span>
-                      </div>
+                      Carrinho Vazio
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-          {/* Totais do Carrinho */}
           <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
             <span className="text-gray-500 font-medium">Subtotal Itens:</span>
             <span className="text-xl font-bold text-gray-800">
@@ -417,15 +477,13 @@ const Vendas = () => {
         </div>
       </div>
 
-      {/* --- COLUNA DIREITA: PAGAMENTO --- */}
+      {/* Direita: Pagamento */}
       <div className="w-96 flex flex-col gap-4">
-        {/* Card Resumo e Ajustes */}
+        {/* Ajustes */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 space-y-4">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide border-b pb-2">
             Ajustes
           </h2>
-
-          {/* Acréscimo */}
           <div className="flex gap-2 items-center">
             <div className="flex bg-gray-100 rounded p-0.5 border border-gray-200">
               <button
@@ -443,14 +501,12 @@ const Vendas = () => {
             </div>
             <input
               type="number"
-              className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm text-green-600 focus:ring-1 focus:ring-green-500 outline-none"
+              className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm text-green-600 outline-none"
               placeholder="Acréscimo"
               value={surchargeValue}
               onChange={(e) => setSurchargeValue(e.target.value)}
             />
           </div>
-
-          {/* Desconto */}
           <div className="flex gap-2 items-center">
             <div className="flex bg-gray-100 rounded p-0.5 border border-gray-200">
               <button
@@ -468,13 +524,12 @@ const Vendas = () => {
             </div>
             <input
               type="number"
-              className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm text-red-600 focus:ring-1 focus:ring-red-500 outline-none"
+              className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm text-red-600 outline-none"
               placeholder="Desconto"
               value={discountValue}
               onChange={(e) => setDiscountValue(e.target.value)}
             />
           </div>
-
           <div className="flex justify-between items-center pt-2 border-t border-dashed">
             <span className="text-gray-600 font-bold">Total a Pagar</span>
             <span className="text-2xl font-extrabold text-blue-700">
@@ -483,13 +538,11 @@ const Vendas = () => {
           </div>
         </div>
 
-        {/* Card Pagamento */}
+        {/* Pagamento */}
         <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-600 flex-1 flex flex-col">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
             Pagamento
           </h2>
-
-          {/* Lista de Pagamentos Adicionados */}
           <div className="flex-1 bg-gray-50 rounded-lg p-2 mb-4 overflow-y-auto max-h-40 border border-gray-100">
             {payments.map((p, idx) => (
               <div
@@ -524,7 +577,6 @@ const Vendas = () => {
             )}
           </div>
 
-          {/* Adicionar Novo Pagamento */}
           <div
             className={`space-y-3 ${totals.remaining <= 0 ? "opacity-50 pointer-events-none" : ""}`}
           >
@@ -540,29 +592,20 @@ const Vendas = () => {
                 <option>Débito</option>
                 <option>Fiado</option>
               </select>
-
               {currentPaymentMethod === "Crédito" && (
                 <select
                   className="border border-gray-300 rounded p-2 text-sm bg-white"
                   value={installments}
                   onChange={(e) => setInstallments(e.target.value)}
                 >
-                  <option value="1">1x</option>
-                  <option value="2">2x</option>
-                  <option value="3">3x</option>
-                  <option value="4">4x</option>
-                  <option value="5">5x</option>
-                  <option value="6">6x</option>
-                  <option value="7">7x</option>
-                  <option value="8">8x</option>
-                  <option value="9">9x</option>
-                  <option value="10">10x</option>
-                  <option value="11">11x</option>
-                  <option value="12">12x</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+                    <option key={i} value={i}>
+                      {i}x
+                    </option>
+                  ))}
                 </select>
               )}
             </div>
-
             <div className="flex gap-2">
               <input
                 ref={paymentInputRef}
@@ -571,7 +614,7 @@ const Vendas = () => {
                 placeholder="0.00"
                 value={currentPaymentValue}
                 onChange={(e) => setCurrentPaymentValue(e.target.value)}
-                onFocus={autoFillRemaining} // Sugere o valor restante ao clicar
+                onFocus={autoFillRemaining}
               />
               <button
                 onClick={addPayment}
@@ -582,7 +625,6 @@ const Vendas = () => {
             </div>
           </div>
 
-          {/* Status do Pagamento */}
           <div className="mt-auto pt-4 border-t border-gray-200">
             <div className="flex justify-between text-sm mb-2">
               <span>Pago:</span>
@@ -590,7 +632,6 @@ const Vendas = () => {
                 {formatCurrency(totals.totalPaid)}
               </span>
             </div>
-
             {totals.remaining > 0 ? (
               <div className="flex justify-between text-lg font-bold text-red-600">
                 <span>Falta:</span>
@@ -602,21 +643,173 @@ const Vendas = () => {
                 <span>{formatCurrency(totals.change)}</span>
               </div>
             )}
-
             <button
               onClick={handleFinishSale}
-              disabled={totals.remaining > 0.01} // Permite margem de 1 centavo
-              className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${
-                totals.remaining > 0.01
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700 transform active:scale-95"
-              }`}
+              disabled={totals.remaining > 0.01}
+              className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${totals.remaining > 0.01 ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
             >
               CONCLUIR VENDA
             </button>
           </div>
         </div>
       </div>
+
+      {/* --- MODAL DE RECIBO FINAL (LAYOUT BARBA PNEUS) --- */}
+      {showReceipt && lastSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
+            {/* ÁREA DO CUPOM (Branco, Monospace, Estreito) */}
+            <div id="cupom-fiscal" style={styles.container}>
+              <div style={{ ...styles.center, ...styles.borderBottom }}>
+                <h2
+                  style={{
+                    ...styles.bold,
+                    fontSize: "14px",
+                    margin: "0 0 5px 0",
+                  }}
+                >
+                  BARBA PNEUS
+                </h2>
+                <p style={{ margin: "2px 0" }}>
+                  Av. Brigadeiro Hilario Gurjao, 22
+                </p>
+                <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa</p>
+                <p style={{ margin: "1px 0" }}>MANAUS - AM</p>
+                <p style={{ margin: "1px 0" }}>CEP: 69.088-000</p>
+                <p style={{ margin: "1px 0" }}>Tel: (92) 99114 - 7719</p>
+                <p style={{ ...styles.bold, margin: "2px 0" }}>
+                  RECIBO DE VENDA
+                </p>
+                <p style={styles.textSmall}>
+                  {dayjs(lastSale.data_venda).format("DD/MM/YYYY HH:mm")}
+                </p>
+                <p style={styles.textSmall}>ID: #{lastSale.id}</p>
+              </div>
+
+              <div style={styles.borderBottom}>
+                <p style={{ margin: "2px 0" }}>
+                  Vendedor:{" "}
+                  <span style={styles.bold}>{lastSale.vendedor_nome}</span>
+                </p>
+              </div>
+
+              <table style={{ ...styles.table, ...styles.borderBottom }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...styles.td, textAlign: "left" }}>
+                      QTD x ITEM
+                    </th>
+                    <th style={{ ...styles.td, textAlign: "right" }}>TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastSale.itens.map((item, idx) => (
+                    <tr key={idx}>
+                      <td style={styles.td}>
+                        {item.qty} x {item.descricao.substring(0, 20)}
+                        <br />
+                        <span style={styles.textSmall}>
+                          Unit: {item.preco_venda.toFixed(2)}
+                        </span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: "right" }}>
+                        {(item.qty * item.preco_venda).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={styles.borderBottom}>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span>Subtotal:</span>
+                  <span>{lastSale.subtotal.toFixed(2)}</span>
+                </div>
+                {lastSale.acrescimo_valor > 0 && (
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span>Acréscimo:</span>
+                    <span>+ {lastSale.acrescimo_valor.toFixed(2)}</span>
+                  </div>
+                )}
+                {lastSale.desconto_valor > 0 && (
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span>Desconto:</span>
+                    <span>
+                      -{" "}
+                      {lastSale.desconto_tipo === "percent"
+                        ? (
+                            (lastSale.subtotal * lastSale.desconto_valor) /
+                            100
+                          ).toFixed(2)
+                        : lastSale.desconto_valor.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  margin: "5px 0",
+                }}
+              >
+                <span>TOTAL:</span>
+                <span>R$ {lastSale.total_final.toFixed(2)}</span>
+              </div>
+
+              {/* Lista de Pagamentos */}
+              <div style={{ ...styles.borderBottom, margin: "10px 0" }}>
+                <p style={{ margin: "0", fontWeight: "bold" }}>Pagamentos:</p>
+                {lastSale.pagamentos &&
+                  lastSale.pagamentos.map((p, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: "11px",
+                      }}
+                    >
+                      <span>
+                        {p.metodo} {p.detalhes ? `(${p.detalhes})` : ""}
+                      </span>
+                      <span>{p.valor.toFixed(2)}</span>
+                    </div>
+                  ))}
+              </div>
+
+              <div style={{ ...styles.center, ...styles.textSmall }}>
+                <p>Obrigado pela preferência!</p>
+              </div>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={handleSilentPrint}
+                className="flex-1 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow"
+              >
+                <i className="fas fa-print mr-2"></i> Imprimir
+              </button>
+              <button
+                onClick={() => setShowReceipt(false)}
+                className="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
