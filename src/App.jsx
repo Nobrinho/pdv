@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
 import Updater from "./components/Updater";
 import Relatorios from "./pages/Relatorios";
+import Clientes from "./pages/Clientes";
 import { useAlert } from "./context/AlertSystem";
 
 // Definição de permissões por cargo
@@ -31,7 +32,7 @@ const PERMISSOES_CAIXA = [
 
 function App() {
   const [user, setUser] = useState(null);
-  const [appVersion, setAppVersion] = useState("")
+  const [appVersion, setAppVersion] = useState("");
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
@@ -149,6 +150,12 @@ function App() {
       path: "/relatorios",
       label: "Relatórios",
       icon: "fa-chart-line",
+      restricted: true,
+    },
+    {
+      path: "/clientes",
+      label: "Clientes",
+      icon: "fa-users",
       restricted: true,
     },
     {
@@ -270,6 +277,12 @@ function App() {
           <Route
             path="/pessoas"
             element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/" />}
+          />
+          <Route
+            path="/clientes"
+            element={
+              hasAccess("/clientes") ? <Clientes /> : <Navigate to="/" />
+            }
           />
           <Route
             path="/relatorios"

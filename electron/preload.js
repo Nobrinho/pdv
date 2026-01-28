@@ -72,5 +72,12 @@ contextBridge.exposeInMainWorld("api", {
   // --- VERSÃO DO SISTEMA---
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
 
-    getInventoryStats: () => ipcRenderer.invoke('get-inventory-stats'),
+  getInventoryStats: () => ipcRenderer.invoke("get-inventory-stats"),
+
+  // --- CLIENTES & FIADO (NOVO) ---
+  getClients: () => ipcRenderer.invoke("get-clients"),
+  saveClient: (client) => ipcRenderer.invoke("save-client", client),
+  deleteClient: (id) => ipcRenderer.invoke("delete-client", id),
+  getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
+  payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
 });

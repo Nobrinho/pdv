@@ -214,7 +214,8 @@ ipcMain.handle("create-sale", async (event, saleData) => {
     // 1. Inserir a Venda
     const [saleId] = await trx("vendas").insert({
       vendedor_id: saleData.vendedor_id,
-      trocador_id: null, // Removido fluxo de trocador nesta tela
+      trocador_id: null,
+      cliente_id: saleData.cliente_id || null,
       subtotal: saleData.subtotal,
       mao_de_obra: 0, // Removido
       acrescimo: saleData.acrescimo_valor || 0,
@@ -243,7 +244,6 @@ ipcMain.handle("create-sale", async (event, saleData) => {
       }
     }
 
-    // 3. Inserir os Pagamentos (NOVO)
     const pagamentos = saleData.pagamentos.map((p) => ({
       venda_id: saleId,
       metodo: p.metodo,
@@ -253,6 +253,24 @@ ipcMain.handle("create-sale", async (event, saleData) => {
 
     if (pagamentos.length > 0) {
       await trx("venda_pagamentos").insert(pagamentos);
+
+      // Se houver pagamento "Fiado", cria a conta a receber
+      for (const pg of pagamentos) {
+        if (pg.metodo === "Fiado") {
+          if (!saleData.cliente_id)
+            throw new Error("Venda Fiado exige um cliente selecionado.");
+
+          await trx("contas_receber").insert({
+            cliente_id: saleData.cliente_id,
+            venda_id: saleId,
+            descricao: `Venda #${saleId}`,
+            valor_total: pg.valor,
+            valor_pago: 0,
+            status: "PENDENTE",
+            data_lancamento: Date.now(),
+          });
+        }
+      }
     }
 
     await trx.commit();
@@ -300,7 +318,7 @@ ipcMain.handle("get-sales", async () => {
 
 ipcMain.handle("get-sale-items", async (e, id) => {
   return await knex("venda_itens")
-    .join("produtos", "venda_itens.produto_id", "produtos.id")
+    .leftJoin("produtos", "venda_itens.produto_id", "produtos.id")
     .where("venda_id", id)
     .select("venda_itens.*", "produtos.descricao", "produtos.codigo");
 });
@@ -323,6 +341,97 @@ ipcMain.handle("cancel-sale", async (event, { vendaId, motivo }) => {
     return { success: true };
   } catch (error) {
     await trx.rollback();
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("get-clients", async () => {
+  try {
+    const clientes = await knex("clientes").where("ativo", true);
+
+    // Calcula saldo devedor de cada um
+    for (let cli of clientes) {
+      const dividas = await knex("contas_receber")
+        .where("cliente_id", cli.id)
+        .whereNot("status", "PAGO");
+
+      const totalDivida = dividas.reduce(
+        (acc, d) => acc + (d.valor_total - d.valor_pago),
+        0,
+      );
+      cli.saldo_devedor = totalDivida;
+    }
+
+    return clientes;
+  } catch (error) {
+    console.error("Erro get-clients:", error);
+    return [];
+  }
+});
+
+ipcMain.handle("save-client", async (event, client) => {
+  try {
+    if (client.id) {
+      await knex("clientes").where("id", client.id).update(client);
+      return { success: true };
+    } else {
+      await knex("clientes").insert({ ...client, ativo: true });
+      return { success: true };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("delete-client", async (event, id) => {
+  try {
+    // Verifica se tem dívida ativa
+    const dividas = await knex("contas_receber")
+      .where("cliente_id", id)
+      .whereNot("status", "PAGO")
+      .first();
+
+    if (dividas)
+      return { success: false, error: "Cliente possui débitos pendentes." };
+
+    await knex("clientes").where("id", id).update({ ativo: false });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// --- CONTAS A RECEBER (FIADO) ---
+ipcMain.handle("get-client-debts", async (event, clienteId) => {
+  return await knex("contas_receber")
+    .where("cliente_id", clienteId)
+    .orderBy("data_lancamento", "desc");
+});
+
+ipcMain.handle("pay-debt", async (event, { contaId, valorPago }) => {
+  try {
+    const conta = await knex("contas_receber").where("id", contaId).first();
+    if (!conta) throw new Error("Conta não encontrada");
+
+    const novoValorPago = conta.valor_pago + valorPago;
+    let novoStatus = conta.status;
+
+    if (novoValorPago >= conta.valor_total) {
+      novoStatus = "PAGO";
+    } else if (novoValorPago > 0) {
+      novoStatus = "PARCIAL";
+    }
+
+    await knex("contas_receber").where("id", contaId).update({
+      valor_pago: novoValorPago,
+      status: novoStatus,
+    });
+
+    // Registrar entrada no caixa? (Futuro: Tabela de Caixa)
+    // Por enquanto, apenas abate a dívida.
+
+    return { success: true };
+  } catch (error) {
     return { success: false, error: error.message };
   }
 });
@@ -452,7 +561,6 @@ ipcMain.handle("get-dashboard-stats", async () => {
     };
   }
 });
-
 ipcMain.handle("get-weekly-sales", async () => {
   const labels = [];
   const data = [];
@@ -477,14 +585,12 @@ ipcMain.handle("get-weekly-sales", async () => {
   }
   return { labels, data };
 });
-
 ipcMain.handle("get-low-stock", async () => {
   return await knex("produtos")
     .where("estoque_atual", "<=", 5)
     .where("ativo", true)
     .limit(10);
 });
-
 // --- AUTH, USER, CONFIG, BACKUP, PRINT, UPDATE ---
 
 function hashPassword(password) {
@@ -508,9 +614,6 @@ ipcMain.handle(
 ipcMain.handle("register-user", async (event, userData) => {
   try {
     const { salt, hash } = hashPassword(userData.password);
-
-    // CORREÇÃO: Não usamos mais spread operator ({...userData})
-    // Definimos manualmente os campos para evitar enviar 'password' crua
     await knex("usuarios").insert({
       nome: userData.nome,
       username: userData.username,
@@ -556,7 +659,6 @@ ipcMain.handle("delete-user", async (e, id) => {
   await knex("usuarios").where("id", id).del();
   return { success: true };
 });
-
 ipcMain.handle(
   "get-config",
   async (e, k) =>
@@ -569,7 +671,6 @@ ipcMain.handle("save-config", async (e, k, v) => {
     : await knex("configuracoes").insert({ chave: k, valor: v });
   return { success: true };
 });
-
 ipcMain.handle("backup-database", async () => {
   const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
     defaultPath: `backup_${Date.now()}.sqlite3`,
@@ -588,11 +689,9 @@ ipcMain.handle("restore-database", async () => {
   app.relaunch();
   app.exit(0);
 });
-
 ipcMain.handle("get-printers", async () =>
   mainWindow.webContents.getPrintersAsync(),
 );
-// 2. Imprimir Silenciosamente (VERSÃO DE DIAGNÓSTICO E CORREÇÃO)
 ipcMain.handle("print-silent", async (event, contentHtml, printerName) => {
   console.log(`🖨️ Tentando imprimir: "${printerName}"`);
 

@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import dayjs from "dayjs"; // Necessário para a data no recibo
 import { useAlert } from "../context/AlertSystem";
+import dayjs from "dayjs";
+import logo from "../assets/logo.png";
 
 const Vendas = () => {
   const { showAlert } = useAlert();
@@ -10,18 +11,25 @@ const Vendas = () => {
   const [products, setProducts] = useState([]);
   const [sellers, setSellers] = useState([]);
   const [mechanics, setMechanics] = useState([]);
+  const [clients, setClients] = useState([]);
 
   // --- CARRINHO & SELEÇÃO ---
   const [cart, setCart] = useState([]);
   const [selectedSeller, setSelectedSeller] = useState("");
+  const [selectedClient, setSelectedClient] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+
+  // --- CLIENTE INTELIGENTE ---
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+  const [showClientResults, setShowClientResults] = useState(false);
 
   // --- VALORES GERAIS ---
   const [discountValue, setDiscountValue] = useState("");
   const [discountType, setDiscountType] = useState("percent");
   const [surchargeValue, setSurchargeValue] = useState("");
   const [surchargeType, setSurchargeType] = useState("fixed");
+  const [laborInput, setLaborInput] = useState(0);
 
   // --- PAGAMENTO MULTIPLO ---
   const [payments, setPayments] = useState([]);
@@ -29,14 +37,23 @@ const Vendas = () => {
   const [currentPaymentValue, setCurrentPaymentValue] = useState("");
   const [installments, setInstallments] = useState(1);
 
-  // --- RECIBO ---
+  // --- MODAIS ---
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
   const [lastSale, setLastSale] = useState(null);
+
+  // --- DADOS NOVO CLIENTE ---
+  const [newClientData, setNewClientData] = useState({
+    nome: "",
+    documento: "",
+    telefone: "",
+    endereco: "",
+  });
 
   const searchInputRef = useRef(null);
   const paymentInputRef = useRef(null);
 
-  // --- ESTILOS DE IMPRESSÃO (Inline para garantir formatação na térmica) ---
+  // Estilos de Impressão
   const styles = {
     container: {
       backgroundColor: "#fff",
@@ -47,16 +64,27 @@ const Vendas = () => {
       width: "100%",
       maxWidth: "300px",
     },
-    center: { textAlign: "center" },
+    center: {
+      textAlign: "center",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+    },
     right: { textAlign: "right" },
     bold: { fontWeight: "bold" },
     borderBottom: {
       borderBottom: "1px dashed #000",
       marginBottom: "5px",
       paddingBottom: "5px",
+      width: "100%",
     },
     table: { width: "100%", borderCollapse: "collapse" },
-    td: { padding: "2px 0", verticalAlign: "top" },
+    td: {
+      maxWidth: "250px", // ajuste conforme seu layout
+      whiteSpace: "normal", // permite quebra de linha
+      wordBreak: "break-word", // quebra palavras grandes
+      overflowWrap: "break-word",
+    },
     textSmall: { fontSize: "10px" },
     cancelado: {
       border: "2px solid #000",
@@ -76,31 +104,14 @@ const Vendas = () => {
     try {
       const prods = await window.api.getProducts();
       const people = await window.api.getPeople();
+      const clientsData = await window.api.getClients();
+
       setProducts(prods || []);
       setSellers(people.filter((p) => p.cargo_nome === "Vendedor"));
       setMechanics(people.filter((p) => p.cargo_nome === "Trocador"));
+      setClients(clientsData || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-    }
-  };
-
-  // --- IMPRESSÃO SILENCIOSA ---
-  const handleSilentPrint = async () => {
-    // Busca pelo ID correto do novo layout
-    const receiptElement = document.getElementById("cupom-fiscal");
-
-    if (!receiptElement) {
-      return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
-    }
-
-    const receiptContent = receiptElement.outerHTML;
-    const printerName = await window.api.getConfig("impressora_padrao");
-    const result = await window.api.printSilent(receiptContent, printerName);
-
-    if (result.success) {
-      showAlert("Enviado para impressão.", "Sucesso", "success");
-    } else {
-      showAlert("Erro na impressão: " + result.error, "Erro", "error");
     }
   };
 
@@ -111,25 +122,24 @@ const Vendas = () => {
       0,
     );
 
-    // Desconto
     const distVal = parseFloat(discountValue) || 0;
     let discountAmount = 0;
-    if (distVal > 0) {
+    if (distVal > 0)
       discountAmount =
         discountType === "fixed" ? distVal : (subtotal * distVal) / 100;
-    }
 
-    // Acréscimo
     const surVal = parseFloat(surchargeValue) || 0;
     let surchargeAmount = 0;
-    if (surVal > 0) {
+    if (surVal > 0)
       surchargeAmount =
         surchargeType === "fixed" ? surVal : (subtotal * surVal) / 100;
-    }
 
-    const total = Math.max(0, subtotal + surchargeAmount - discountAmount);
+    const laborValue = parseFloat(laborInput || 0);
+    const total = Math.max(
+      0,
+      subtotal + laborValue + surchargeAmount - discountAmount,
+    );
 
-    // Pagamentos
     const totalPaid = payments.reduce((acc, p) => acc + p.valor, 0);
     const remaining = total - totalPaid;
     const change = totalPaid > total ? totalPaid - total : 0;
@@ -142,6 +152,7 @@ const Vendas = () => {
       totalPaid,
       remaining,
       change,
+      laborValue,
     };
   }, [
     cart,
@@ -150,7 +161,33 @@ const Vendas = () => {
     surchargeValue,
     surchargeType,
     payments,
+    laborInput,
   ]);
+
+  // --- Busca de Cliente ---
+  const filteredClients = useMemo(() => {
+    if (!clientSearchTerm) return [];
+    const lower = clientSearchTerm.toLowerCase();
+    return clients
+      .filter(
+        (c) =>
+          c.nome.toLowerCase().includes(lower) ||
+          (c.documento && c.documento.includes(lower)) ||
+          (c.telefone && c.telefone.includes(lower)),
+      )
+      .slice(0, 10);
+  }, [clientSearchTerm, clients]);
+
+  const handleSelectClient = (client) => {
+    if (client) {
+      setSelectedClient(client.id);
+      setClientSearchTerm(client.nome);
+    } else {
+      setSelectedClient("");
+      setClientSearchTerm("");
+    }
+    setShowClientResults(false);
+  };
 
   // --- BUSCA DE PRODUTOS ---
   useEffect(() => {
@@ -172,7 +209,6 @@ const Vendas = () => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (!searchTerm) return;
-
       const exactMatch = products.find(
         (p) => p.codigo.trim() === searchTerm.trim(),
       );
@@ -193,7 +229,6 @@ const Vendas = () => {
         "Erro",
         "error",
       );
-
     const existing = cart.find((item) => item.id === product.id);
     if (existing) {
       if (existing.qty < product.estoque_atual) {
@@ -216,10 +251,7 @@ const Vendas = () => {
   const handleQuantityChange = (id, newQtyStr) => {
     const newQty = parseInt(newQtyStr);
     if (isNaN(newQty) || newQty < 1) return;
-
-    const productInCart = cart.find((item) => item.id === id);
     const originalProduct = products.find((p) => p.id === id);
-
     if (newQty > originalProduct.estoque_atual) {
       showAlert(
         `Estoque insuficiente. Máximo: ${originalProduct.estoque_atual}`,
@@ -240,18 +272,18 @@ const Vendas = () => {
     }
   };
 
-  const removeFromCart = (id) => {
-    setCart(cart.filter((item) => item.id !== id));
-  };
+  const removeFromCart = (id) => setCart(cart.filter((item) => item.id !== id));
 
-  // --- GERENCIAMENTO DE PAGAMENTOS ---
+  // --- PAGAMENTOS ---
   const addPayment = () => {
     const valor = parseFloat(currentPaymentValue);
     if (!valor || valor <= 0) return showAlert("Digite um valor válido.");
 
+    const currentTotalPaid = payments.reduce((acc, p) => acc + p.valor, 0);
+    const currentRemaining = totals.total - currentTotalPaid;
+
     if (
-      valor > totals.remaining &&
-      totals.remaining > 0 &&
+      valor > currentRemaining + 0.01 &&
       currentPaymentMethod !== "Dinheiro"
     ) {
       return showAlert(
@@ -262,9 +294,7 @@ const Vendas = () => {
     }
 
     let detalhes = "";
-    if (currentPaymentMethod.includes("Crédito")) {
-      detalhes = `${installments}x`;
-    }
+    if (currentPaymentMethod.includes("Crédito")) detalhes = `${installments}x`;
 
     setPayments([
       ...payments,
@@ -285,26 +315,87 @@ const Vendas = () => {
     }
   };
 
+  // --- CADASTRO RÁPIDO ---
+  const handleSaveNewClient = async (e) => {
+    e.preventDefault();
+    if (
+      !newClientData.nome ||
+      !newClientData.documento ||
+      !newClientData.telefone
+    ) {
+      return showAlert(
+        "Nome, Documento e Telefone são obrigatórios!",
+        "Dados Incompletos",
+        "warning",
+      );
+    }
+    try {
+      const result = await window.api.saveClient(newClientData);
+      if (result.success) {
+        showAlert("Cliente cadastrado com sucesso!", "Sucesso", "success");
+        const updatedClients = await window.api.getClients();
+        setClients(updatedClients);
+        const newClient = updatedClients.find(
+          (c) => c.documento === newClientData.documento,
+        );
+        if (newClient) handleSelectClient(newClient);
+        setShowClientModal(false);
+        setNewClientData({
+          nome: "",
+          documento: "",
+          telefone: "",
+          endereco: "",
+        });
+      } else {
+        showAlert("Erro ao salvar: " + result.error, "Erro", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert("Erro técnico ao salvar cliente.", "Erro", "error");
+    }
+  };
+
   // --- FINALIZAR ---
   const handleFinishSale = async () => {
     if (cart.length === 0) return showAlert("Carrinho vazio!", "Erro", "error");
     if (!selectedSeller)
       return showAlert("Selecione um vendedor!", "Erro", "error");
-
-    if (totals.remaining > 0.01) {
+    if (totals.remaining > 0.01)
       return showAlert(
         `Falta receber R$ ${totals.remaining.toFixed(2)}`,
         "Pagamento Incompleto",
         "warning",
       );
+
+    const labor = parseFloat(laborInput) || 0;
+    const selectedMechanicState =
+      document.getElementById("mechanic-select")?.value;
+
+    if (labor > 0 && !selectedMechanicState)
+      return showAlert(
+        "Selecione o responsável pela mão de obra!",
+        "Aviso",
+        "warning",
+      );
+
+    const temFiado = payments.some((p) => p.metodo === "Fiado");
+    if (temFiado && !selectedClient) {
+      return showAlert(
+        "Para vendas 'Fiado', é OBRIGATÓRIO selecionar um cliente.",
+        "Cliente Necessário",
+        "error",
+      );
     }
 
     const saleData = {
       vendedor_id: selectedSeller,
+      trocador_id: selectedMechanicState || null,
+      cliente_id: selectedClient || null,
       subtotal: totals.subtotal,
       acrescimo_valor: totals.surchargeAmount,
       desconto_valor: totals.discountAmount,
       desconto_tipo: discountType,
+      mao_de_obra: labor,
       total_final: totals.total,
       pagamentos: payments,
       itens: cart,
@@ -315,24 +406,30 @@ const Vendas = () => {
 
       if (result.success) {
         const sellerName = sellers.find((s) => s.id == selectedSeller)?.nome;
+        const mechanicName = mechanics.find(
+          (m) => m.id == selectedMechanicState,
+        )?.nome;
+        const clientName = clients.find((c) => c.id == selectedClient)?.nome;
 
-        // Dados para o recibo
         setLastSale({
           ...saleData,
           id: result.id,
-          // Usa data atual para exibição imediata
           data_venda: new Date(),
           vendedor_nome: sellerName,
+          trocador_nome: mechanicName,
+          cliente_nome: clientName,
         });
 
         setShowReceipt(true);
         showAlert("Venda realizada com sucesso!", "Sucesso", "success");
 
-        // Limpar tela (mantém recibo aberto)
         setCart([]);
         setPayments([]);
         setDiscountValue("");
         setSurchargeValue("");
+        setLaborInput(0);
+        setSearchTerm("");
+        handleSelectClient(null);
         loadData();
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
@@ -342,32 +439,112 @@ const Vendas = () => {
     }
   };
 
+  const handleSilentPrint = async () => {
+    const receiptElement = document.getElementById("cupom-fiscal");
+    if (!receiptElement)
+      return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
+    const result = await window.api.printSilent(
+      receiptElement.outerHTML,
+      await window.api.getConfig("impressora_padrao"),
+    );
+    if (result.success)
+      showAlert("Enviado para impressão.", "Sucesso", "success");
+    else showAlert("Erro na impressão: " + result.error, "Erro", "error");
+  };
+
   const formatCurrency = (val) => `R$ ${val.toFixed(2).replace(".", ",")}`;
 
   return (
     <div className="flex h-full gap-4 p-4 bg-gray-100">
       {/* Esquerda: Produtos e Carrinho */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Barra de Busca */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex gap-4 items-end">
-          <div className="w-1/3">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Vendedor
-            </label>
-            <select
-              className="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
-              value={selectedSeller}
-              onChange={(e) => setSelectedSeller(e.target.value)}
-            >
-              <option value="">Selecione...</option>
-              {sellers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
-              ))}
-            </select>
+        {/* Barra de Busca e Seleção */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex gap-4 mb-3">
+            <div className="w-1/3">
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                Vendedor
+              </label>
+              <select
+                className="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+                value={selectedSeller}
+                onChange={(e) => setSelectedSeller(e.target.value)}
+              >
+                <option value="">Selecione...</option>
+                {sellers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="w-1/3 flex gap-2 items-end">
+              <div className="flex-1 relative">
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Cliente
+                </label>
+                <div className="relative">
+                  <input
+                    className={`w-full border rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-blue-500 ${selectedClient ? "border-green-500 bg-green-50 text-green-800 font-bold" : "border-gray-300 bg-white"}`}
+                    placeholder={selectedClient ? "" : "Buscar Cliente..."}
+                    value={clientSearchTerm}
+                    onChange={(e) => {
+                      setClientSearchTerm(e.target.value);
+                      if (selectedClient) setSelectedClient("");
+                      setShowClientResults(true);
+                    }}
+                    onFocus={() => setShowClientResults(true)}
+                    onBlur={() =>
+                      setTimeout(() => setShowClientResults(false), 200)
+                    }
+                  />
+                  <i
+                    className={`fas ${selectedClient ? "fa-user-check text-green-600" : "fa-search text-gray-400"} absolute left-3 top-3`}
+                  ></i>
+                  {selectedClient && (
+                    <button
+                      onClick={() => handleSelectClient(null)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-red-500"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  )}
+                </div>
+                {showClientResults &&
+                  (clientSearchTerm.length > 0 || clients.length > 0) && (
+                    <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
+                      <div
+                        className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-600 italic border-b"
+                        onClick={() => handleSelectClient(null)}
+                      >
+                        <i className="fas fa-user-tag mr-2"></i> Consumidor
+                        Final
+                      </div>
+                      {filteredClients.map((c) => (
+                        <div
+                          key={c.id}
+                          onClick={() => handleSelectClient(c)}
+                          className="p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm"
+                        >
+                          <div className="font-bold text-gray-800">
+                            {c.nome}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+              </div>
+              <button
+                onClick={() => setShowClientModal(true)}
+                className="bg-green-600 text-white p-2.5 rounded-lg hover:bg-green-700 transition shadow-sm h-[42px] w-[42px] flex items-center justify-center"
+              >
+                <i className="fas fa-plus"></i>
+              </button>
+            </div>
           </div>
-          <div className="flex-1 relative">
+
+          <div className="relative">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
               Produto (Bipar ou Digitar)
             </label>
@@ -423,6 +600,9 @@ const Vendas = () => {
                     Qtd
                   </th>
                   <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">
+                    Unit.
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">
                     Total
                   </th>
                   <th className="px-4 py-2 w-10"></th>
@@ -445,7 +625,10 @@ const Vendas = () => {
                         }
                       />
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-bold text-gray-800">
+                    <td className="px-4 py-3 text-right text-sm text-gray-500">
+                      {formatCurrency(item.preco_venda)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
                       {formatCurrency(item.preco_venda * item.qty)}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -460,7 +643,7 @@ const Vendas = () => {
                 ))}
                 {cart.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="text-center py-20 text-gray-400">
+                    <td colSpan="5" className="text-center py-20 text-gray-400">
                       Carrinho Vazio
                     </td>
                   </tr>
@@ -479,11 +662,39 @@ const Vendas = () => {
 
       {/* Direita: Pagamento */}
       <div className="w-96 flex flex-col gap-4">
-        {/* Ajustes */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 space-y-4">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide border-b pb-2">
             Ajustes
           </h2>
+
+          <div className="border-b border-dashed pb-3">
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              Mão de Obra (R$)
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="labor-input"
+                type="number"
+                className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm font-medium focus:ring-1 focus:ring-blue-500 outline-none"
+                value={laborInput}
+                onChange={(e) => setLaborInput(e.target.value)}
+                placeholder="0.00"
+                min="0"
+              />
+              <select
+                id="mechanic-select"
+                className="w-1/2 border border-gray-300 rounded p-1.5 text-xs bg-white"
+              >
+                <option value="">Técnico...</option>
+                {mechanics.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="flex gap-2 items-center">
             <div className="flex bg-gray-100 rounded p-0.5 border border-gray-200">
               <button
@@ -538,7 +749,6 @@ const Vendas = () => {
           </div>
         </div>
 
-        {/* Pagamento */}
         <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-600 flex-1 flex flex-col">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
             Pagamento
@@ -654,13 +864,116 @@ const Vendas = () => {
         </div>
       </div>
 
-      {/* --- MODAL DE RECIBO FINAL (LAYOUT BARBA PNEUS) --- */}
+      {showClientModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 flex items-center">
+              <i className="fas fa-user-plus mr-2 text-blue-600"></i> Novo
+              Cliente Rápido
+            </h2>
+            <form onSubmit={handleSaveNewClient} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Nome Completo *
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={newClientData.nome}
+                  onChange={(e) =>
+                    setNewClientData({ ...newClientData, nome: e.target.value })
+                  }
+                  autoFocus
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  CPF / Documento *
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={newClientData.documento}
+                  onChange={(e) =>
+                    setNewClientData({
+                      ...newClientData,
+                      documento: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Telefone / WhatsApp *
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={newClientData.telefone}
+                  onChange={(e) =>
+                    setNewClientData({
+                      ...newClientData,
+                      telefone: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Endereço (Opcional)
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={newClientData.endereco}
+                  onChange={(e) =>
+                    setNewClientData({
+                      ...newClientData,
+                      endereco: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowClientModal(false)}
+                  className="px-4 py-2 bg-gray-100 rounded text-gray-700 hover:bg-gray-200 font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 shadow-md"
+                >
+                  Salvar e Selecionar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showReceipt && lastSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
-            {/* ÁREA DO CUPOM (Branco, Monospace, Estreito) */}
             <div id="cupom-fiscal" style={styles.container}>
               <div style={{ ...styles.center, ...styles.borderBottom }}>
+                {logo && (
+                  <div
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: "5px",
+                    }}
+                  >
+                    <img
+                      src={logo}
+                      alt="Logo"
+                      style={{ maxWidth: "70px", maxHeight: "70px" }}
+                    />
+                  </div>
+                )}
                 <h2
                   style={{
                     ...styles.bold,
@@ -671,12 +984,12 @@ const Vendas = () => {
                   BARBA PNEUS
                 </h2>
                 <p style={{ margin: "2px 0" }}>
-                  Av. Brigadeiro Hilario Gurjao, 22
+                  Av. Brigadeiro Hilario Gurjão, 22
                 </p>
                 <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa</p>
                 <p style={{ margin: "1px 0" }}>MANAUS - AM</p>
                 <p style={{ margin: "1px 0" }}>CEP: 69.088-000</p>
-                <p style={{ margin: "1px 0" }}>Tel: (92) 99114 - 7719</p>
+                <p style={{ margin: "1px 0" }}>Tel: (92) 99148-7719</p>
                 <p style={{ ...styles.bold, margin: "2px 0" }}>
                   RECIBO DE VENDA
                 </p>
@@ -685,14 +998,18 @@ const Vendas = () => {
                 </p>
                 <p style={styles.textSmall}>ID: #{lastSale.id}</p>
               </div>
-
               <div style={styles.borderBottom}>
                 <p style={{ margin: "2px 0" }}>
                   Vendedor:{" "}
                   <span style={styles.bold}>{lastSale.vendedor_nome}</span>
                 </p>
+                {lastSale.cliente_nome && (
+                  <p style={{ margin: "2px 0" }}>
+                    Cliente:{" "}
+                    <span style={styles.bold}>{lastSale.cliente_nome}</span>
+                  </p>
+                )}
               </div>
-
               <table style={{ ...styles.table, ...styles.borderBottom }}>
                 <thead>
                   <tr>
@@ -719,7 +1036,6 @@ const Vendas = () => {
                   ))}
                 </tbody>
               </table>
-
               <div style={styles.borderBottom}>
                 <div
                   style={{ display: "flex", justifyContent: "space-between" }}
@@ -727,6 +1043,14 @@ const Vendas = () => {
                   <span>Subtotal:</span>
                   <span>{lastSale.subtotal.toFixed(2)}</span>
                 </div>
+                {lastSale.mao_de_obra > 0 && (
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span>Mão de Obra:</span>
+                    <span>+ {lastSale.mao_de_obra.toFixed(2)}</span>
+                  </div>
+                )}
                 {lastSale.acrescimo_valor > 0 && (
                   <div
                     style={{ display: "flex", justifyContent: "space-between" }}
@@ -752,7 +1076,6 @@ const Vendas = () => {
                   </div>
                 )}
               </div>
-
               <div
                 style={{
                   display: "flex",
@@ -766,7 +1089,7 @@ const Vendas = () => {
                 <span>R$ {lastSale.total_final.toFixed(2)}</span>
               </div>
 
-              {/* Lista de Pagamentos */}
+              {/* Lista de Pagamentos no Recibo (SE HOUVER DETALHES SALVOS, SENÃO MOSTRA RESUMO) */}
               <div style={{ ...styles.borderBottom, margin: "10px 0" }}>
                 <p style={{ margin: "0", fontWeight: "bold" }}>Pagamentos:</p>
                 {lastSale.pagamentos &&
@@ -785,14 +1108,19 @@ const Vendas = () => {
                       <span>{p.valor.toFixed(2)}</span>
                     </div>
                   ))}
+                {/* Fallback se pagamentos detalhados não existirem (ex: venda antiga) */}
+                {!lastSale.pagamentos && (
+                  <p style={{ margin: "0" }}>{lastSale.forma_pagamento}</p>
+                )}
               </div>
 
               <div style={{ ...styles.center, ...styles.textSmall }}>
                 <p>Obrigado pela preferência!</p>
               </div>
+              {!!lastSale.cancelada && (
+                <div style={styles.cancelado}>VENDA CANCELADA</div>
+              )}
             </div>
-
-            {/* Botões de Ação */}
             <div className="mt-4 flex gap-2">
               <button
                 onClick={handleSilentPrint}
