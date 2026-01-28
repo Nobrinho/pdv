@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
+import logo from "../assets/logo.png";
 
 const Recibos = () => {
   const { showAlert } = useAlert();
@@ -172,7 +173,12 @@ const Recibos = () => {
       paddingBottom: "5px",
     },
     table: { width: "100%", borderCollapse: "collapse" },
-    td: { padding: "2px 0", verticalAlign: "top" },
+    td: {
+      maxWidth: "250px",
+      whiteSpace: "normal",
+      wordBreak: "break-word",
+      overflowWrap: "break-word",
+    },
     textSmall: { fontSize: "10px" },
     cancelado: {
       border: "2px solid #000",
@@ -332,135 +338,160 @@ const Recibos = () => {
       {/* --- MODAL DE RECIBO (LAYOUT TÉRMICO COM ESTILOS INLINE) --- */}
       {showReceiptModal && selectedSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
-            {/* INÍCIO DO CUPOM PARA IMPRESSÃO */}
-            <div id="cupom-fiscal" style={styles.container}>
-              <div style={{ ...styles.center, ...styles.borderBottom }}>
-                <h2
+          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh] max-w-sm">
+            {/* ÁREA ROLÁVEL */}
+            <div className="overflow-y-auto pr-1">
+              <div id="cupom-fiscal" style={styles.container}>
+                <div style={{ ...styles.center, ...styles.borderBottom }}>
+                  <h2
+                    style={{
+                      ...styles.bold,
+                      fontSize: "14px",
+                      margin: "0 0 5px 0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "100%",
+
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <img src={logo} alt="logo_barba" width={70} />
+                    </div>
+                    BARBA PNEUS
+                  </h2>
+                  <p style={{ margin: "2px 0" }}>
+                    Av. Brigadeiro Hilario Gurjão, 22
+                  </p>
+                  <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa</p>
+                  <p style={{ margin: "1px 0" }}>MANAUS - AM</p>
+                  <p style={{ margin: "1px 0" }}>CEP: 69.088-000</p>
+                  <p style={{ margin: "1px 0" }}>Tel: (92) 99148-7719</p>
+                  <p style={{ ...styles.bold, margin: "2px 0" }}>
+                    RECIBO DE VENDA
+                  </p>
+                  <p style={styles.textSmall}>
+                    {dayjs(selectedSale.data_venda).format("DD/MM/YYYY HH:mm")}
+                  </p>
+                  <p style={styles.textSmall}>ID: #{selectedSale.id}</p>
+                </div>
+
+                <div style={styles.borderBottom}>
+                  <p style={{ margin: "2px 0" }}>
+                    Vendedor:{" "}
+                    <span style={styles.bold}>
+                      {selectedSale.vendedor_nome}
+                    </span>
+                  </p>
+                </div>
+
+                <table style={{ ...styles.table, ...styles.borderBottom }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...styles.td, textAlign: "left" }}>
+                        QTD x ITEM
+                      </th>
+                      <th style={{ ...styles.td, textAlign: "right" }}>
+                        TOTAL
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {saleItems.map((item, idx) => (
+                      <tr key={idx}>
+                        <td style={styles.td}>
+                          {item.quantidade} x {item.descricao}
+                          <br />
+                          <span style={styles.textSmall}>
+                            Unit: {item.preco_unitario.toFixed(2)}
+                          </span>
+                        </td>
+                        <td style={{ ...styles.td, textAlign: "right" }}>
+                          {(item.quantidade * item.preco_unitario).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div style={styles.borderBottom}>
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span>Subtotal:</span>
+                    <span>{selectedSale.subtotal.toFixed(2)}</span>
+                  </div>
+                  {selectedSale.acrescimo > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span>Acréscimo:</span>
+                      <span>+ {selectedSale.acrescimo.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {selectedSale.desconto_valor > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span>Desconto:</span>
+                      <span>- {selectedSale.desconto_valor.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div
                   style={{
-                    ...styles.bold,
+                    display: "flex",
+                    justifyContent: "space-between",
                     fontSize: "14px",
-                    margin: "0 0 5px 0",
+                    fontWeight: "bold",
+                    margin: "5px 0",
                   }}
                 >
-                  BARBA PNEUS
-                </h2>
-                <p style={{ margin: "2px 0" }}>
-                  Av. Brigadeiro Hilario Gurjao, 22
-                </p>
-                <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa</p>
-                <p style={{ margin: "1px 0" }}>MANAUS - AM</p>
-                <p style={{ margin: "1px 0" }}>CEP: 69.088-000</p>
-                <p style={{ margin: "1px 0" }}>Tel: (92) 99114 - 7719</p>
-                <p style={{ ...styles.bold, margin: "2px 0" }}>
-                  RECIBO DE VENDA
-                </p>
-                <p style={styles.textSmall}>
-                  {dayjs(selectedSale.data_venda).format("DD/MM/YYYY HH:mm")}
-                </p>
-                <p style={styles.textSmall}>ID: #{selectedSale.id}</p>
-              </div>
-
-              <div style={styles.borderBottom}>
-                <p style={{ margin: "2px 0" }}>
-                  Vendedor:{" "}
-                  <span style={styles.bold}>{selectedSale.vendedor_nome}</span>
-                </p>
-              </div>
-
-              <table style={{ ...styles.table, ...styles.borderBottom }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...styles.td, textAlign: "left" }}>
-                      QTD x ITEM
-                    </th>
-                    <th style={{ ...styles.td, textAlign: "right" }}>TOTAL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {saleItems.map((item, idx) => (
-                    <tr key={idx}>
-                      <td style={styles.td}>
-                        {item.quantidade} x {item.descricao.substring(0, 20)}
-                        <br />
-                        <span style={styles.textSmall}>
-                          Unit: {item.preco_unitario.toFixed(2)}
-                        </span>
-                      </td>
-                      <td style={{ ...styles.td, textAlign: "right" }}>
-                        {(item.quantidade * item.preco_unitario).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div style={styles.borderBottom}>
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <span>Subtotal:</span>
-                  <span>{selectedSale.subtotal.toFixed(2)}</span>
+                  <span>TOTAL:</span>
+                  <span>R$ {selectedSale.total_final.toFixed(2)}</span>
                 </div>
-                {selectedSale.acrescimo > 0 && (
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span>Acréscimo:</span>
-                    <span>+ {selectedSale.acrescimo.toFixed(2)}</span>
-                  </div>
+
+                <div
+                  style={{
+                    ...styles.center,
+                    ...styles.borderBottom,
+                    margin: "10px 0",
+                  }}
+                >
+                  <p style={{ margin: "0" }}>
+                    Pagamento: {selectedSale.forma_pagamento}
+                  </p>
+                </div>
+
+                <div style={{ ...styles.center, ...styles.textSmall }}>
+                  <p>Obrigado pela preferência!</p>
+                </div>
+
+                {!!selectedSale.cancelada && (
+                  <div style={styles.cancelado}>VENDA CANCELADA</div>
                 )}
-                {selectedSale.desconto_valor > 0 && (
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span>Desconto:</span>
-                    <span>- {selectedSale.desconto_valor.toFixed(2)}</span>
-                  </div>
-                )}
               </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "14px",
-                  fontWeight: "bold",
-                  margin: "5px 0",
-                }}
-              >
-                <span>TOTAL:</span>
-                <span>R$ {selectedSale.total_final.toFixed(2)}</span>
-              </div>
-
-              <div
-                style={{
-                  ...styles.center,
-                  ...styles.borderBottom,
-                  margin: "10px 0",
-                }}
-              >
-                <p style={{ margin: "0" }}>
-                  Pagamento: {selectedSale.forma_pagamento}
-                </p>
-              </div>
-
-              <div style={{ ...styles.center, ...styles.textSmall }}>
-                <p>Obrigado pela preferência!</p>
-              </div>
-
-              {!!selectedSale.cancelada && (
-                <div style={styles.cancelado}>VENDA CANCELADA</div>
-              )}
             </div>
 
-            <div className="mt-4 flex gap-2">
+            {/* AÇÕES FIXAS */}
+            <div className="mt-4 flex gap-2 sticky bottom-0 bg-gray-200 pt-2">
               <button
                 onClick={handleSilentPrint}
                 className="flex-1 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow"
               >
                 <i className="fas fa-print mr-2"></i> Imprimir
               </button>
+
               <button
                 onClick={() => setShowReceiptModal(false)}
                 className="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400"
