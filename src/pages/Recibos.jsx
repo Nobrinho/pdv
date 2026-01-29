@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
-import logo from "../assets/logo.png";
+import { LOGO_BASE64 as logo } from "../assets/logoBase64";
 
 const Recibos = () => {
   const { showAlert } = useAlert();
