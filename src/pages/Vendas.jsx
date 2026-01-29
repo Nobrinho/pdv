@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import dayjs from "dayjs"; // Necessário para a data no recibo
+import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
+import { LOGO_BASE64 as logo } from "../assets/logoBase64";
 
 const Vendas = () => {
   const { showAlert } = useAlert();
@@ -35,6 +36,16 @@ const Vendas = () => {
 
   const searchInputRef = useRef(null);
   const paymentInputRef = useRef(null);
+
+  const [cliente, setCliente] = useState({
+    nome: "",
+    telefone: "",
+    documento: "", // CPF ou CNPJ
+  });
+
+  const [showClienteModal, setShowClienteModal] = useState(false);
+
+  const hasCliente = cliente.nome || cliente.telefone || cliente.documento;
 
   // --- ESTILOS DE IMPRESSÃO (Inline para garantir formatação na térmica) ---
   const styles = {
@@ -316,19 +327,17 @@ const Vendas = () => {
       if (result.success) {
         const sellerName = sellers.find((s) => s.id == selectedSeller)?.nome;
 
-        // Dados para o recibo
         setLastSale({
           ...saleData,
           id: result.id,
-          // Usa data atual para exibição imediata
           data_venda: new Date(),
           vendedor_nome: sellerName,
+          cliente: cliente,
         });
 
         setShowReceipt(true);
         showAlert("Venda realizada com sucesso!", "Sucesso", "success");
 
-        // Limpar tela (mantém recibo aberto)
         setCart([]);
         setPayments([]);
         setDiscountValue("");
@@ -367,6 +376,7 @@ const Vendas = () => {
               ))}
             </select>
           </div>
+
           <div className="flex-1 relative">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
               Produto (Bipar ou Digitar)
@@ -539,6 +549,20 @@ const Vendas = () => {
         </div>
 
         {/* Pagamento */}
+
+        <button
+          onClick={() => setShowClienteModal(true)}
+          className={`mb-3 w-full py-2 rounded-lg font-bold transition border
+    ${
+      hasCliente
+        ? "bg-green-50 text-green-700 border-green-400"
+        : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+    }
+  `}
+        >
+          <i className="fas fa-user mr-2"></i>
+          {hasCliente ? "Cliente informado" : "Adicionar cliente ao recibo"}
+        </button>
         <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-600 flex-1 flex flex-col">
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
             Pagamento
@@ -668,6 +692,14 @@ const Vendas = () => {
                     margin: "0 0 5px 0",
                   }}
                 >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <img src={logo} alt="logo_barba" width={70} />
+                  </div>
                   BARBA PNEUS
                 </h2>
                 <p style={{ margin: "2px 0" }}>
@@ -692,6 +724,31 @@ const Vendas = () => {
                   <span style={styles.bold}>{lastSale.vendedor_nome}</span>
                 </p>
               </div>
+              {lastSale.cliente &&
+                (lastSale.cliente.nome ||
+                  lastSale.cliente.telefone ||
+                  lastSale.cliente.documento) && (
+                  <div style={styles.borderBottom}>
+                    {lastSale.cliente.nome && (
+                      <p style={{ margin: "2px 0" }}>
+                        Cliente:{" "}
+                        <span style={styles.bold}>{lastSale.cliente.nome}</span>
+                      </p>
+                    )}
+
+                    {lastSale.cliente.telefone && (
+                      <p style={{ margin: "1px 0" }}>
+                        Tel: {lastSale.cliente.telefone}
+                      </p>
+                    )}
+
+                    {lastSale.cliente.documento && (
+                      <p style={{ margin: "1px 0" }}>
+                        CPF/CNPJ: {lastSale.cliente.documento}
+                      </p>
+                    )}
+                  </div>
+                )}
 
               <table style={{ ...styles.table, ...styles.borderBottom }}>
                 <thead>
@@ -805,6 +862,66 @@ const Vendas = () => {
                 className="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showClienteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-bold text-gray-700 mb-4">
+              Dados do Cliente (opcional)
+            </h2>
+
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Nome do cliente"
+                className="w-full border rounded p-2"
+                value={cliente.nome}
+                onChange={(e) =>
+                  setCliente({ ...cliente, nome: e.target.value })
+                }
+              />
+
+              <input
+                type="text"
+                placeholder="Telefone"
+                className="w-full border rounded p-2"
+                value={cliente.telefone}
+                onChange={(e) =>
+                  setCliente({ ...cliente, telefone: e.target.value })
+                }
+              />
+
+              <input
+                type="text"
+                placeholder="CPF ou CNPJ"
+                className="w-full border rounded p-2"
+                value={cliente.documento}
+                onChange={(e) =>
+                  setCliente({ ...cliente, documento: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => {
+                  setCliente({ nome: "", telefone: "", documento: "" });
+                  setShowClienteModal(false);
+                }}
+                className="flex-1 bg-gray-200 py-2 rounded font-bold"
+              >
+                Limpar
+              </button>
+
+              <button
+                onClick={() => setShowClienteModal(false)}
+                className="flex-1 bg-blue-600 text-white py-2 rounded font-bold"
+              >
+                Salvar
               </button>
             </div>
           </div>
