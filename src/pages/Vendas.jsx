@@ -53,48 +53,6 @@ const Vendas = () => {
   const searchInputRef = useRef(null);
   const paymentInputRef = useRef(null);
 
-  // Estilos de Impressão
-  const styles = {
-    container: {
-      backgroundColor: "#fff",
-      color: "#000",
-      fontFamily: "'Courier New', monospace",
-      fontSize: "12px",
-      padding: "10px",
-      width: "100%",
-      maxWidth: "300px",
-    },
-    center: {
-      textAlign: "center",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-    },
-    right: { textAlign: "right" },
-    bold: { fontWeight: "bold" },
-    borderBottom: {
-      borderBottom: "1px dashed #000",
-      marginBottom: "5px",
-      paddingBottom: "5px",
-      width: "100%",
-    },
-    table: { width: "100%", borderCollapse: "collapse" },
-    td: {
-      maxWidth: "250px", // ajuste conforme seu layout
-      whiteSpace: "normal", // permite quebra de linha
-      wordBreak: "break-word", // quebra palavras grandes
-      overflowWrap: "break-word",
-    },
-    textSmall: { fontSize: "10px" },
-    cancelado: {
-      border: "2px solid #000",
-      padding: "5px",
-      textAlign: "center",
-      fontWeight: "bold",
-      marginTop: "10px",
-    },
-  };
-
   useEffect(() => {
     loadData();
     if (searchInputRef.current) searchInputRef.current.focus();
@@ -955,22 +913,10 @@ const Vendas = () => {
 
       {showReceipt && lastSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          {/* max-h-[95vh]: Garante que o modal não saia da tela verticalmente.
-        w-full max-w-[340px]: Define uma largura fixa ideal para visualização de cupom.
-    */}
           <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[340px]">
-            {/* ÁREA ROLÁVEL: 
-          flex-1: Faz esta div ocupar todo o espaço disponível.
-          overflow-y-auto: Habilita a rolagem apenas aqui.
-          pr-2: Espaço para a barra de rolagem não sobrepor o texto.
-      */}
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
               <CupomFiscal sale={lastSale} items={lastSale.itens} />
             </div>
-
-            {/* AÇÕES FIXAS: 
-          Ficam sempre presas ao fundo do modal, independente do tamanho do cupom.
-      */}
             <div className="mt-4 flex gap-2 pt-2 border-t border-gray-300">
               <button
                 onClick={handleSilentPrint}
