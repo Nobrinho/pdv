@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAlert } from "../context/AlertSystem";
 import dayjs from "dayjs";
-import logo from "../assets/logo.png";
+import CupomFiscal from "../components/CupomFiscal";
 
 const Vendas = () => {
   const { showAlert } = useAlert();
@@ -461,7 +461,7 @@ const Vendas = () => {
         {/* Barra de Busca e Seleção */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
           <div className="flex gap-4 mb-3">
-            <div className="w-1/3">
+            <div className="w-1/2">
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                 Vendedor
               </label>
@@ -479,7 +479,7 @@ const Vendas = () => {
               </select>
             </div>
 
-            <div className="w-1/3 flex gap-2 items-end">
+            <div className="w-1/2 flex gap-2 items-end">
               <div className="flex-1 relative">
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Cliente
@@ -955,182 +955,32 @@ const Vendas = () => {
 
       {showReceipt && lastSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
-            <div id="cupom-fiscal" style={styles.container}>
-              <div style={{ ...styles.center, ...styles.borderBottom }}>
-                {logo && (
-                  <div
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      justifyContent: "center",
-                      marginBottom: "5px",
-                    }}
-                  >
-                    <img
-                      src={logo}
-                      alt="Logo"
-                      style={{ maxWidth: "70px", maxHeight: "70px" }}
-                    />
-                  </div>
-                )}
-                <h2
-                  style={{
-                    ...styles.bold,
-                    fontSize: "14px",
-                    margin: "0 0 5px 0",
-                  }}
-                >
-                  BARBA PNEUS
-                </h2>
-                <p style={{ margin: "2px 0" }}>
-                  Av. Brigadeiro Hilario Gurjão, 22
-                </p>
-                <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa</p>
-                <p style={{ margin: "1px 0" }}>MANAUS - AM</p>
-                <p style={{ margin: "1px 0" }}>CEP: 69.088-000</p>
-                <p style={{ margin: "1px 0" }}>Tel: (92) 99148-7719</p>
-                <p style={{ ...styles.bold, margin: "2px 0" }}>
-                  RECIBO DE VENDA
-                </p>
-                <p style={styles.textSmall}>
-                  {dayjs(lastSale.data_venda).format("DD/MM/YYYY HH:mm")}
-                </p>
-                <p style={styles.textSmall}>ID: #{lastSale.id}</p>
-              </div>
-              <div style={styles.borderBottom}>
-                <p style={{ margin: "2px 0" }}>
-                  Vendedor:{" "}
-                  <span style={styles.bold}>{lastSale.vendedor_nome}</span>
-                </p>
-                {lastSale.cliente_nome && (
-                  <p style={{ margin: "2px 0" }}>
-                    Cliente:{" "}
-                    <span style={styles.bold}>{lastSale.cliente_nome}</span>
-                  </p>
-                )}
-              </div>
-              <table style={{ ...styles.table, ...styles.borderBottom }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...styles.td, textAlign: "left" }}>
-                      QTD x ITEM
-                    </th>
-                    <th style={{ ...styles.td, textAlign: "right" }}>TOTAL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lastSale.itens.map((item, idx) => (
-                    <tr key={idx}>
-                      <td style={styles.td}>
-                        {item.qty} x {item.descricao.substring(0, 20)}
-                        <br />
-                        <span style={styles.textSmall}>
-                          Unit: {item.preco_venda.toFixed(2)}
-                        </span>
-                      </td>
-                      <td style={{ ...styles.td, textAlign: "right" }}>
-                        {(item.qty * item.preco_venda).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={styles.borderBottom}>
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <span>Subtotal:</span>
-                  <span>{lastSale.subtotal.toFixed(2)}</span>
-                </div>
-                {lastSale.mao_de_obra > 0 && (
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span>Mão de Obra:</span>
-                    <span>+ {lastSale.mao_de_obra.toFixed(2)}</span>
-                  </div>
-                )}
-                {lastSale.acrescimo_valor > 0 && (
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span>Acréscimo:</span>
-                    <span>+ {lastSale.acrescimo_valor.toFixed(2)}</span>
-                  </div>
-                )}
-                {lastSale.desconto_valor > 0 && (
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span>Desconto:</span>
-                    <span>
-                      -{" "}
-                      {lastSale.desconto_tipo === "percent"
-                        ? (
-                            (lastSale.subtotal * lastSale.desconto_valor) /
-                            100
-                          ).toFixed(2)
-                        : lastSale.desconto_valor.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "14px",
-                  fontWeight: "bold",
-                  margin: "5px 0",
-                }}
-              >
-                <span>TOTAL:</span>
-                <span>R$ {lastSale.total_final.toFixed(2)}</span>
-              </div>
-
-              {/* Lista de Pagamentos no Recibo (SE HOUVER DETALHES SALVOS, SENÃO MOSTRA RESUMO) */}
-              <div style={{ ...styles.borderBottom, margin: "10px 0" }}>
-                <p style={{ margin: "0", fontWeight: "bold" }}>Pagamentos:</p>
-                {lastSale.pagamentos &&
-                  lastSale.pagamentos.map((p, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: "11px",
-                      }}
-                    >
-                      <span>
-                        {p.metodo} {p.detalhes ? `(${p.detalhes})` : ""}
-                      </span>
-                      <span>{p.valor.toFixed(2)}</span>
-                    </div>
-                  ))}
-                {/* Fallback se pagamentos detalhados não existirem (ex: venda antiga) */}
-                {!lastSale.pagamentos && (
-                  <p style={{ margin: "0" }}>{lastSale.forma_pagamento}</p>
-                )}
-              </div>
-
-              <div style={{ ...styles.center, ...styles.textSmall }}>
-                <p>Obrigado pela preferência!</p>
-              </div>
-              {!!lastSale.cancelada && (
-                <div style={styles.cancelado}>VENDA CANCELADA</div>
-              )}
+          {/* max-h-[95vh]: Garante que o modal não saia da tela verticalmente.
+        w-full max-w-[340px]: Define uma largura fixa ideal para visualização de cupom.
+    */}
+          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[340px]">
+            {/* ÁREA ROLÁVEL: 
+          flex-1: Faz esta div ocupar todo o espaço disponível.
+          overflow-y-auto: Habilita a rolagem apenas aqui.
+          pr-2: Espaço para a barra de rolagem não sobrepor o texto.
+      */}
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <CupomFiscal sale={lastSale} items={lastSale.itens} />
             </div>
-            <div className="mt-4 flex gap-2">
+
+            {/* AÇÕES FIXAS: 
+          Ficam sempre presas ao fundo do modal, independente do tamanho do cupom.
+      */}
+            <div className="mt-4 flex gap-2 pt-2 border-t border-gray-300">
               <button
                 onClick={handleSilentPrint}
-                className="flex-1 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow"
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow active:scale-95 transition-transform flex items-center justify-center"
               >
                 <i className="fas fa-print mr-2"></i> Imprimir
               </button>
               <button
                 onClick={() => setShowReceipt(false)}
-                className="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400"
+                className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold hover:bg-gray-500 active:scale-95 transition-transform"
               >
                 Fechar
               </button>

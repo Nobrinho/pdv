@@ -7,8 +7,7 @@ const Pessoas = () => {
 
   const [people, setPeople] = useState([]);
   const [roles, setRoles] = useState([]);
-  const [defaultCommission, setDefaultCommission] = useState(0); // Estado para guardar o padrão
-
+  const [defaultCommission, setDefaultCommission] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
@@ -31,7 +30,6 @@ const Pessoas = () => {
       setRoles(rolesData);
 
       if (configData) {
-        // Converte de decimal (0.05) para porcentagem (5)
         setDefaultCommission(parseFloat(configData) * 100);
       }
     } catch (error) {
@@ -153,7 +151,7 @@ const Pessoas = () => {
   return (
     <div className="p-6 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Equipa (Pessoas)</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Equipe (Pessoas)</h1>
         <button
           onClick={() => {
             resetForm();
@@ -180,7 +178,7 @@ const Pessoas = () => {
           >
             <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
               <i className={`fas ${getRoleIcon(group.role)} text-lg`}></i>
-              <h2 className="text-lg font-bold text-gray-700">{group.role}s</h2>
+              <h2 className="text-lg font-bold text-gray-700">{group.role}</h2>
               <span className="ml-auto bg-white border px-2 py-0.5 rounded text-xs text-gray-500 font-bold shadow-sm">
                 {group.list.length}
               </span>

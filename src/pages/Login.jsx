@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useAlert } from "../context/AlertSystem";
-
+import bg1 from "../assets/bgs/bg1.png";
+import bg2 from "../assets/bgs/bg2.png";
+import bg3 from "../assets/bgs/bg3.png";
+import bg4 from "../assets/bgs/bg4.png";
+import bg5 from "../assets/bgs/bg5.png";
+import bg6 from "../assets/bgs/bg6.png";
+import bg7 from "../assets/bgs/bg7.png";
+import bg8 from "../assets/bgs/bg8.png";
+import bg9 from "../assets/bgs/bg9.png";
+import bg10 from "../assets/bgs/bg10.png";
 
 const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const { showAlert } = useAlert();
-  const [appVersion, setAppVersion] = useState("")
-
+  const [appVersion, setAppVersion] = useState("");
+  const [background, setBackground] = useState("");
 
   // Login State
   const [username, setUsername] = useState("");
@@ -21,22 +30,72 @@ const Login = ({ onLoginSuccess }) => {
     confirmPassword: "",
   });
 
+  const BACKGROUNDS = [
+    {
+      src: bg1,
+      position: "left top", // logo canto superior esquerdo
+    },
+    {
+      src: bg2,
+      position: "right top", // logo canto superior direito
+    },
+    {
+      src: bg3,
+      position: "left top", // sem logo ou central
+    },
+    {
+      src: bg4,
+      position: "left top", // logo meio esquerdo
+    },
+    {
+      src: bg5,
+      position: "left top", // logo meio direito
+    },
+    {
+      src: bg6,
+      position: "left top", // logo canto inferior esquerdo
+    },
+    {
+      src: bg7,
+      position: "right top", // logo canto inferior direito
+    },
+    {
+      src: bg8,
+      position: "right top", // logo central
+    },
+    {
+      src: bg9,
+      position: "left top", // logo meio esquerdo
+    },
+    {
+      src: bg10,
+      position: "right top", // logo meio direito
+    },
+  ];
+
+  const [bgConfig, setBgConfig] = useState(null);
+
+  useEffect(() => {
+    const random = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)];
+    setBgConfig(random);
+  }, []);
+
   useEffect(() => {
     checkSystemStatus();
   }, []);
 
-    useEffect(() => {
-      const fetchVersion = async () => {
-        try {
-          const ver = await window.api.getAppVersion();
-          setAppVersion(ver);
-        } catch (error) {
-          console.error("Erro ao obter versão", error);
-          setAppVersion("Dev");
-        }
-      };
-      fetchVersion();
-    }, []);
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const ver = await window.api.getAppVersion();
+        setAppVersion(ver);
+      } catch (error) {
+        console.error("Erro ao obter versão", error);
+        setAppVersion("Dev");
+      }
+    };
+    fetchVersion();
+  }, []);
 
   const checkSystemStatus = async () => {
     try {
@@ -66,7 +125,7 @@ const Login = ({ onLoginSuccess }) => {
     } catch (error) {
       console.error(error);
       showAlert(
-        "Erro técnico ao tentar logar. Verifique se o Backend foi reiniciado."
+        "Erro técnico ao tentar logar. Verifique se o Backend foi reiniciado.",
       );
     }
   };
@@ -108,7 +167,15 @@ const Login = ({ onLoginSuccess }) => {
     );
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: `url(${bgConfig?.src})`,
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: bgConfig?.position || "center",
+      }}
+    >
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md flex flex-col">
         {/* Cabeçalho */}
         <div className="bg-blue-600 p-8 text-center">
@@ -254,7 +321,15 @@ const Login = ({ onLoginSuccess }) => {
           )}
         </div>
         <div className="bg-gray-50 p-4 text-center text-xs text-gray-400 border-t">
-          SysControl v{appVersion} &copy;
+          SysControl v{appVersion} &copy; 2025 - Desenvolvido por{" "}
+          <a
+            href="https://www.instagram.com/eminobre/"
+            className="text-blue-400 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            @eminobre
+          </a>
         </div>
       </div>
     </div>

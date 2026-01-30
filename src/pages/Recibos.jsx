@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
-import logo from "../assets/logo.png";
+import CupomFiscal from "../components/CupomFiscal";
 
 const Recibos = () => {
   const { showAlert } = useAlert();
@@ -484,161 +484,14 @@ const Recibos = () => {
         </div>
       </div>
 
-      {/* --- MODAL DE RECIBO --- */}
       {showReceiptModal && selectedSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh] max-w-sm">
             {/* ÁREA ROLÁVEL */}
             <div className="overflow-y-auto pr-1">
-              <div id="cupom-fiscal" style={styles.container}>
-                <div style={{ ...styles.center, ...styles.borderBottom }}>
-                  <h2
-                    style={{
-                      ...styles.bold,
-                      fontSize: "14px",
-                      margin: "0 0 5px 0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "100%",
-
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                      }}
-                    >
-                      <img src={logo} alt="logo_barba" width={70} />
-                    </div>
-                    BARBA PNEUS
-                  </h2>
-                  <p style={{ margin: "2px 0" }}>
-                    Av. Brigadeiro Hilario Gurjão, 22
-                  </p>
-                  <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa</p>
-                  <p style={{ margin: "1px 0" }}>MANAUS - AM</p>
-                  <p style={{ margin: "1px 0" }}>CEP: 69.088-000</p>
-                  <p style={{ margin: "1px 0" }}>Tel: (92) 99148-7719</p>
-                  <p style={{ ...styles.bold, margin: "2px 0" }}>
-                    RECIBO DE VENDA
-                  </p>
-                  <p style={styles.textSmall}>
-                    {dayjs(selectedSale.data_venda).format("DD/MM/YYYY HH:mm")}
-                  </p>
-                  <p style={styles.textSmall}>ID: #{selectedSale.id}</p>
-                </div>
-
-                <div style={styles.borderBottom}>
-                  <p style={{ margin: "2px 0" }}>
-                    Vendedor:{" "}
-                    <span style={styles.bold}>
-                      {selectedSale.vendedor_nome}
-                    </span>
-                  </p>
-                </div>
-
-                <table style={{ ...styles.table, ...styles.borderBottom }}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...styles.td, textAlign: "left" }}>
-                        QTD x ITEM
-                      </th>
-                      <th style={{ ...styles.td, textAlign: "right" }}>
-                        TOTAL
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {saleItems.map((item, idx) => (
-                      <tr key={idx}>
-                        <td style={styles.td}>
-                          {item.quantidade} x{" "}
-                          {
-                            // VERIFICAÇÃO DE SEGURANÇA:
-                            item.descricao
-                              ? item.descricao.substring(0, 20)
-                              : `(Item Excluído #${item.produto_id})`
-                          }
-                          <br />
-                          <span style={styles.textSmall}>
-                            Unit: {item.preco_unitario.toFixed(2)}
-                          </span>
-                        </td>
-                        <td style={{ ...styles.td, textAlign: "right" }}>
-                          {(item.quantidade * item.preco_unitario).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div style={styles.borderBottom}>
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span>Subtotal:</span>
-                    <span>{selectedSale.subtotal.toFixed(2)}</span>
-                  </div>
-                  {selectedSale.acrescimo > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span>Acréscimo:</span>
-                      <span>+ {selectedSale.acrescimo.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {selectedSale.desconto_valor > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span>Desconto:</span>
-                      <span>- {selectedSale.desconto_valor.toFixed(2)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    margin: "5px 0",
-                  }}
-                >
-                  <span>TOTAL:</span>
-                  <span>R$ {selectedSale.total_final.toFixed(2)}</span>
-                </div>
-
-                <div
-                  style={{
-                    ...styles.center,
-                    ...styles.borderBottom,
-                    margin: "10px 0",
-                  }}
-                >
-                  <p style={{ margin: "0" }}>
-                    Pagamento: {selectedSale.forma_pagamento}
-                  </p>
-                </div>
-
-                <div style={{ ...styles.center, ...styles.textSmall }}>
-                  <p>Obrigado pela preferência!</p>
-                </div>
-
-                {!!selectedSale.cancelada && (
-                  <div style={styles.cancelado}>VENDA CANCELADA</div>
-                )}
-              </div>
+              <CupomFiscal sale={selectedSale} items={saleItems} />
             </div>
 
-            {/* AÇÕES FIXAS */}
             <div className="mt-4 flex gap-2 sticky bottom-0 bg-gray-200 pt-2">
               <button
                 onClick={handleSilentPrint}
@@ -658,56 +511,83 @@ const Recibos = () => {
         </div>
       )}
 
-      {/* Modal Cancelamento */}
       {showCancelModal && saleToCancel && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 border-2 border-red-100">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              Autorização Necessária
-            </h2>
-            <form onSubmit={submitCancel} className="space-y-4">
-              <textarea
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                rows="3"
-                placeholder="Motivo (min. 10 chars)..."
-                value={cancelData.reason}
-                onChange={(e) =>
-                  setCancelData({ ...cancelData, reason: e.target.value })
-                }
-                required
-              ></textarea>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <input
-                  className="w-full border border-gray-300 rounded p-2 text-sm mb-2"
-                  placeholder="Usuário Admin"
-                  value={cancelData.adminUser}
-                  onChange={(e) =>
-                    setCancelData({ ...cancelData, adminUser: e.target.value })
-                  }
-                  required
-                />
-                <input
-                  type="password"
-                  className="w-full border border-gray-300 rounded p-2 text-sm"
-                  placeholder="Senha"
-                  value={cancelData.adminPass}
-                  onChange={(e) =>
-                    setCancelData({ ...cancelData, adminPass: e.target.value })
-                  }
-                  required
-                />
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] animate-fade-in backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-[90%] transform transition-all scale-100 border-2 border-red-100">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i className="fas fa-user-lock text-3xl text-red-600"></i>
               </div>
-              <div className="flex gap-2">
+              <h2 className="text-xl font-bold text-gray-800">
+                Autorização Necessária
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                O cancelamento requer permissão de administrador e
+                justificativa.
+              </p>
+            </div>
+
+            <form onSubmit={submitCancel} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Motivo do Cancelamento *
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                  rows="3"
+                  placeholder="Descreva o motivo (min. 10 caracteres)..."
+                  value={cancelData.reason}
+                  onChange={(e) =>
+                    setCancelData({ ...cancelData, reason: e.target.value })
+                  }
+                  required
+                ></textarea>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                  Credenciais do Admin
+                </p>
+                <div className="space-y-2">
+                  <input
+                    className="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-red-500"
+                    placeholder="Usuário Admin"
+                    value={cancelData.adminUser}
+                    onChange={(e) =>
+                      setCancelData({
+                        ...cancelData,
+                        adminUser: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                  <input
+                    type="password"
+                    className="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-red-500"
+                    placeholder="Senha"
+                    value={cancelData.adminPass}
+                    onChange={(e) =>
+                      setCancelData({
+                        ...cancelData,
+                        adminPass: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowCancelModal(false)}
-                  className="flex-1 bg-gray-100 py-2 rounded-lg font-medium"
+                  className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-lg font-medium hover:bg-gray-200 transition"
                 >
                   Voltar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold"
+                  className="flex-1 bg-red-600 text-white py-2.5 rounded-lg font-bold hover:bg-red-700 transition shadow-md"
                 >
                   CONFIRMAR
                 </button>

@@ -23,9 +23,28 @@ const Relatorios = () => {
   const [selectedSeller, setSelectedSeller] = useState("all");
   const [selectedPayment, setSelectedPayment] = useState("all");
 
+  const standardizeMethod = (method) => {
+    if (!method) return "Outros";
+    const upper = method.toUpperCase().trim();
+
+    if (upper === "PIX") return "Pix";
+    if (upper === "DINHEIRO") return "Dinheiro";
+    if (upper.includes("CRÉDITO") || upper.includes("CREDITO"))
+      return "Crédito";
+    if (upper.includes("DÉBITO") || upper.includes("DEBITO")) return "Débito";
+    if (upper.includes("FIADO")) return "Fiado";
+    if (upper.includes("MÚLTIPLOS") || upper.includes("MULTIPLOS"))
+      return "Múltiplos";
+
+    // Para outros casos, deixa apenas a primeira letra maiúscula
+    return method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
+  };
+
   // Extrair métodos de pagamento únicos para o filtro
   const paymentMethods = useMemo(() => {
-    const methods = new Set(allSales.map((s) => s.forma_pagamento));
+    const methods = new Set(
+      allSales.map((s) => standardizeMethod(s.forma_pagamento)),
+    );
     return Array.from(methods).sort();
   }, [allSales]);
 
@@ -95,8 +114,10 @@ const Relatorios = () => {
         sDate.isBefore(dayjs(endDate).add(1, "day"));
       const isSeller =
         selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
+      // Filtro de Pagamento
+      const metodoNormalizado = standardizeMethod(s.forma_pagamento);
       const isPayment =
-        selectedPayment === "all" || s.forma_pagamento === selectedPayment;
+        selectedPayment === "all" || metodoNormalizado === selectedPayment;
 
       return inDate && isSeller && isPayment;
     });
@@ -125,7 +146,9 @@ const Relatorios = () => {
     const mapPagamentos = {};
 
     // Helper para somar pagamentos (Apenas Receita de Produto)
-    const addPaymentToMap = (metodo, valor) => {
+    const addPaymentToMap = (metodoRaw, valor) => {
+      const metodo = standardizeMethod(metodoRaw); // <--- APLICA A CORREÇÃO AQUI
+
       if (!metodo) return;
       if (!mapPagamentos[metodo]) mapPagamentos[metodo] = 0;
       mapPagamentos[metodo] += valor;
