@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
 import Updater from "./components/Updater";
 import Relatorios from "./pages/Relatorios";
+import Clientes from "./pages/Clientes";
 import { useAlert } from "./context/AlertSystem";
 
 // Definição de permissões por cargo
@@ -31,7 +32,7 @@ const PERMISSOES_CAIXA = [
 
 function App() {
   const [user, setUser] = useState(null);
-  const [appVersion, setAppVersion] = useState("")
+  const [appVersion, setAppVersion] = useState("");
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
@@ -144,11 +145,22 @@ function App() {
       icon: "fa-history",
       restricted: false,
     },
-    { path: "/pessoas", label: "Equipe", icon: "fa-users", restricted: true },
+    {
+      path: "/pessoas",
+      label: "Equipe",
+      icon: "fa-user-friends",
+      restricted: true,
+    },
     {
       path: "/relatorios",
       label: "Relatórios",
       icon: "fa-chart-line",
+      restricted: true,
+    },
+    {
+      path: "/clientes",
+      label: "Clientes",
+      icon: "fa-users",
       restricted: true,
     },
     {
@@ -245,10 +257,20 @@ function App() {
             );
           })}
         </nav>
-        {/* VERSÃO DINÂMICA AQUI */}
+
         <div className="p-4 border-t border-gray-700 bg-gray-900 flex justify-between items-center">
-          <p className="text-xs text-gray-500">Versão {appVersion || "..."}</p>
-          {/* Indicador de status (bolinha verde se conectado) */}
+          <p className="text-xs text-gray-500">
+            Versão {appVersion || "..."} by{" "}
+            <a
+              href="https://www.instagram.com/eminobre/"
+              className="text-blue-400 hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @eminobre
+            </a>
+          </p>
+
           <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
         </div>
       </aside>
@@ -270,6 +292,12 @@ function App() {
           <Route
             path="/pessoas"
             element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/" />}
+          />
+          <Route
+            path="/clientes"
+            element={
+              hasAccess("/clientes") ? <Clientes /> : <Navigate to="/" />
+            }
           />
           <Route
             path="/relatorios"
