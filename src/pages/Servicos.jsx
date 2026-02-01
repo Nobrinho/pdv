@@ -1,13 +1,10 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
 import { useAlert } from "../context/AlertSystem";
 
-// Configura locale para português
-dayjs.locale("pt-br");
-
 const Servicos = () => {
+  // Hook de Alerta Global
   const { showAlert } = useAlert();
 
   // Dados Gerais
@@ -15,29 +12,26 @@ const Servicos = () => {
   const [mechanics, setMechanics] = useState([]);
 
   // Estado do Formulário (Registro)
+  // Removido o campo 'pagamento'
   const [formData, setFormData] = useState({
     trocadorId: "",
     descricao: "",
     valor: "",
   });
 
-  // Filtros Avançados
-  const [periodType, setPeriodType] = useState("weekly");
-  const [startDate, setStartDate] = useState(
-    dayjs().startOf("week").format("YYYY-MM-DD"),
-  );
-  const [endDate, setEndDate] = useState(
-    dayjs().endOf("week").format("YYYY-MM-DD"),
-  );
-  const [selectedMechanicFilter, setSelectedMechanicFilter] = useState("all");
-
+  // Estado do Relatório (Filtros e Resultados)
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    mechanicId: "",
+  });
   const [filteredServices, setFilteredServices] = useState([]);
   const [reportSummary, setReportSummary] = useState({
     totalCount: 0,
     totalValue: 0,
   });
 
-  // --- FORMATAÇÃO BANCÁRIA ---
+  // --- FORMATAÇÃO BANCÁRIA (R$ 1.000,00) ---
   const formatCurrency = (val) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -45,20 +39,22 @@ const Servicos = () => {
     }).format(val || 0);
   };
 
+  // Carregar dados iniciais
   useEffect(() => {
     loadData();
   }, []);
 
+  // Atualizar lista filtrada quando filtros ou dados mudam
   useEffect(() => {
     applyFilters();
-  }, [startDate, endDate, selectedMechanicFilter, services]);
+  }, [filters, services]);
 
   const loadData = async () => {
     try {
       const servicesData = await window.api.getServices();
       const peopleData = await window.api.getPeople();
 
-      // Ordenar: Mais recente primeiro
+      // Ordenar serviços do mais recente para o mais antigo
       const sortedServices = servicesData.sort(
         (a, b) => b.data_servico - a.data_servico,
       );
@@ -93,7 +89,7 @@ const Servicos = () => {
       trocador_id: parseInt(formData.trocadorId),
       descricao: formData.descricao,
       valor: parseFloat(formData.valor),
-      forma_pagamento: "Saída", // Hardcoded como saída de caixa
+      forma_pagamento: "Saída", // Definido fixo internamente como saída de caixa
     };
 
     try {
@@ -101,7 +97,9 @@ const Servicos = () => {
 
       if (result.success) {
         showAlert("Serviço registrado com sucesso!", "Sucesso", "success");
+        // Limpar campos
         setFormData({ ...formData, descricao: "", valor: "" });
+        // Recarregar dados
         loadData();
       } else {
         showAlert("Erro ao registrar: " + result.error, "Erro", "error");
@@ -112,68 +110,55 @@ const Servicos = () => {
     }
   };
 
-  // --- FILTROS RÁPIDOS ---
-  const handlePeriodChange = (type) => {
-    setPeriodType(type);
-    const now = dayjs();
-
-    if (type === "weekly") {
-      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
-    } else if (type === "monthly") {
-      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
-    } else if (type === "yearly") {
-      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
-    }
-  };
-
-  const isWithinRange = (timestamp) => {
-    const start = dayjs(startDate).startOf("day");
-    const end = dayjs(endDate).endOf("day");
-    const dateToCheck = dayjs(timestamp);
-    return (
-      dateToCheck.isSame(start) ||
-      dateToCheck.isSame(end) ||
-      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
-    );
-  };
-
+  // --- LÓGICA DE RELATÓRIO ---
   const applyFilters = () => {
-    let result = services.filter((s) => isWithinRange(s.data_servico));
+    let result = services;
 
-    if (selectedMechanicFilter && selectedMechanicFilter !== "all") {
+    // Filtro de Data
+    if (filters.startDate) {
+      result = result.filter((s) =>
+        dayjs(s.data_servico).isAfter(
+          dayjs(filters.startDate).subtract(1, "day"),
+        ),
+      );
+    }
+    if (filters.endDate) {
+      result = result.filter((s) =>
+        dayjs(s.data_servico).isBefore(dayjs(filters.endDate).add(1, "day")),
+      );
+    }
+
+    // Filtro de Responsável
+    if (filters.mechanicId && filters.mechanicId !== "all") {
       result = result.filter(
-        (s) => s.trocador_id === parseInt(selectedMechanicFilter),
+        (s) => s.trocador_id === parseInt(filters.mechanicId),
       );
     }
 
     setFilteredServices(result);
+    updateSummary(result);
+  };
 
-    // Atualiza totais
-    const totalValue = result.reduce((acc, curr) => acc + curr.valor, 0);
+  const updateSummary = (data) => {
+    const totalValue = data.reduce((acc, curr) => acc + curr.valor, 0);
     setReportSummary({
-      totalCount: result.length,
+      totalCount: data.length,
       totalValue: totalValue,
     });
   };
 
   const clearFilters = () => {
-    setPeriodType("custom");
-    setStartDate("");
-    setEndDate("");
-    setSelectedMechanicFilter("all");
+    setFilters({ startDate: "", endDate: "", mechanicId: "" });
   };
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden bg-gray-50">
+    <div className="p-6 h-full flex flex-col overflow-hidden">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Gestão de Serviços</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
-        {/* --- COLUNA ESQUERDA: REGISTRO (FORMULÁRIO) --- */}
+        {/* COLUNA ESQUERDA: REGISTRO */}
         <div className="w-full lg:w-1/3 bg-white p-6 rounded-xl shadow-md h-fit overflow-y-auto border border-gray-100">
           <h2 className="text-lg font-bold mb-6 text-gray-800 border-b pb-3 flex items-center">
             <i className="fas fa-plus-circle text-blue-600 mr-2"></i> Novo
@@ -219,14 +204,14 @@ const Servicos = () => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Valor (Custo M.O.)
+                Valor (R$)
               </label>
               <div className="relative">
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 pl-3 text-lg font-bold text-orange-600 shadow-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 pl-3 text-lg font-bold text-gray-800 shadow-sm focus:ring-2 focus:ring-green-500 outline-none"
                   placeholder="0.00"
                   value={formData.valor}
                   onChange={(e) =>
@@ -239,7 +224,7 @@ const Servicos = () => {
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                * Valor pago ao profissional (Saída).
+                * Valor a ser pago ao profissional.
               </p>
             </div>
 
@@ -247,74 +232,64 @@ const Servicos = () => {
               type="submit"
               className="w-full bg-blue-600 text-white py-3.5 rounded-lg font-bold hover:bg-blue-700 transition mt-4 shadow-lg hover:shadow-xl flex justify-center items-center gap-2 transform active:scale-95"
             >
-              <i className="fas fa-check"></i> REGISTRAR SERVIÇO
+              <i className="fas fa-check"></i> SALVAR SERVIÇO
             </button>
           </form>
         </div>
 
-        {/* --- COLUNA DIREITA: RELATÓRIO E LISTAGEM --- */}
+        {/* COLUNA DIREITA: RELATÓRIO E LISTAGEM */}
         <div className="flex-1 flex flex-col h-full overflow-hidden gap-4">
-          {/* Barra de Filtros */}
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-4">
-            {/* Filtros Rápidos */}
-            <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+          {/* Filtros */}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide flex items-center">
+                <i className="fas fa-filter mr-2"></i> Filtros de Relatório
+              </h2>
               <button
-                onClick={() => handlePeriodChange("weekly")}
-                className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                onClick={clearFilters}
+                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
               >
-                Esta Semana
-              </button>
-              <button
-                onClick={() => handlePeriodChange("monthly")}
-                className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-              >
-                Este Mês
-              </button>
-              <button
-                onClick={() => handlePeriodChange("yearly")}
-                className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-              >
-                Este Ano
+                Limpar Filtros
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  Início
+                  Data Início
                 </label>
                 <input
                   type="date"
                   className="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setPeriodType("custom");
-                  }}
+                  value={filters.startDate}
+                  onChange={(e) =>
+                    setFilters({ ...filters, startDate: e.target.value })
+                  }
                 />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  Fim
+                  Data Fim
                 </label>
                 <input
                   type="date"
                   className="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setPeriodType("custom");
-                  }}
+                  value={filters.endDate}
+                  onChange={(e) =>
+                    setFilters({ ...filters, endDate: e.target.value })
+                  }
                 />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">
-                  Filtrar por Responsável
+                  Responsável
                 </label>
                 <select
                   className="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
-                  value={selectedMechanicFilter}
-                  onChange={(e) => setSelectedMechanicFilter(e.target.value)}
+                  value={filters.mechanicId}
+                  onChange={(e) =>
+                    setFilters({ ...filters, mechanicId: e.target.value })
+                  }
                 >
                   <option value="all">Todos</option>
                   {mechanics.map((m) => (
@@ -332,7 +307,7 @@ const Servicos = () => {
             <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500 flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500 font-bold uppercase mb-1">
-                  Qtd. Serviços
+                  Total de Serviços
                 </p>
                 <p className="text-2xl font-bold text-gray-800">
                   {reportSummary.totalCount}
@@ -342,17 +317,17 @@ const Servicos = () => {
                 <i className="fas fa-clipboard-list fa-lg"></i>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500 flex items-center justify-between">
+            <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500 flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500 font-bold uppercase mb-1">
-                  Total Pago (Saída)
+                  Valor Gerado
                 </p>
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(reportSummary.totalValue)}
                 </p>
               </div>
-              <div className="bg-orange-100 p-3 rounded-full text-orange-600">
-                <i className="fas fa-hand-holding-usd fa-lg"></i>
+              <div className="bg-green-100 p-3 rounded-full text-green-600">
+                <i className="fas fa-dollar-sign fa-lg"></i>
               </div>
             </div>
           </div>
@@ -361,13 +336,13 @@ const Servicos = () => {
           <div className="bg-white rounded-xl shadow-md overflow-hidden flex-1 flex flex-col border border-gray-100">
             <div className="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
               <h3 className="font-bold text-gray-700 text-sm pl-2">
-                Histórico de Pagamentos
+                Histórico de Serviços
               </h3>
               <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded border">
                 {filteredServices.length} registros
               </span>
             </div>
-            <div className="overflow-y-auto flex-1 p-0 custom-scrollbar">
+            <div className="overflow-y-auto flex-1 p-0">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
@@ -381,7 +356,7 @@ const Servicos = () => {
                       Descrição
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Valor Pago
+                      Valor
                     </th>
                   </tr>
                 </thead>
@@ -406,7 +381,7 @@ const Servicos = () => {
                       <td className="px-6 py-3 text-sm text-gray-600">
                         {service.descricao}
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-bold text-orange-600">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-bold text-green-600">
                         {formatCurrency(service.valor)}
                       </td>
                     </tr>

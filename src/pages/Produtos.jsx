@@ -10,9 +10,9 @@ const Produtos = () => {
   const [showProductModal, setShowProductModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
 
-  // Filtros e Ordenação
+  // Filtros e Ordenação (Novos Estados)
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("descricao");
+  const [sortBy, setSortBy] = useState("descricao"); // descricao, estoque_asc, estoque_desc, preco_asc
 
   // Estados de Dados (Formulários)
   const [formData, setFormData] = useState({
@@ -21,7 +21,6 @@ const Produtos = () => {
     custo: "",
     preco_venda: "",
     estoque_atual: "",
-    tipo: "novo", // <--- NOVO CAMPO: Padrão é novo
   });
 
   const [stockData, setStockData] = useState({
@@ -38,23 +37,20 @@ const Produtos = () => {
   }, []);
 
   const loadProducts = async () => {
-    try {
-      const data = await window.api.getProducts();
-      setProducts(data || []);
-    } catch (error) {
-      console.error(error);
-      showAlert("Erro ao carregar produtos", "Erro", "error");
-    }
+    const data = await window.api.getProducts();
+    setProducts(data);
   };
 
-  // --- LÓGICA DE FILTRO E ORDENAÇÃO ---
+  // --- LÓGICA DE FILTRO E ORDENAÇÃO (NOVO) ---
   const filteredAndSortedProducts = useMemo(() => {
+    // 1. Filtrar
     let result = products.filter(
       (p) =>
         p.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.codigo.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
+    // 2. Ordenar
     result.sort((a, b) => {
       switch (sortBy) {
         case "descricao":
@@ -80,8 +76,7 @@ const Produtos = () => {
     e.preventDefault();
 
     if (!formData.codigo.trim()) {
-      // Se vazio, deixamos o backend gerar AUTO, ou forçamos aqui se preferir
-      // return showAlert("O campo Código é obrigatório.", "Erro", "error");
+      return showAlert("O campo Código é obrigatório.", "Erro", "error");
     }
 
     const productToSave = {
@@ -89,7 +84,6 @@ const Produtos = () => {
       custo: parseFloat(formData.custo),
       preco_venda: parseFloat(formData.preco_venda),
       estoque_atual: parseInt(formData.estoque_atual),
-      tipo: formData.tipo, // Garante que o tipo vai pro backend
     };
 
     if (editingId) productToSave.id = editingId;
@@ -107,11 +101,7 @@ const Produtos = () => {
   };
 
   const handleEdit = (product) => {
-    setFormData({
-      ...product,
-      // Garante que produtos antigos sem 'tipo' sejam tratados como 'novo'
-      tipo: product.tipo || "novo",
-    });
+    setFormData(product);
     setEditingId(product.id);
     setShowProductModal(true);
   };
@@ -123,7 +113,6 @@ const Produtos = () => {
       custo: "",
       preco_venda: "",
       estoque_atual: "",
-      tipo: "novo", // Reset para novo
     });
     setEditingId(null);
   };
@@ -159,12 +148,15 @@ const Produtos = () => {
     showAlert("Estoque atualizado!", "Sucesso", "success");
   };
 
+  // --- EXCLUSÃO SEGURA ---
   const handleDelete = async (id) => {
     const confirmou = await showConfirm(
       "Tem a certeza que deseja excluir este produto?",
     );
+
     if (confirmou) {
       const result = await window.api.deleteProduct(id);
+
       if (result.success) {
         loadProducts();
         showAlert("Produto excluído.", "Sucesso", "success");
@@ -176,6 +168,7 @@ const Produtos = () => {
 
   return (
     <div className="p-4 md:p-6 h-full flex flex-col w-full overflow-hidden">
+      {/* Cabeçalho e Botão Novo */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">
           Gerenciar Estoque
@@ -191,6 +184,7 @@ const Produtos = () => {
         </button>
       </div>
 
+      {/* Barra de Filtros e Busca (NOVO) */}
       <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 mb-4 flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
           <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
@@ -209,14 +203,15 @@ const Produtos = () => {
             onChange={(e) => setSortBy(e.target.value)}
           >
             <option value="descricao">Nome (A-Z)</option>
-            <option value="estoque_asc">Estoque (Menor)</option>
-            <option value="estoque_desc">Estoque (Maior)</option>
-            <option value="preco_asc">Preço (Menor)</option>
-            <option value="preco_desc">Preço (Maior)</option>
+            <option value="estoque_asc">Estoque (Menor Primeiro)</option>
+            <option value="estoque_desc">Estoque (Maior Primeiro)</option>
+            <option value="preco_asc">Preço (Menor Primeiro)</option>
+            <option value="preco_desc">Preço (Maior Primeiro)</option>
           </select>
         </div>
       </div>
 
+      {/* Tabela Responsiva */}
       <div className="bg-white rounded-xl shadow-md flex-1 overflow-hidden border border-gray-100 flex flex-col">
         <div className="overflow-auto flex-1 custom-scrollbar">
           <table className="min-w-full divide-y divide-gray-200">
@@ -227,9 +222,6 @@ const Produtos = () => {
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[150px]">
                   Descrição
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Tipo
                 </th>
                 <th className="hidden md:table-cell px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
                   Custo
@@ -249,39 +241,33 @@ const Produtos = () => {
               {filteredAndSortedProducts.map((p) => (
                 <tr
                   key={p.id}
-                  className={`hover:bg-gray-50 transition-colors ${p.estoque_atual === 0 ? "bg-red-50" : ""}`}
+                  className={`hover:bg-gray-50 transition-colors ${
+                    p.estoque_atual === 0 ? "bg-red-50" : ""
+                  }`}
                 >
-                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-500">
                     {p.codigo}
                   </td>
-                  <td className="px-3 py-3 text-xs md:text-sm text-gray-700 break-words whitespace-normal font-medium">
+                  <td className="px-3 py-3 text-xs md:text-sm text-gray-800 break-words whitespace-normal font-medium">
                     {p.descricao}
                   </td>
-
-                  {/* Coluna Tipo (NOVA) */}
-                  <td className="px-3 py-3 whitespace-nowrap text-center">
-                    <span
-                      className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${
-                        p.tipo === "usado"
-                          ? "bg-orange-50 text-orange-700 border-orange-200"
-                          : "bg-blue-50 text-blue-700 border-blue-200"
-                      }`}
-                    >
-                      {p.tipo === "usado" ? "USADO" : "NOVO"}
-                    </span>
-                  </td>
-
                   <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right text-gray-500">
                     R$ {p.custo.toFixed(2)}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right font-medium text-gray-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right font-bold text-gray-900">
                     R$ {p.preco_venda.toFixed(2)}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-center">
                     <span
-                      className={`px-2 py-1 inline-flex text-xs leading-4 font-bold rounded-full ${p.estoque_atual > 5 ? "bg-green-100 text-green-800" : p.estoque_atual > 0 ? "bg-yellow-100 text-yellow-800" : "bg-red-200 text-red-900"}`}
+                      className={`px-2 py-1 inline-flex text-xs leading-4 font-bold rounded-full ${
+                        p.estoque_atual > 5
+                          ? "bg-green-100 text-green-800"
+                          : p.estoque_atual > 0
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                      }`}
                     >
-                      {p.estoque_atual}
+                      {p.estoque_atual} un
                     </span>
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-center text-sm font-medium">
@@ -289,18 +275,21 @@ const Produtos = () => {
                       <button
                         onClick={() => openStockModal(p)}
                         className="text-white bg-green-500 hover:bg-green-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
+                        title="Repor Estoque"
                       >
                         <i className="fas fa-plus text-xs"></i>
                       </button>
                       <button
                         onClick={() => handleEdit(p)}
                         className="text-white bg-blue-500 hover:bg-blue-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
+                        title="Editar"
                       >
                         <i className="fas fa-edit text-xs"></i>
                       </button>
                       <button
                         onClick={() => handleDelete(p.id)}
                         className="text-white bg-red-500 hover:bg-red-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
+                        title="Excluir"
                       >
                         <i className="fas fa-trash text-xs"></i>
                       </button>
@@ -308,13 +297,13 @@ const Produtos = () => {
                   </td>
                 </tr>
               ))}
-              {products.length === 0 && (
+              {filteredAndSortedProducts.length === 0 && (
                 <tr>
                   <td
-                    colSpan="7"
-                    className="px-6 py-12 text-center text-gray-500 flex flex-col items-center justify-center"
+                    colSpan="6"
+                    className="px-6 py-12 text-center text-gray-400 flex flex-col items-center justify-center"
                   >
-                    <i className="fas fa-box-open text-3xl mb-2 opacity-30"></i>
+                    <i className="fas fa-search text-3xl mb-2 opacity-30"></i>
                     <span className="text-sm">Nenhum produto encontrado.</span>
                   </td>
                 </tr>
@@ -322,9 +311,12 @@ const Produtos = () => {
             </tbody>
           </table>
         </div>
+        <div className="bg-gray-50 border-t border-gray-200 p-2 text-xs text-gray-500 text-right">
+          Total de itens listados: {filteredAndSortedProducts.length}
+        </div>
       </div>
 
-      {/* --- MODAL DE PRODUTO --- */}
+      {/* --- MODAL DE PRODUTO (CRIAR/EDITAR) --- */}
       {showProductModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100 max-h-[90vh] overflow-y-auto">
@@ -338,45 +330,6 @@ const Produtos = () => {
               </button>
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* SELETOR DE TIPO (NOVO) */}
-              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Tipo de Produto
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tipo"
-                      value="novo"
-                      checked={formData.tipo === "novo"}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tipo: e.target.value })
-                      }
-                      className="mr-2 w-4 h-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Novo (Peça)
-                    </span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tipo"
-                      value="usado"
-                      checked={formData.tipo === "usado"}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tipo: e.target.value })
-                      }
-                      className="mr-2 w-4 h-4 text-orange-600 focus:ring-orange-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Usado (Desmonte)
-                    </span>
-                  </label>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Código
@@ -387,7 +340,7 @@ const Produtos = () => {
                   onChange={(e) =>
                     setFormData({ ...formData, codigo: e.target.value })
                   }
-                  placeholder="Ex: 12345"
+                  placeholder="Ex: 12345 (Deixe vazio para automático)"
                   autoFocus
                 />
               </div>
@@ -471,7 +424,7 @@ const Produtos = () => {
         </div>
       )}
 
-      {/* --- MODAL DE REPOSIÇÃO DE ESTOQUE --- */}
+      {/* --- MODAL DE REPOSIÇÃO DE ESTOQUE (+) --- */}
       {showStockModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100">
@@ -481,6 +434,7 @@ const Produtos = () => {
             <p className="text-sm text-gray-500 mb-4 border-b pb-2 truncate">
               Produto: <strong>{stockData.nome}</strong>
             </p>
+
             <form onSubmit={handleStockSubmit}>
               <div className="mb-4">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -497,6 +451,7 @@ const Produtos = () => {
                       (parseInt(stockData.quantidade_adicionar) || 0)}
                   </span>
                 </div>
+
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Quantidade a Adicionar
                 </label>

@@ -283,6 +283,7 @@ ipcMain.handle("create-sale", async (event, saleData) => {
 
 ipcMain.handle("get-sales", async () => {
   try {
+    // 1. Busca as vendas
     const vendas = await knex("vendas")
       .leftJoin("pessoas as vendedor", "vendas.vendedor_id", "vendedor.id")
       .leftJoin("pessoas as trocador", "vendas.trocador_id", "trocador.id")
@@ -290,82 +291,25 @@ ipcMain.handle("get-sales", async () => {
         "vendas.*",
         "vendedor.nome as vendedor_nome",
         "trocador.nome as trocador_nome",
-        "vendedor.comissao_fixa",
       )
       .orderBy("data_venda", "desc");
 
-    const vendaIds = vendas.map((v) => v.id);
+    // 2. Busca o custo real somado dos itens de cada venda
+    const custos = await knex("venda_itens")
+      .select("venda_id")
+      .sum({ total: knex.raw("custo_unitario * quantidade") })
+      .groupBy("venda_id");
 
-    // Busca itens com o TIPO do produto para saber qual regra aplicar
-    const allItems = await knex("venda_itens")
-      .leftJoin("produtos", "venda_itens.produto_id", "produtos.id")
-      .whereIn("venda_id", vendaIds)
-      .select("venda_itens.*", "produtos.tipo");
-
-    // 1. CARREGAR CONFIGURAÇÕES GLOBAIS
-    const configPadrao = await knex("configuracoes")
-      .where("chave", "comissao_padrao")
-      .first();
-    const configUsados = await knex("configuracoes")
-      .where("chave", "comissao_usados")
-      .first();
-
-    const comissaoPadrao = configPadrao ? parseFloat(configPadrao.valor) : 0.3; // Default 30%
-    const comissaoUsados = configUsados ? parseFloat(configUsados.valor) : 0.25; // Default 25%
-
-    const vendasProcessadas = vendas.map((venda) => {
-      const itensVenda = allItems.filter((i) => i.venda_id === venda.id);
-      const custoTotal = itensVenda.reduce(
-        (acc, item) => acc + item.custo_unitario * item.quantidade,
-        0,
-      );
-
-      let comissaoTotal = 0;
-
-      // Se o vendedor tiver taxa fixa, usa ela para NOVOS. Se não, usa a padrão.
-      // Para USADOS, a regra é sempre a margem configurada (comissaoUsados).
-      const taxaVendedorNovos = venda.comissao_fixa
-        ? venda.comissao_fixa / 100
-        : comissaoPadrao;
-
-      itensVenda.forEach((item) => {
-        const totalItem = item.preco_unitario * item.quantidade;
-
-        // Rateio proporcional do desconto da venda para o item
-        let descontoItem = 0;
-        if (venda.desconto_tipo === "fixed") {
-          const ratio = venda.subtotal > 0 ? totalItem / venda.subtotal : 0;
-          descontoItem = venda.desconto_valor * ratio;
-        } else {
-          descontoItem = (totalItem * venda.desconto_valor) / 100;
-        }
-
-        const receitaLiqItem = totalItem - descontoItem;
-
-        // --- A MÁGICA: CÁLCULO HÍBRIDO ---
-        if (item.tipo === "usado") {
-          // REGRA USADO: % sobre LUCRO (Receita - Custo)
-          const custoItem = item.custo_unitario * item.quantidade;
-          const lucroItem = receitaLiqItem - custoItem;
-          if (lucroItem > 0) {
-            comissaoTotal += lucroItem * comissaoUsados;
-          }
-        } else {
-          // REGRA NOVO: % sobre FATURAMENTO (Receita)
-          if (receitaLiqItem > 0) {
-            comissaoTotal += receitaLiqItem * taxaVendedorNovos;
-          }
-        }
-      });
-
+    // 3. Mescla o custo real na lista de vendas
+    const vendasComCusto = vendas.map((venda) => {
+      const custoItem = custos.find((c) => c.venda_id === venda.id);
       return {
         ...venda,
-        custo_total_real: custoTotal,
-        comissao_real: comissaoTotal,
+        custo_total_real: custoItem ? custoItem.total : 0,
       };
     });
 
-    return vendasProcessadas;
+    return vendasComCusto;
   } catch (error) {
     console.error("Erro get-sales:", error);
     return [];
@@ -529,96 +473,81 @@ ipcMain.handle("get-dashboard-stats", async () => {
 
     const vendas = await knex("vendas")
       .whereBetween("data_venda", [startOfDay, endOfDay])
-      .where("cancelada", 0); // Ignora canceladas
+      .where("cancelada", 0);
 
     const servicos = await knex("servicos_avulsos").whereBetween(
       "data_servico",
       [startOfDay, endOfDay],
     );
 
-    // Carrega Configs
-    const configPadrao = await knex("configuracoes")
+    const config = await knex("configuracoes")
       .where("chave", "comissao_padrao")
       .first();
-    const configUsados = await knex("configuracoes")
-      .where("chave", "comissao_usados")
-      .first();
-    const comissaoPadrao = configPadrao ? parseFloat(configPadrao.valor) : 0.3;
-    const comissaoUsados = configUsados ? parseFloat(configUsados.valor) : 0.25;
-
+    const comissaoPadrao = config ? parseFloat(config.valor) : 0.3;
     const pessoas = await knex("pessoas").select("*");
 
     const vendaIds = vendas.map((v) => v.id);
     const itens =
       vendaIds.length > 0
-        ? await knex("venda_itens")
-            .leftJoin("produtos", "venda_itens.produto_id", "produtos.id") // Join para pegar tipo
-            .whereIn("venda_id", vendaIds)
-            .select("venda_itens.*", "produtos.tipo")
+        ? await knex("venda_itens").whereIn("venda_id", vendaIds)
         : [];
 
     let totalFaturamento = 0;
-    let totalMaoDeObra = 0;
-    let totalComissoes = 0;
     let totalCustoProdutos = 0;
+    let totalMaoDeObra = 0; // Agora é CUSTO
+    let totalComissoes = 0;
 
-    // Cálculos Vendas
+    // Cálculos
     vendas.forEach((venda) => {
-      // Faturamento Real da Loja: Total pago pelo cliente MENOS a Mão de Obra (que é repasse/despesa)
-      totalFaturamento += venda.total_final - (venda.mao_de_obra || 0);
+      // 1. Faturamento Real: (Total Final - Mão de Obra).
+      // O Total Final no banco inclui a MO, então precisamos subtrair para saber quanto entrou de PEÇA.
+      const faturamentoVenda = venda.total_final - (venda.mao_de_obra || 0);
+      totalFaturamento += faturamentoVenda;
 
+      // 2. Mão de Obra (Despesa)
       if (venda.mao_de_obra) totalMaoDeObra += venda.mao_de_obra;
 
+      // 3. Comissões
       const vendedor = pessoas.find((p) => p.id === venda.vendedor_id);
-      const taxaVendedorNovos =
+      const taxa =
         vendedor && vendedor.comissao_fixa
           ? vendedor.comissao_fixa / 100
           : comissaoPadrao;
 
+      let desconto = 0;
+      if (venda.desconto_tipo === "fixed") desconto = venda.desconto_valor;
+      else desconto = (venda.subtotal * venda.desconto_valor) / 100;
+
+      // A receita de produtos já desconta o desconto dado na venda
+      const receitaProdutos = venda.subtotal - desconto;
+
+      if (receitaProdutos > 0) {
+        totalComissoes += receitaProdutos * taxa;
+      }
+
+      // 4. Custo das Peças
       const itensVenda = itens.filter((i) => i.venda_id === venda.id);
-
-      itensVenda.forEach((item) => {
-        const totalItem = item.preco_unitario * item.quantidade;
-        const custoItem = item.custo_unitario * item.quantidade;
-        totalCustoProdutos += custoItem;
-
-        // Rateio Desconto
-        let descontoItem = 0;
-        if (venda.desconto_tipo === "fixed") {
-          const ratio = venda.subtotal > 0 ? totalItem / venda.subtotal : 0;
-          descontoItem = venda.desconto_valor * ratio;
-        } else {
-          descontoItem = (totalItem * venda.desconto_valor) / 100;
-        }
-        const receitaLiqItem = totalItem - descontoItem;
-
-        // CÁLCULO HÍBRIDO
-        if (item.tipo === "usado") {
-          // USADO: Sobre Lucro
-          const lucroItem = receitaLiqItem - custoItem;
-          if (lucroItem > 0) totalComissoes += lucroItem * comissaoUsados;
-        } else {
-          // NOVO: Sobre Faturamento
-          if (receitaLiqItem > 0)
-            totalComissoes += receitaLiqItem * taxaVendedorNovos;
-        }
-      });
+      const custoVenda = itensVenda.reduce(
+        (acc, item) => acc + item.custo_unitario * item.quantidade,
+        0,
+      );
+      totalCustoProdutos += custoVenda;
     });
 
-    // Serviços Avulsos (Despesa)
+    // Serviços Avulsos também são DESPESA agora (a loja paga o serviço)
     servicos.forEach((s) => {
       totalMaoDeObra += s.valor;
     });
 
-    // Lucro Líquido = Faturamento Peças - (Custo Peças + Comissões Totais + Mão de Obra Paga)
+    // LUCRO = (Dinheiro que entrou das peças) - (Custo das peças + O que pagou de Mão de Obra + Comissões)
     const lucro =
-      totalFaturamento - totalCustoProdutos - totalComissoes - totalMaoDeObra;
+      totalFaturamento - (totalCustoProdutos + totalMaoDeObra + totalComissoes);
 
     return {
       faturamento: totalFaturamento,
       lucro: lucro,
       vendasCount: vendas.length,
-      maoDeObra: totalMaoDeObra,
+      maoDeObra: totalMaoDeObra, // Enviamos para mostrar no card de "Despesas com MO"
       comissoes: totalComissoes,
     };
   } catch (error) {
@@ -632,7 +561,6 @@ ipcMain.handle("get-dashboard-stats", async () => {
     };
   }
 });
-
 ipcMain.handle("get-weekly-sales", async () => {
   const labels = [];
   const data = [];
