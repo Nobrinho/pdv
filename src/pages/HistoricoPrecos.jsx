@@ -1,19 +1,14 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br"; // Importante para datas em PT-BR
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-
-// Configura locale
-dayjs.locale("pt-br");
 
 const HistoricoPrecos = () => {
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
 
   // Filtros
-  const [periodType, setPeriodType] = useState("custom"); // weekly, monthly, yearly, custom
   const [startDate, setStartDate] = useState(
     dayjs().subtract(30, "day").format("YYYY-MM-DD"),
   );
@@ -37,43 +32,18 @@ const HistoricoPrecos = () => {
     }
   };
 
-  // --- CONTROLE DE PERÍODOS RÁPIDOS ---
-  const handlePeriodChange = (type) => {
-    setPeriodType(type);
-    const now = dayjs();
-
-    if (type === "weekly") {
-      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
-    } else if (type === "monthly") {
-      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
-    } else if (type === "yearly") {
-      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
-    }
-    // Se for 'custom', não muda as datas automaticamente
-  };
-
-  // Lógica robusta de verificação de intervalo de datas (00:00 - 23:59)
-  const isWithinRange = (timestamp) => {
-    const start = dayjs(startDate).startOf("day");
-    const end = dayjs(endDate).endOf("day");
-    const dateToCheck = dayjs(timestamp);
-    return (
-      dateToCheck.isSame(start) ||
-      dateToCheck.isSame(end) ||
-      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
-    );
-  };
-
   const filterData = () => {
     let result = history;
 
-    // Filtro Data (Corrigido)
-    result = result.filter((h) => isWithinRange(h.data_alteracao));
+    if (startDate)
+      result = result.filter((h) =>
+        dayjs(h.data_alteracao).isAfter(dayjs(startDate).subtract(1, "day")),
+      );
+    if (endDate)
+      result = result.filter((h) =>
+        dayjs(h.data_alteracao).isBefore(dayjs(endDate).add(1, "day")),
+      );
 
-    // Filtro Texto
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
       result = result.filter(
@@ -185,9 +155,12 @@ const HistoricoPrecos = () => {
     doc.text(`Data de Emissão: ${dayjs().format("DD/MM/YYYY")}`, 14, 33);
 
     // --- LÓGICA DE UNICIDADE ---
+    // Agrupa para mostrar apenas a última alteração de cada produto (estado atual)
     const uniqueProducts = [];
     const processedIds = new Set();
 
+    // Como a lista filteredHistory já vem ordenada por data descrescente (do backend),
+    // a primeira vez que encontramos um produto, é o registro mais recente dele.
     filteredHistory.forEach((item) => {
       if (!processedIds.has(item.produto_id)) {
         processedIds.add(item.produto_id);
@@ -195,13 +168,14 @@ const HistoricoPrecos = () => {
       }
     });
 
+    // Ordena alfabeticamente para facilitar a leitura na lista impressa
     uniqueProducts.sort((a, b) => a.descricao.localeCompare(b.descricao));
 
     const tableRows = uniqueProducts.map((item) => [
       item.descricao,
       item.codigo,
-      formatCurrency(item.preco_novo),
-      `${item.estoque_novo} un`,
+      formatCurrency(item.preco_novo), // Mostra apenas o preço final/atual
+      `${item.estoque_novo} un`, // Mostra apenas o estoque final/atual
       dayjs(item.data_alteracao).format("DD/MM/YYYY"),
     ]);
 
@@ -209,15 +183,15 @@ const HistoricoPrecos = () => {
       startY: 40,
       head: [["Produto", "Cód.", "Preço Atual", "Estoque", "Data Alteração"]],
       body: tableRows,
-      theme: "striped",
-      headStyles: { fillColor: [41, 128, 185] },
+      theme: "striped", // Tema mais limpo para leitura
+      headStyles: { fillColor: [41, 128, 185] }, // Azul mais amigável
       styles: { fontSize: 10, cellPadding: 3 },
       columnStyles: {
-        0: { cellWidth: "auto" },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 30, halign: "right", fontStyle: "bold" },
-        3: { cellWidth: 25, halign: "center" },
-        4: { cellWidth: 30, halign: "center" },
+        0: { cellWidth: "auto" }, // Produto
+        1: { cellWidth: 25 }, // Código
+        2: { cellWidth: 30, halign: "right", fontStyle: "bold" }, // Preço
+        3: { cellWidth: 25, halign: "center" }, // Estoque
+        4: { cellWidth: 30, halign: "center" }, // Data
       },
     });
 
@@ -242,7 +216,7 @@ const HistoricoPrecos = () => {
           <button
             onClick={exportFullPDF}
             className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 shadow-md flex items-center gap-2 transition"
-            title="Gera relatório técnico completo com todas as mudanças (Auditoria)"
+            title="Gera relatório técnico completo com todas as mudanças (Auditória)"
           >
             <i className="fas fa-file-contract"></i> Auditoria Completa
           </button>
@@ -250,70 +224,40 @@ const HistoricoPrecos = () => {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
-        {/* Filtros Rápidos */}
-        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
-          <button
-            onClick={() => handlePeriodChange("weekly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Esta Semana
-          </button>
-          <button
-            onClick={() => handlePeriodChange("monthly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Este Mês
-          </button>
-          <button
-            onClick={() => handlePeriodChange("yearly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Este Ano
-          </button>
+      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-wrap gap-4 items-end border border-gray-100">
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            Início
+          </label>
+          <input
+            type="date"
+            className="border rounded p-2 text-sm"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
         </div>
-
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Início
-            </label>
-            <input
-              type="date"
-              className="border rounded p-2 text-sm"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setPeriodType("custom");
-              }}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Fim
-            </label>
-            <input
-              type="date"
-              className="border rounded p-2 text-sm"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPeriodType("custom");
-              }}
-            />
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Buscar Produto
-            </label>
-            <input
-              type="text"
-              className="w-full border rounded p-2 text-sm"
-              placeholder="Nome ou Código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            Fim
+          </label>
+          <input
+            type="date"
+            className="border rounded p-2 text-sm"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            Buscar Produto
+          </label>
+          <input
+            type="text"
+            className="w-full border rounded p-2 text-sm"
+            placeholder="Nome ou Código..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
