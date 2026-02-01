@@ -7,9 +7,12 @@ const Config = () => {
 
   const [roles, setRoles] = useState([]);
   const [newRole, setNewRole] = useState("");
-  const [defaultCommission, setDefaultCommission] = useState("");
   const [printers, setPrinters] = useState([]);
   const [selectedPrinter, setSelectedPrinter] = useState("");
+
+  // Comissões
+  const [defaultCommission, setDefaultCommission] = useState(""); // Novos
+  const [usedCommission, setUsedCommission] = useState(""); // Usados (Novo)
 
   // Estados para Gestão de Usuários
   const [systemUsers, setSystemUsers] = useState([]);
@@ -19,7 +22,8 @@ const Config = () => {
     password: "",
     cargo: "vendedor",
   });
-  const [showPassword, setShowPassword] = useState(false); // NOVO: Controle de visibilidade da senha
+  // Controle de visibilidade da senha
+  const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,6 +35,7 @@ const Config = () => {
     try {
       const rolesData = await window.api.getRoles();
       const configData = await window.api.getConfig("comissao_padrao");
+      const configUsados = await window.api.getConfig("comissao_usados"); // Carrega config de usados
       const printerConfig = await window.api.getConfig("impressora_padrao");
       const printersData = await window.api.getPrinters();
       const usersData = await window.api.getUsers();
@@ -41,6 +46,10 @@ const Config = () => {
 
       if (configData)
         setDefaultCommission((parseFloat(configData) * 100).toString());
+      if (configUsados)
+        setUsedCommission((parseFloat(configUsados) * 100).toString());
+      else setUsedCommission("25"); // Valor padrão visual se não existir no banco
+
       if (printerConfig) setSelectedPrinter(printerConfig);
     } catch (error) {
       console.error(error);
@@ -51,17 +60,20 @@ const Config = () => {
   // --- Lógica de Comissão ---
   const handleSaveCommission = async () => {
     setIsLoading(true);
-    const valueToSave = parseFloat(defaultCommission) / 100;
-    const result = await window.api.saveConfig("comissao_padrao", valueToSave);
+    try {
+      const valueToSave = parseFloat(defaultCommission) / 100;
+      const valueUsadosToSave = parseFloat(usedCommission) / 100;
 
-    if (result.success) {
+      await window.api.saveConfig("comissao_padrao", valueToSave);
+      await window.api.saveConfig("comissao_usados", valueUsadosToSave); // Salva nova config
+
       showAlert(
-        "Comissão padrão atualizada com sucesso!",
+        "Taxas de comissão atualizadas com sucesso!",
         "Sucesso",
         "success",
       );
-    } else {
-      showAlert("Erro ao salvar: " + result.error, "Erro", "error");
+    } catch (error) {
+      showAlert("Erro ao salvar.", "Erro", "error");
     }
     setIsLoading(false);
   };
@@ -144,7 +156,7 @@ const Config = () => {
 
     if (result.success) {
       showAlert("Usuário criado com sucesso!", "Sucesso", "success");
-      setNewUser({ nome: "", username: "", password: "", cargo: "vendedor" });
+      setNewUser({ name: "", username: "", password: "", cargo: "vendedor" });
       loadData();
     } else {
       showAlert("Erro ao criar usuário: " + result.error, "Erro", "error");
@@ -173,31 +185,64 @@ const Config = () => {
       </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Card Comissão */}
+        {/* Card Comissão (ATUALIZADO) */}
         <div className="bg-white p-6 rounded-xl shadow-md h-fit border-l-4 border-blue-500">
           <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
-            <i className="fas fa-percent text-blue-500 mr-2"></i> Comissão
-            Padrão
+            <i className="fas fa-percent text-blue-500 mr-2"></i> Regras de
+            Comissão
           </h2>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
+
+          <div className="space-y-4">
+            {/* Peças Novas */}
+            <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                Porcentagem (%)
+                Peças Novas (Sobre Venda)
               </label>
-              <input
-                type="number"
-                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder="Ex: 30"
-                value={defaultCommission}
-                onChange={(e) => setDefaultCommission(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-blue-500 transition font-bold text-gray-700"
+                  placeholder="Ex: 5"
+                  value={defaultCommission}
+                  onChange={(e) => setDefaultCommission(e.target.value)}
+                />
+                <span className="absolute right-3 top-3 text-gray-400 font-bold">
+                  %
+                </span>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">
+                Aplicado sobre o valor total da venda.
+              </p>
             </div>
+
+            {/* Peças Usadas */}
+            <div>
+              <label className="block text-xs font-bold text-orange-600 uppercase mb-1">
+                Peças Usadas (Sobre Lucro)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  className="w-full border border-orange-200 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-orange-500 transition font-bold text-orange-800 bg-orange-50"
+                  placeholder="Ex: 25"
+                  value={usedCommission}
+                  onChange={(e) => setUsedCommission(e.target.value)}
+                />
+                <span className="absolute right-3 top-3 text-orange-400 font-bold">
+                  %
+                </span>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">
+                Aplicado sobre a margem (Venda - Custo).
+              </p>
+            </div>
+
             <button
               onClick={handleSaveCommission}
               disabled={isLoading}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md disabled:opacity-50"
+              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md disabled:opacity-50"
             >
-              Salvar
+              {isLoading ? "Salvando..." : "Salvar Alterações"}
             </button>
           </div>
         </div>
@@ -346,7 +391,7 @@ const Config = () => {
                 />
               </div>
 
-              {/* CAMPO DE SENHA COM OLHINHO */}
+              {/* CAMPO DE SENHA COM OLHO */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Senha
@@ -432,7 +477,11 @@ const Config = () => {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span
-                          className={`px-2 py-1 text-xs font-semibold rounded-full ${user.cargo === "admin" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.cargo === "admin"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
                         >
                           {user.cargo === "admin" ? "Admin" : "Caixa"}
                         </span>
