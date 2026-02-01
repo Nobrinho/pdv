@@ -1,9 +1,12 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from "react";
 import dayjs from "dayjs";
+import "dayjs/locale/pt-br";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAlert } from "../context/AlertSystem";
+
+dayjs.locale("pt-br");
 
 const Relatorios = () => {
   const { showAlert } = useAlert();
@@ -11,16 +14,15 @@ const Relatorios = () => {
   const [allSales, setAllSales] = useState([]);
   const [allServices, setAllServices] = useState([]);
   const [allPeople, setAllPeople] = useState([]);
-
-  // O valor padrão aqui serve apenas de fallback visual, o cálculo real vem do backend
   const [defaultCommission, setDefaultCommission] = useState(0.3);
 
   // --- FILTROS ---
+  const [periodType, setPeriodType] = useState("weekly");
   const [startDate, setStartDate] = useState(
-    dayjs().startOf("month").format("YYYY-MM-DD"),
+    dayjs().startOf("week").format("YYYY-MM-DD"),
   );
   const [endDate, setEndDate] = useState(
-    dayjs().endOf("month").format("YYYY-MM-DD"),
+    dayjs().endOf("week").format("YYYY-MM-DD"),
   );
   const [selectedSeller, setSelectedSeller] = useState("all");
   const [selectedPayment, setSelectedPayment] = useState("all");
@@ -39,7 +41,6 @@ const Relatorios = () => {
     return method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
   };
 
-  // Extrair métodos de pagamento únicos para o filtro
   const paymentMethods = useMemo(() => {
     const methods = new Set(
       allSales.map((s) => standardizeMethod(s.forma_pagamento)),
@@ -47,11 +48,11 @@ const Relatorios = () => {
     return Array.from(methods).sort();
   }, [allSales]);
 
-  // --- MÉTRICAS E DADOS PROCESSADOS ---
+  // --- MÉTRICAS ---
   const [metrics, setMetrics] = useState({
     faturamento: 0,
-    custoPecas: 0,
-    despesaMaoDeObra: 0,
+    custo: 0,
+    maoDeObra: 0,
     acrescimos: 0,
     descontos: 0,
     comissoes: 0,
@@ -75,6 +76,7 @@ const Relatorios = () => {
     endDate,
     selectedSeller,
     selectedPayment,
+    defaultCommission,
   ]);
 
   const loadData = async () => {
@@ -84,7 +86,6 @@ const Relatorios = () => {
       const people = await window.api.getPeople();
       const configComissao = await window.api.getConfig("comissao_padrao");
 
-      // Ordenação inicial DESC
       setAllSales(sales.sort((a, b) => b.data_venda - a.data_venda));
       setAllServices(services.sort((a, b) => b.data_servico - a.data_servico));
       setAllPeople(people);
@@ -94,6 +95,33 @@ const Relatorios = () => {
       console.error("Erro ao carregar dados:", error);
       showAlert("Erro ao carregar dados do banco.", "Erro", "error");
     }
+  };
+
+  const handlePeriodChange = (type) => {
+    setPeriodType(type);
+    const now = dayjs();
+
+    if (type === "weekly") {
+      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
+    } else if (type === "monthly") {
+      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
+    } else if (type === "yearly") {
+      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
+    }
+  };
+
+  const isWithinRange = (timestamp) => {
+    const start = dayjs(startDate).startOf("day");
+    const end = dayjs(endDate).endOf("day");
+    const dateToCheck = dayjs(timestamp);
+    return (
+      dateToCheck.isSame(start) ||
+      dateToCheck.isSame(end) ||
+      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
+    );
   };
 
   const formatCurrency = (val) => {
@@ -106,10 +134,7 @@ const Relatorios = () => {
   const processData = () => {
     // 1. Filtragem de Vendas
     let vendasFiltradas = allSales.filter((s) => {
-      const sDate = dayjs(s.data_venda);
-      const inDate =
-        sDate.isAfter(dayjs(startDate).subtract(1, "day")) &&
-        sDate.isBefore(dayjs(endDate).add(1, "day"));
+      const inDate = isWithinRange(s.data_venda);
       const isSeller =
         selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
       const metodoNormalizado = standardizeMethod(s.forma_pagamento);
@@ -119,16 +144,11 @@ const Relatorios = () => {
       return inDate && isSeller && isPayment;
     });
 
-    // 2. Filtragem de Serviços (Despesa)
+    // 2. Filtragem de Serviços
     let servicosFiltrados = allServices.filter((s) => {
-      const sDate = dayjs(s.data_servico);
-      return (
-        sDate.isAfter(dayjs(startDate).subtract(1, "day")) &&
-        sDate.isBefore(dayjs(endDate).add(1, "day"))
-      );
+      return isWithinRange(s.data_servico);
     });
 
-    // --- VARIÁVEIS DE ACUMULAÇÃO ---
     let totalFaturamentoPecas = 0;
     let totalCustoPecas = 0;
     let totalDespesaMO = 0;
@@ -145,8 +165,8 @@ const Relatorios = () => {
       mapPagamentos[metodo] += valor;
     };
 
-    // --- PROCESSAR VENDAS ---
     const vendasProcessadas = vendasFiltradas.map((venda) => {
+      const vendedor = allPeople.find((p) => p.id === venda.vendedor_id);
       const subtotalProdutos = venda.subtotal;
 
       let desconto = 0;
@@ -159,15 +179,28 @@ const Relatorios = () => {
 
       const acrescimo = venda.acrescimo || 0;
       const valorFinalProdutos = subtotalProdutos - desconto;
-
-      // DADOS VINDOS DO BACKEND (Já calculados corretamente com a regra híbrida)
       const custoReal = venda.custo_total_real || 0;
-      const comissao = venda.comissao_real || 0; // <--- AQUI ESTÁ A CORREÇÃO
+
+      // --- CORREÇÃO DA COMISSÃO ---
+      let comissao = 0;
+
+      // 1. Tenta usar o valor calculado pelo Backend (Preciso)
+      if (venda.comissao_real !== undefined && venda.comissao_real !== null) {
+        comissao = venda.comissao_real;
+      }
+      // 2. Fallback: Se o backend não mandou (versão antiga ou venda sem itens), calcula estimativa no Front
+      else {
+        const taxa = vendedor?.comissao_fixa
+          ? vendedor.comissao_fixa / 100
+          : defaultCommission;
+        if (valorFinalProdutos > 0) {
+          comissao = valorFinalProdutos * taxa;
+        }
+      }
 
       const moVenda = venda.mao_de_obra || 0;
 
       if (!venda.cancelada) {
-        // Receita Real da Loja
         const receitaLoja = valorFinalProdutos + acrescimo;
 
         totalFaturamentoPecas += receitaLoja;
@@ -183,20 +216,15 @@ const Relatorios = () => {
       return { ...venda, comissao_calculada: comissao };
     });
 
-    // --- PROCESSAR SERVIÇOS AVULSOS (Apenas Despesa) ---
     servicosFiltrados.forEach((serv) => {
       totalDespesaMO += serv.valor;
     });
 
-    // Converter mapa de pagamentos para array ordenado
     const arrayPagamentos = Object.entries(mapPagamentos)
       .map(([metodo, valor]) => ({ metodo, valor }))
       .sort((a, b) => b.valor - a.valor);
 
-    // --- RESUMO DE MÃO DE OBRA ---
     const mapMO = {};
-
-    // MO das Vendas
     vendasFiltradas.forEach((v) => {
       if (!v.cancelada && v.mao_de_obra > 0 && v.trocador_id) {
         if (!mapMO[v.trocador_id])
@@ -205,8 +233,6 @@ const Relatorios = () => {
         mapMO[v.trocador_id].qtd += 1;
       }
     });
-
-    // MO dos Serviços Avulsos
     servicosFiltrados.forEach((s) => {
       if (s.trocador_id) {
         let nomeTrocador =
@@ -224,7 +250,6 @@ const Relatorios = () => {
     setFilteredSales(vendasProcessadas);
     setPaymentSummary(arrayPagamentos);
 
-    // --- CÁLCULO DE LUCRO LÍQUIDO ---
     const lucroLiquido =
       totalFaturamentoPecas -
       (totalCustoPecas + totalComissoes + totalDespesaMO);
@@ -240,7 +265,6 @@ const Relatorios = () => {
     });
   };
 
-  // --- EXPORTAÇÃO PDF ---
   const exportPDF = () => {
     try {
       const doc = new jsPDF();
@@ -286,9 +310,8 @@ const Relatorios = () => {
 
       let finalY = doc.lastAutoTable.finalY || 40;
 
-      // Pagamentos
       if (paymentSummary.length > 0) {
-        doc.text("Receita de Produtos por Método (Sem M.O.)", 14, finalY + 15);
+        doc.text("Faturamento por Método de Pagamento", 14, finalY + 15);
         autoTable(doc, {
           startY: finalY + 20,
           head: [["Método", "Valor Total"]],
@@ -298,7 +321,6 @@ const Relatorios = () => {
         finalY = doc.lastAutoTable.finalY;
       }
 
-      // Mão de Obra
       if (laborSummary.length > 0) {
         doc.text("Pagamentos de Mão de Obra (Trocadores)", 14, finalY + 15);
         autoTable(doc, {
@@ -391,65 +413,96 @@ const Relatorios = () => {
         </button>
       </div>
 
-      {/* --- BARRA DE FILTROS --- */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-            Início
-          </label>
-          <input
-            type="date"
-            className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-            Fim
-          </label>
-          <input
-            type="date"
-            className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-            Vendedor
-          </label>
-          <select
-            className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-            value={selectedSeller}
-            onChange={(e) => setSelectedSeller(e.target.value)}
+      {/* --- BARRA DE FILTROS APRIMORADA --- */}
+      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
+        {/* Filtros Rápidos */}
+        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+          <button
+            onClick={() => handlePeriodChange("weekly")}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
           >
-            <option value="all">Todos</option>
-            {allPeople
-              .filter((p) => p.cargo_nome === "Vendedor")
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
+            Esta Semana
+          </button>
+          <button
+            onClick={() => handlePeriodChange("monthly")}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+          >
+            Este Mês
+          </button>
+          <button
+            onClick={() => handlePeriodChange("yearly")}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+          >
+            Este Ano
+          </button>
+        </div>
+
+        {/* Inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              Início
+            </label>
+            <input
+              type="date"
+              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPeriodType("custom");
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              Fim
+            </label>
+            <input
+              type="date"
+              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPeriodType("custom");
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              Vendedor
+            </label>
+            <select
+              className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              value={selectedSeller}
+              onChange={(e) => setSelectedSeller(e.target.value)}
+            >
+              <option value="all">Todos</option>
+              {allPeople
+                .filter((p) => p.cargo_nome === "Vendedor")
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              Pagamento
+            </label>
+            <select
+              className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              value={selectedPayment}
+              onChange={(e) => setSelectedPayment(e.target.value)}
+            >
+              <option value="all">Todos</option>
+              {paymentMethods.map((method) => (
+                <option key={method} value={method}>
+                  {method}
                 </option>
               ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-            Pagamento
-          </label>
-          <select
-            className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-            value={selectedPayment}
-            onChange={(e) => setSelectedPayment(e.target.value)}
-          >
-            <option value="all">Todos</option>
-            {paymentMethods.map((method) => (
-              <option key={method} value={method}>
-                {method}
-              </option>
-            ))}
-          </select>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -498,7 +551,7 @@ const Relatorios = () => {
           value={metrics.comissoes}
           color="purple"
           icon="fa-user-tag"
-          tooltip="Valor devido aos vendedores (já calculado pelo sistema)."
+          tooltip="Valor devido aos vendedores sobre o faturamento de peças."
         />
       </div>
 
@@ -519,6 +572,19 @@ const Relatorios = () => {
       </div>
 
       {/* --- TABELAS --- */}
+      {selectedPayment === "Múltiplos" && (
+        <div className="mb-6 bg-indigo-50 rounded-xl border border-indigo-200 p-4">
+          <h3 className="text-indigo-800 font-bold mb-2 flex items-center">
+            <i className="fas fa-info-circle mr-2"></i> Detalhamento de Vendas
+            com Múltiplos Pagamentos
+          </h3>
+          <p className="text-sm text-indigo-600 mb-0">
+            Abaixo estão listadas as vendas onde foram utilizadas múltiplas
+            formas de pagamento.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[500px]">
         {/* Esquerda: Vendas Detalhadas */}
         <div className="flex-[2] bg-white rounded-xl shadow-md flex flex-col overflow-hidden border border-gray-100 min-h-[300px]">
@@ -541,6 +607,9 @@ const Relatorios = () => {
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                     Total Venda
                   </th>
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                    Pagto
+                  </th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                     Comissão
                   </th>
@@ -559,6 +628,13 @@ const Relatorios = () => {
                     <td className="px-4 py-2 text-sm text-right font-medium">
                       {formatCurrency(v.total_final)}
                     </td>
+                    <td className="px-4 py-2 text-center text-xs">
+                      <span
+                        className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}
+                      >
+                        {standardizeMethod(v.forma_pagamento) || "-"}
+                      </span>
+                    </td>
                     <td className="px-4 py-2 text-sm text-right text-purple-600">
                       {v.cancelada ? "-" : formatCurrency(v.comissao_calculada)}
                     </td>
@@ -566,7 +642,7 @@ const Relatorios = () => {
                 ))}
                 {filteredSales.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="p-8 text-center text-gray-400">
+                    <td colSpan="5" className="p-8 text-center text-gray-400">
                       Nenhuma venda neste período.
                     </td>
                   </tr>
@@ -621,7 +697,7 @@ const Relatorios = () => {
             </div>
           </div>
 
-          {/* Tabela: Mão de Obra */}
+          {/* Tabela: Mão de Obra a Pagar */}
           <div className="bg-white rounded-xl shadow-md flex flex-col overflow-hidden flex-1 border border-orange-100">
             <div className="p-3 bg-orange-50 border-b border-orange-100 font-bold text-orange-800 text-sm">
               Repasse Mão de Obra

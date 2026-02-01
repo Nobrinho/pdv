@@ -1,8 +1,12 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from "react";
 import dayjs from "dayjs";
+import "dayjs/locale/pt-br"; // Importante para datas em PT-BR
 import { useAlert } from "../context/AlertSystem";
 import CupomFiscal from "../components/CupomFiscal";
+
+// Configura locale
+dayjs.locale("pt-br");
 
 const Recibos = () => {
   const { showAlert } = useAlert();
@@ -12,24 +16,23 @@ const Recibos = () => {
   const [sellers, setSellers] = useState([]);
   const [clients, setClients] = useState([]);
 
-  // Filtros
+  // Filtros de Data e Período (Padrão: Semana Atual)
+  const [periodType, setPeriodType] = useState("weekly");
   const [filters, setFilters] = useState({
-    startDate: "",
-    endDate: "",
+    startDate: dayjs().startOf("week").format("YYYY-MM-DD"),
+    endDate: dayjs().endOf("week").format("YYYY-MM-DD"),
     sellerId: "",
     clientId: "",
   });
 
-  // Estado para Busca de Cliente (Autocomplete)
+  // Estado para Busca de Cliente
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [showClientResults, setShowClientResults] = useState(false);
 
-  // Modal Recibo
+  // Modais
   const [selectedSale, setSelectedSale] = useState(null);
   const [saleItems, setSaleItems] = useState([]);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-
-  // Modal Cancelamento
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [saleToCancel, setSaleToCancel] = useState(null);
   const [cancelData, setCancelData] = useState({
@@ -37,42 +40,6 @@ const Recibos = () => {
     adminPass: "",
     reason: "",
   });
-
-  // --- ESTILOS DE IMPRESSÃO (Reutilizáveis) ---
-  const styles = {
-    container: {
-      backgroundColor: "#fff",
-      color: "#000",
-      fontFamily: "'Courier New', monospace",
-      fontSize: "12px",
-      padding: "10px",
-      width: "100%",
-      maxWidth: "300px",
-    },
-    center: { textAlign: "center" },
-    right: { textAlign: "right" },
-    bold: { fontWeight: "bold" },
-    borderBottom: {
-      borderBottom: "1px dashed #000",
-      marginBottom: "5px",
-      paddingBottom: "5px",
-    },
-    table: { width: "100%", borderCollapse: "collapse" },
-    td: {
-      maxWidth: "250px",
-      whiteSpace: "normal",
-      wordBreak: "break-word",
-      overflowWrap: "break-word",
-    },
-    textSmall: { fontSize: "10px" },
-    cancelado: {
-      border: "2px solid #000",
-      padding: "5px",
-      textAlign: "center",
-      fontWeight: "bold",
-      marginTop: "10px",
-    },
-  };
 
   useEffect(() => {
     loadData();
@@ -88,7 +55,8 @@ const Recibos = () => {
       const peopleData = await window.api.getPeople();
       const clientsData = await window.api.getClients();
 
-      setSales(salesData);
+      // Ordenar decrescente por data
+      setSales(salesData.sort((a, b) => b.data_venda - a.data_venda));
       setFilteredSales(salesData);
       setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
       setClients(clientsData || []);
@@ -97,26 +65,54 @@ const Recibos = () => {
     }
   };
 
+  // --- FILTROS RÁPIDOS ---
+  const handlePeriodChange = (type) => {
+    setPeriodType(type);
+    const now = dayjs();
+
+    let newStart = filters.startDate;
+    let newEnd = filters.endDate;
+
+    if (type === "weekly") {
+      newStart = now.startOf("week").format("YYYY-MM-DD");
+      newEnd = now.endOf("week").format("YYYY-MM-DD");
+    } else if (type === "monthly") {
+      newStart = now.startOf("month").format("YYYY-MM-DD");
+      newEnd = now.endOf("month").format("YYYY-MM-DD");
+    } else if (type === "yearly") {
+      newStart = now.startOf("year").format("YYYY-MM-DD");
+      newEnd = now.endOf("year").format("YYYY-MM-DD");
+    }
+
+    setFilters((prev) => ({ ...prev, startDate: newStart, endDate: newEnd }));
+  };
+
+  // Lógica robusta de verificação de intervalo de datas (00:00 - 23:59)
+  const isWithinRange = (timestamp) => {
+    const start = dayjs(filters.startDate).startOf("day");
+    const end = dayjs(filters.endDate).endOf("day");
+    const dateToCheck = dayjs(timestamp);
+    return (
+      dateToCheck.isSame(start) ||
+      dateToCheck.isSame(end) ||
+      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
+    );
+  };
+
   const applyFilters = () => {
     let result = sales;
 
-    if (filters.startDate) {
-      result = result.filter((s) =>
-        dayjs(s.data_venda).isAfter(
-          dayjs(filters.startDate).subtract(1, "day"),
-        ),
-      );
-    }
-    if (filters.endDate) {
-      result = result.filter((s) =>
-        dayjs(s.data_venda).isBefore(dayjs(filters.endDate).add(1, "day")),
-      );
-    }
+    // Filtro Data (Corrigido)
+    result = result.filter((s) => isWithinRange(s.data_venda));
+
+    // Filtro Vendedor
     if (filters.sellerId && filters.sellerId !== "all") {
       result = result.filter(
         (s) => s.vendedor_id === parseInt(filters.sellerId),
       );
     }
+
+    // Filtro Cliente
     if (filters.clientId && filters.clientId !== "all") {
       result = result.filter(
         (s) => s.cliente_id === parseInt(filters.clientId),
@@ -126,7 +122,7 @@ const Recibos = () => {
     setFilteredSales(result);
   };
 
-  // --- Lógica de Busca de Cliente ---
+  // --- BUSCA DE CLIENTE ---
   const filteredClientsList = useMemo(() => {
     if (!clientSearchTerm) return [];
     const lower = clientSearchTerm.toLowerCase();
@@ -157,10 +153,9 @@ const Recibos = () => {
     return client ? client.nome : "Desconhecido";
   };
 
+  // --- AÇÕES ---
   const handleViewReceipt = async (sale) => {
-    console.log("FRONTEND: Solicitando itens para venda:", sale.id);
     const items = await window.api.getSaleItems(sale.id);
-    console.log("FRONTEND: Itens recebidos:", items);
     const saleWithClientName = {
       ...sale,
       cliente_nome: getClientName(sale.cliente_id),
@@ -175,9 +170,13 @@ const Recibos = () => {
     if (!receiptElement) {
       return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
     }
-    const receiptContent = receiptElement.outerHTML;
+    // Pega o HTML externo, incluindo o ID wrapper se o componente não tiver
+    const receiptContent = receiptElement.innerHTML; // ou outerHTML dependendo de como o CupomFiscal renderiza
     const printerName = await window.api.getConfig("impressora_padrao");
-    const result = await window.api.printSilent(receiptContent, printerName);
+    const result = await window.api.printSilent(
+      receiptElement.outerHTML,
+      printerName,
+    );
 
     if (result.success) {
       showAlert("Enviado para impressão.", "Sucesso", "success");
@@ -246,8 +245,14 @@ const Recibos = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ startDate: "", endDate: "", sellerId: "", clientId: "" });
-    setClientSearchTerm(""); // Limpa o texto da busca também
+    setPeriodType("custom");
+    setFilters({
+      startDate: "",
+      endDate: "",
+      sellerId: "",
+      clientId: "",
+    });
+    setClientSearchTerm("");
   };
 
   const formatCurrency = (val) => `R$ ${val.toFixed(2).replace(".", ",")}`;
@@ -258,8 +263,30 @@ const Recibos = () => {
         Histórico de Vendas
       </h1>
 
-      {/* Filtros */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100">
+      {/* --- FILTROS --- */}
+      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
+        {/* Botões Rápidos */}
+        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+          <button
+            onClick={() => handlePeriodChange("weekly")}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+          >
+            Esta Semana
+          </button>
+          <button
+            onClick={() => handlePeriodChange("monthly")}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+          >
+            Este Mês
+          </button>
+          <button
+            onClick={() => handlePeriodChange("yearly")}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+          >
+            Este Ano
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">
@@ -267,11 +294,12 @@ const Recibos = () => {
             </label>
             <input
               type="date"
-              className="w-full border border-gray-300 rounded p-2 text-sm"
+              className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               value={filters.startDate}
-              onChange={(e) =>
-                setFilters({ ...filters, startDate: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, startDate: e.target.value });
+                setPeriodType("custom");
+              }}
             />
           </div>
           <div>
@@ -280,11 +308,12 @@ const Recibos = () => {
             </label>
             <input
               type="date"
-              className="w-full border border-gray-300 rounded p-2 text-sm"
+              className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               value={filters.endDate}
-              onChange={(e) =>
-                setFilters({ ...filters, endDate: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, endDate: e.target.value });
+                setPeriodType("custom");
+              }}
             />
           </div>
           <div>
@@ -292,7 +321,7 @@ const Recibos = () => {
               Vendedor
             </label>
             <select
-              className="w-full border border-gray-300 rounded p-2 text-sm bg-white"
+              className="w-full border border-gray-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
               value={filters.sellerId}
               onChange={(e) =>
                 setFilters({ ...filters, sellerId: e.target.value })
@@ -307,7 +336,7 @@ const Recibos = () => {
             </select>
           </div>
 
-          {/* Filtro de Cliente com Autocomplete */}
+          {/* Campo de Cliente */}
           <div className="relative">
             <label className="text-xs font-semibold text-gray-500 mb-1 block">
               Cliente
@@ -320,7 +349,7 @@ const Recibos = () => {
                 onChange={(e) => {
                   setClientSearchTerm(e.target.value);
                   if (filters.clientId)
-                    setFilters({ ...filters, clientId: "" }); // Limpa ID se digitar
+                    setFilters({ ...filters, clientId: "" });
                   setShowClientResults(true);
                 }}
                 onFocus={() => setShowClientResults(true)}
@@ -340,8 +369,7 @@ const Recibos = () => {
                 </button>
               )}
             </div>
-
-            {/* Dropdown de Resultados */}
+            {/* Resultados Cliente */}
             {showClientResults &&
               (clientSearchTerm.length > 0 || clients.length > 0) && (
                 <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
@@ -484,12 +512,17 @@ const Recibos = () => {
         </div>
       </div>
 
+      {/* Modal de Recibo */}
       {showReceiptModal && selectedSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh] max-w-sm">
-            {/* ÁREA ROLÁVEL */}
+          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
             <div className="overflow-y-auto pr-1">
-              <CupomFiscal sale={selectedSale} items={saleItems} />
+              {/* Aqui usamos o componente importado e adicionamos o ID necessário para a impressão silenciosa.
+                    O CupomFiscal deve receber sale e items.
+                */}
+              <div id="cupom-fiscal">
+                <CupomFiscal sale={selectedSale} items={saleItems} />
+              </div>
             </div>
 
             <div className="mt-4 flex gap-2 sticky bottom-0 bg-gray-200 pt-2">
@@ -499,7 +532,6 @@ const Recibos = () => {
               >
                 <i className="fas fa-print mr-2"></i> Imprimir
               </button>
-
               <button
                 onClick={() => setShowReceiptModal(false)}
                 className="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400"
@@ -511,83 +543,56 @@ const Recibos = () => {
         </div>
       )}
 
+      {/* Modal Cancelamento */}
       {showCancelModal && saleToCancel && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] animate-fade-in backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-[90%] transform transition-all scale-100 border-2 border-red-100">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <i className="fas fa-user-lock text-3xl text-red-600"></i>
-              </div>
-              <h2 className="text-xl font-bold text-gray-800">
-                Autorização Necessária
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                O cancelamento requer permissão de administrador e
-                justificativa.
-              </p>
-            </div>
-
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 border-2 border-red-100">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
+              Autorização Necessária
+            </h2>
             <form onSubmit={submitCancel} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Motivo do Cancelamento *
-                </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                  rows="3"
-                  placeholder="Descreva o motivo (min. 10 caracteres)..."
-                  value={cancelData.reason}
+              <textarea
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                rows="3"
+                placeholder="Motivo (min. 10 chars)..."
+                value={cancelData.reason}
+                onChange={(e) =>
+                  setCancelData({ ...cancelData, reason: e.target.value })
+                }
+                required
+              ></textarea>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <input
+                  className="w-full border border-gray-300 rounded p-2 text-sm mb-2"
+                  placeholder="Usuário Admin"
+                  value={cancelData.adminUser}
                   onChange={(e) =>
-                    setCancelData({ ...cancelData, reason: e.target.value })
+                    setCancelData({ ...cancelData, adminUser: e.target.value })
                   }
                   required
-                ></textarea>
+                />
+                <input
+                  type="password"
+                  className="w-full border border-gray-300 rounded p-2 text-sm"
+                  placeholder="Senha"
+                  value={cancelData.adminPass}
+                  onChange={(e) =>
+                    setCancelData({ ...cancelData, adminPass: e.target.value })
+                  }
+                  required
+                />
               </div>
-
-              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <p className="text-xs font-bold text-gray-500 uppercase mb-2">
-                  Credenciais do Admin
-                </p>
-                <div className="space-y-2">
-                  <input
-                    className="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-red-500"
-                    placeholder="Usuário Admin"
-                    value={cancelData.adminUser}
-                    onChange={(e) =>
-                      setCancelData({
-                        ...cancelData,
-                        adminUser: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                  <input
-                    type="password"
-                    className="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-red-500"
-                    placeholder="Senha"
-                    value={cancelData.adminPass}
-                    onChange={(e) =>
-                      setCancelData({
-                        ...cancelData,
-                        adminPass: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCancelModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-lg font-medium hover:bg-gray-200 transition"
+                  className="flex-1 bg-gray-100 py-2 rounded-lg font-medium"
                 >
                   Voltar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-red-600 text-white py-2.5 rounded-lg font-bold hover:bg-red-700 transition shadow-md"
+                  className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold"
                 >
                   CONFIRMAR
                 </button>
