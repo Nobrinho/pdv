@@ -16,10 +16,10 @@ import Dashboard from "./pages/Dashboard";
 import Config from "./pages/Config";
 import Login from "./pages/Login";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
-import Updater from "./components/Updater";
 import Relatorios from "./pages/Relatorios";
 import Clientes from "./pages/Clientes";
 import { useAlert } from "./context/AlertSystem";
+import { LOGO_BASE64 } from "./assets/logoBase64";
 
 // Definição de permissões por cargo
 const PERMISSOES_CAIXA = [
@@ -101,6 +101,13 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
+  // Estado de Inicialização (Splash Screen)
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(true);
+  const [updateStatus, setUpdateStatus] = useState(
+    "Verificando atualizações...",
+  );
+  const [downloadProgress, setDownloadProgress] = useState(0);
+
   const { showAlert } = useAlert();
 
   const [adminUser, setAdminUser] = useState("");
@@ -122,6 +129,86 @@ function App() {
     };
     fetchVersion();
   }, []);
+
+  // Lógica de Update (Splash Screen)
+  useEffect(() => {
+    // Timer de segurança no Frontend (caso o backend falhe silenciosamente)
+    const safetyTimer = setTimeout(() => {
+      console.warn("Update check timed out (Frontend) - Forcing start");
+      setIsCheckingUpdate(false);
+    }, 8000);
+
+    const handleAvailable = (ver) => {
+      clearTimeout(safetyTimer);
+      setUpdateStatus(`Nova versão ${ver} encontrada. Baixando...`);
+      window.api.downloadUpdate();
+    };
+    const handleNotAvailable = () => {
+      clearTimeout(safetyTimer);
+      setIsCheckingUpdate(false);
+    };
+    const handleError = (err) => {
+      console.warn("Update Error/Timeout:", err);
+      clearTimeout(safetyTimer);
+      setIsCheckingUpdate(false); // Libera o app mesmo com erro
+    };
+    const handleProgress = (p) => setDownloadProgress(p);
+    const handleDownloaded = () => {
+      setUpdateStatus("Instalando atualização...");
+      setTimeout(() => window.api.quitAndInstall(), 1500);
+    };
+
+    // Registra ouvintes (Verifica se existem no preload para evitar crash)
+    if (window.api.onUpdateAvailable)
+      window.api.onUpdateAvailable(handleAvailable);
+    if (window.api.onUpdateNotAvailable)
+      window.api.onUpdateNotAvailable(handleNotAvailable);
+    if (window.api.onUpdateError) window.api.onUpdateError(handleError);
+    if (window.api.onUpdateProgress)
+      window.api.onUpdateProgress(handleProgress);
+    if (window.api.onUpdateDownloaded)
+      window.api.onUpdateDownloaded(handleDownloaded);
+
+    // Inicia verificação
+    window.api.checkForUpdates();
+
+    return () => clearTimeout(safetyTimer);
+  }, []);
+
+  // Renderiza Splash Screen se estiver verificando
+  if (isCheckingUpdate) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
+        <div className="mb-8 animate-pulse">
+          <img
+            src={LOGO_BASE64}
+            alt="SysControl"
+            className="w-32 h-32 object-contain"
+          />
+        </div>
+        <h2 className="text-xl font-bold mb-4 tracking-wide">{updateStatus}</h2>
+
+        {downloadProgress > 0 && (
+          <div className="w-64 bg-gray-700 rounded-full h-2.5 mb-2">
+            <div
+              className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+              style={{ width: `${downloadProgress}%` }}
+            ></div>
+          </div>
+        )}
+
+        {downloadProgress > 0 && (
+          <p className="text-xs text-gray-400">
+            {Math.round(downloadProgress)}%
+          </p>
+        )}
+
+        <div className="mt-8">
+          <i className="fas fa-circle-notch fa-spin text-blue-500 text-2xl"></i>
+        </div>
+      </div>
+    );
+  }
 
   const hasAccess = (path) => {
     if (!user) return false;
@@ -297,16 +384,86 @@ function App() {
 
       <main className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
         <Routes>
-          <Route path="/" element={<ProtectedRoute path="/"><Dashboard /></ProtectedRoute>} />
-          <Route path="/vendas" element={<ProtectedRoute path="/vendas"><Vendas /></ProtectedRoute>} />
-          <Route path="/servicos" element={<ProtectedRoute path="/servicos"><Servicos /></ProtectedRoute>} />
-          <Route path="/recibos" element={<ProtectedRoute path="/recibos"><Recibos /></ProtectedRoute>} />
-          <Route path="/historico" element={<ProtectedRoute path="/historico"><HistoricoPrecos /></ProtectedRoute>} />
-          <Route path="/produtos" element={<ProtectedRoute path="/produtos"><Produtos user={user} /></ProtectedRoute>} />
-          <Route path="/pessoas" element={<ProtectedRoute path="/pessoas"><Pessoas /></ProtectedRoute>} />
-          <Route path="/clientes" element={<ProtectedRoute path="/clientes"><Clientes /></ProtectedRoute>} />
-          <Route path="/relatorios" element={<ProtectedRoute path="/relatorios"><Relatorios /></ProtectedRoute>} />
-          <Route path="/config" element={<ProtectedRoute path="/config"><Config /></ProtectedRoute>} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute path="/">
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendas"
+            element={
+              <ProtectedRoute path="/vendas">
+                <Vendas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/servicos"
+            element={
+              <ProtectedRoute path="/servicos">
+                <Servicos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recibos"
+            element={
+              <ProtectedRoute path="/recibos">
+                <Recibos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/historico"
+            element={
+              <ProtectedRoute path="/historico">
+                <HistoricoPrecos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/produtos"
+            element={
+              <ProtectedRoute path="/produtos">
+                <Produtos user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pessoas"
+            element={
+              <ProtectedRoute path="/pessoas">
+                <Pessoas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clientes"
+            element={
+              <ProtectedRoute path="/clientes">
+                <Clientes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/relatorios"
+            element={
+              <ProtectedRoute path="/relatorios">
+                <Relatorios />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/config"
+            element={
+              <ProtectedRoute path="/config">
+                <Config />
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
@@ -359,10 +516,16 @@ function App() {
                 type="submit"
                 disabled={isAuthLoading}
                 className={`w-full py-3 rounded-lg font-bold transition shadow-lg flex justify-center items-center ${
-                  isAuthLoading ? "bg-red-400 cursor-not-allowed text-white" : "bg-red-600 hover:bg-red-700 text-white"
+                  isAuthLoading
+                    ? "bg-red-400 cursor-not-allowed text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
                 }`}
               >
-                {isAuthLoading ? <i className="fas fa-circle-notch fa-spin"></i> : "LIBERAR ACESSO"}
+                {isAuthLoading ? (
+                  <i className="fas fa-circle-notch fa-spin"></i>
+                ) : (
+                  "LIBERAR ACESSO"
+                )}
               </button>
               <button
                 type="button"
@@ -376,9 +539,6 @@ function App() {
           </div>
         </div>
       )}
-
-      {/* Auto Updater Component */}
-      <Updater />
     </div>
   );
 }

@@ -34,6 +34,7 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let mainWindow;
+let updateCheckTimer;
 
 async function initDb() {
   try {
@@ -875,25 +876,52 @@ ipcMain.handle("get-app-version", () => app.getVersion());
 
 // Auto Update
 ipcMain.handle("check-for-updates", () => {
-  if (!isDev) autoUpdater.checkForUpdates();
+  if (isDev) {
+    if (mainWindow) mainWindow.webContents.send("update_not_available");
+    return;
+  }
+
+  // Timeout de segurança: 5 segundos para não travar a Splash Screen
+  if (updateCheckTimer) clearTimeout(updateCheckTimer);
+  updateCheckTimer = setTimeout(() => {
+    console.log("⚠️ Update check timed out");
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("update_error", "Timeout - Verificação demorou muito");
+    }
+  }, 5000);
+
+  autoUpdater.checkForUpdates().catch((err) => {
+    if (updateCheckTimer) clearTimeout(updateCheckTimer);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      console.error("Erro no check-for-updates:", err);
+      mainWindow.webContents.send("update_error", err.message);
+    }
+  });
 });
 ipcMain.handle("download-update", async () => {
   await autoUpdater.downloadUpdate();
   return { success: true };
 });
 ipcMain.handle("quit-and-install", () => autoUpdater.quitAndInstall());
-autoUpdater.on("update-available", (info) =>
-  mainWindow.webContents.send("update_available", info.version),
-);
-autoUpdater.on("download-progress", (p) =>
-  mainWindow.webContents.send("update_progress", p.percent),
-);
-autoUpdater.on("update-downloaded", () =>
-  mainWindow.webContents.send("update_downloaded"),
-);
-autoUpdater.on("error", (err) =>
-  mainWindow.webContents.send("update_error", err.message),
-);
+
+autoUpdater.on("update-available", (info) => {
+  if (updateCheckTimer) clearTimeout(updateCheckTimer);
+  mainWindow.webContents.send("update_available", info.version);
+});
+autoUpdater.on("update-not-available", () => {
+  if (updateCheckTimer) clearTimeout(updateCheckTimer);
+  mainWindow.webContents.send("update_not_available");
+});
+autoUpdater.on("download-progress", (p) => {
+  mainWindow.webContents.send("update_progress", p.percent);
+});
+autoUpdater.on("update-downloaded", () => {
+  mainWindow.webContents.send("update_downloaded");
+});
+autoUpdater.on("error", (err) => {
+  if (updateCheckTimer) clearTimeout(updateCheckTimer);
+  mainWindow.webContents.send("update_error", err.message);
+});
 
 // --- ESTATÍSTICAS DE ESTOQUE (NOVO) ---
 ipcMain.handle("get-inventory-stats", async () => {
