@@ -427,6 +427,9 @@ const Recibos = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Vendedor
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Pagamento
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                   Total
                 </th>
@@ -459,6 +462,19 @@ const Recibos = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {sale.vendedor_nome}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {sale.lista_pagamentos && sale.lista_pagamentos.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {sale.lista_pagamentos.map((p, i) => (
+                          <span key={i} className="text-xs bg-gray-100 px-2 py-0.5 rounded border border-gray-200 w-fit whitespace-nowrap">
+                            {p.metodo}: {formatCurrency(p.valor)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span>{sale.forma_pagamento}</span>
+                    )}
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${sale.cancelada ? "text-red-400 line-through" : "text-gray-900"}`}

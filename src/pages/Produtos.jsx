@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAlert } from "../context/AlertSystem";
 
-const Produtos = () => {
+const Produtos = ({ user }) => {
   const { showAlert, showConfirm } = useAlert();
   const [products, setProducts] = useState([]);
 
@@ -32,6 +32,41 @@ const Produtos = () => {
   });
 
   const [editingId, setEditingId] = useState(null);
+
+  // --- SEGURANÇA (Modal Supervisor) ---
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [securityData, setSecurityData] = useState({ user: "", pass: "" });
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const withPermission = (action) => {
+    if (user?.cargo === "admin") {
+      action();
+    } else {
+      setPendingAction(() => action);
+      setSecurityData({ user: "", pass: "" });
+      setShowSecurityModal(true);
+    }
+  };
+
+  const handleSecurityAuth = async (e) => {
+    e.preventDefault();
+    try {
+      const result = await window.api.loginAttempt({
+        username: securityData.user,
+        password: securityData.pass,
+      });
+
+      if (result.success && result.user.cargo === "admin") {
+        setShowSecurityModal(false);
+        if (pendingAction) pendingAction();
+        setPendingAction(null);
+      } else {
+        showAlert("Credenciais inválidas ou sem permissão de admin.", "Acesso Negado", "error");
+      }
+    } catch (error) {
+      showAlert("Erro ao validar permissão.", "Erro", "error");
+    }
+  };
 
   useEffect(() => {
     loadProducts();
@@ -181,10 +216,10 @@ const Produtos = () => {
           Gerenciar Estoque
         </h1>
         <button
-          onClick={() => {
+          onClick={() => withPermission(() => {
             resetForm();
             setShowProductModal(true);
-          }}
+          })}
           className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center shadow-md text-sm md:text-base whitespace-nowrap"
         >
           <i className="fas fa-box-open mr-2"></i> Novo Produto
@@ -287,19 +322,19 @@ const Produtos = () => {
                   <td className="px-3 py-3 whitespace-nowrap text-center text-sm font-medium">
                     <div className="flex justify-center items-center gap-1 md:gap-2">
                       <button
-                        onClick={() => openStockModal(p)}
+                        onClick={() => withPermission(() => openStockModal(p))}
                         className="text-white bg-green-500 hover:bg-green-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
                       >
                         <i className="fas fa-plus text-xs"></i>
                       </button>
                       <button
-                        onClick={() => handleEdit(p)}
+                        onClick={() => withPermission(() => handleEdit(p))}
                         className="text-white bg-blue-500 hover:bg-blue-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
                       >
                         <i className="fas fa-edit text-xs"></i>
                       </button>
                       <button
-                        onClick={() => handleDelete(p.id)}
+                        onClick={() => withPermission(() => handleDelete(p.id))}
                         className="text-white bg-red-500 hover:bg-red-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
                       >
                         <i className="fas fa-trash text-xs"></i>
@@ -528,6 +563,54 @@ const Produtos = () => {
                   className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm shadow-md"
                 >
                   Confirmar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL DE SEGURANÇA (SUPERVISOR) --- */}
+      {showSecurityModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 border-2 border-red-100">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center flex flex-col items-center">
+              <i className="fas fa-user-lock text-red-500 text-3xl mb-2"></i>
+              Autorização Necessária
+            </h2>
+            <p className="text-sm text-gray-500 text-center mb-4">
+              Esta ação requer permissão de um administrador.
+            </p>
+            <form onSubmit={handleSecurityAuth} className="space-y-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <input
+                  className="w-full border border-gray-300 rounded p-2 text-sm mb-2 outline-none focus:border-red-500"
+                  placeholder="Usuário Admin"
+                  value={securityData.user}
+                  onChange={(e) => setSecurityData({ ...securityData, user: e.target.value })}
+                  autoFocus
+                />
+                <input
+                  type="password"
+                  className="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-red-500"
+                  placeholder="Senha"
+                  value={securityData.pass}
+                  onChange={(e) => setSecurityData({ ...securityData, pass: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSecurityModal(false)}
+                  className="flex-1 bg-gray-100 py-2 rounded-lg font-medium hover:bg-gray-200 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition shadow"
+                >
+                  AUTORIZAR
                 </button>
               </div>
             </form>

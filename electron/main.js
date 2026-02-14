@@ -302,6 +302,11 @@ ipcMain.handle("get-sales", async () => {
       .whereIn("venda_id", vendaIds)
       .select("venda_itens.*", "produtos.tipo");
 
+    // Busca pagamentos para detalhamento
+    const allPayments = await knex("venda_pagamentos")
+      .whereIn("venda_id", vendaIds)
+      .select("*");
+
     // 1. CARREGAR CONFIGURAÇÕES GLOBAIS
     const configPadrao = await knex("configuracoes")
       .where("chave", "comissao_padrao")
@@ -315,6 +320,7 @@ ipcMain.handle("get-sales", async () => {
 
     const vendasProcessadas = vendas.map((venda) => {
       const itensVenda = allItems.filter((i) => i.venda_id === venda.id);
+      const pagamentosVenda = allPayments.filter((p) => p.venda_id === venda.id);
       const custoTotal = itensVenda.reduce(
         (acc, item) => acc + item.custo_unitario * item.quantidade,
         0,
@@ -362,6 +368,7 @@ ipcMain.handle("get-sales", async () => {
         ...venda,
         custo_total_real: custoTotal,
         comissao_real: comissaoTotal,
+        lista_pagamentos: pagamentosVenda,
       };
     });
 
