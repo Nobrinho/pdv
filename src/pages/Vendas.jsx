@@ -41,6 +41,7 @@ const Vendas = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [lastSale, setLastSale] = useState(null);
+  const [companyInfo, setCompanyInfo] = useState(null);
 
   // --- DADOS NOVO CLIENTE ---
   const [newClientData, setNewClientData] = useState({
@@ -63,11 +64,13 @@ const Vendas = () => {
       const prods = await window.api.getProducts();
       const people = await window.api.getPeople();
       const clientsData = await window.api.getClients();
+      const companyData = await window.api.getCompanyInfo();
 
       setProducts(prods || []);
       setSellers(people.filter((p) => p.cargo_nome === "Vendedor"));
       setMechanics(people.filter((p) => p.cargo_nome === "Trocador"));
       setClients(clientsData || []);
+      setCompanyInfo(companyData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
     }
@@ -915,7 +918,11 @@ const Vendas = () => {
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[340px]">
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              <CupomFiscal sale={lastSale} items={lastSale.itens} />
+              <CupomFiscal
+                sale={lastSale}
+                items={lastSale.itens}
+                companyInfo={companyInfo}
+              />
             </div>
             <div className="mt-4 flex gap-2 pt-2 border-t border-gray-300">
               <button

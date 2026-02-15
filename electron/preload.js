@@ -80,4 +80,14 @@ contextBridge.exposeInMainWorld("api", {
   deleteClient: (id) => ipcRenderer.invoke("delete-client", id),
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
+
+  // --- DADOS DA EMPRESA ---
+  getCompanyInfo: () => ipcRenderer.invoke("get-company-info"),
+  saveCompanyInfo: (data) => ipcRenderer.invoke("save-company-info", data),
+  selectLogoFile: () => ipcRenderer.invoke("select-logo-file"),
+
+  // --- DADOS DA EMPRESA ---
+  getCompanyInfo: () => ipcRenderer.invoke("get-company-info"),
+  saveCompanyInfo: (data) => ipcRenderer.invoke("save-company-info", data),
+  selectLogoFile: () => ipcRenderer.invoke("select-logo-file"),
 });

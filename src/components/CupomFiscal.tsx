@@ -6,9 +6,10 @@ import { LOGO_BASE64 as logo } from "../assets/logoBase64";
 interface CupomFiscalProps {
   sale: any;
   items: any[];
+  companyInfo?: any;
 }
 
-const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
+const CupomFiscal = ({ sale, items, companyInfo }: CupomFiscalProps) => {
   if (!sale || !items) return null;
 
   const styles = {
@@ -63,6 +64,13 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
   const clienteNome = clienteObj?.nome || sale.cliente_nome || null;
   const listaPagamentos = sale.lista_pagamentos || sale.pagamentos || [];
 
+  // Dados da Empresa (Fallback para hardcoded se não houver config)
+  const empNome = companyInfo?.empresa_nome || "BARBA PNEUS";
+  const empEnd = companyInfo?.empresa_endereco || "Av. Brigadeiro Hilario Gurjão, 22 - Jorge Teixeira 1 etapa - MANAUS/AM";
+  const empTel = companyInfo?.empresa_telefone || "(92) 99148-7719";
+  // Lógica da Logo: Usa o base64 vindo do backend (empresa_logo)
+  const logoSrc = companyInfo?.empresa_logo || companyInfo?.empresa_logo_url || logo;
+
   return (
     <div id="cupom-fiscal" style={styles.container}>
       {/* Cabeçalho */}
@@ -74,14 +82,14 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
             marginBottom: "5px",
           }}
         >
-          <img src={logo} alt="logo" width={70} />
+          <img src={logoSrc} alt="logo" width={70} style={{ maxHeight: '70px', objectFit: 'contain' }} />
         </div>
         <h2 style={{ ...styles.bold, fontSize: "14px", margin: "0" }}>
-          BARBA PNEUS
+          {empNome}
         </h2>
-        <p style={{ margin: "2px 0" }}>Av. Brigadeiro Hilario Gurjão, 22</p>
-        <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa - MANAUS/AM</p>
-        <p style={{ margin: "1px 0" }}>Tel: (92) 99148-7719</p>
+        <p style={{ margin: "2px 0", whiteSpace: "pre-wrap" }}>{empEnd}</p>
+        <p style={{ margin: "1px 0" }}>Tel: {empTel}</p>
+        {companyInfo?.empresa_cnpj && <p style={{ margin: "1px 0" }}>CNPJ: {companyInfo.empresa_cnpj}</p>}
         <p style={{ ...styles.bold, margin: "5px 0 2px 0" }}>RECIBO DE VENDA</p>
         <p style={styles.textSmall}>{dayjs(data).format("DD/MM/YYYY HH:mm")}</p>
         <p style={styles.textSmall}>ID: #{sale.id}</p>

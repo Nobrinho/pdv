@@ -3,9 +3,6 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const { autoUpdater } = require("electron-updater");
-
-// Configuração de Ambiente
-// MUDANÇA IMPORTANTE: Usar app.isPackaged é mais seguro para detectar produção
 const isDev = !app.isPackaged;
 let dbPath;
 
@@ -321,7 +318,9 @@ ipcMain.handle("get-sales", async () => {
 
     const vendasProcessadas = vendas.map((venda) => {
       const itensVenda = allItems.filter((i) => i.venda_id === venda.id);
-      const pagamentosVenda = allPayments.filter((p) => p.venda_id === venda.id);
+      const pagamentosVenda = allPayments.filter(
+        (p) => p.venda_id === venda.id,
+      );
       const custoTotal = itensVenda.reduce(
         (acc, item) => acc + item.custo_unitario * item.quantidade,
         0,
@@ -462,6 +461,119 @@ ipcMain.handle("delete-client", async (event, id) => {
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+// --- DADOS DA EMPRESA (WHITE LABEL) ---
+ipcMain.handle("get-company-info", async () => {
+  try {
+    const keys = [
+      "empresa_nome",
+      "empresa_endereco",
+      "empresa_telefone",
+      "empresa_cnpj",
+      "empresa_logo",
+    ];
+    const configs = await knex("configuracoes").whereIn("chave", keys);
+    const result = {};
+    configs.forEach((c) => {
+      result[c.chave] = c.valor;
+    });
+
+    // Ler arquivo de logo e converter para Base64
+    if (result.empresa_logo) {
+      try {
+        if (fs.existsSync(result.empresa_logo)) {
+          const fileBuffer = fs.readFileSync(result.empresa_logo);
+          const ext = path.extname(result.empresa_logo).replace(".", "");
+          const base64 = fileBuffer.toString("base64");
+          const base64Img = `data:image/${ext};base64,${base64}`;
+          result.empresa_logo = base64Img;
+          result.empresa_logo_url = base64Img; // Mantém compatibilidade
+        } else {
+          result.empresa_logo = null;
+        }
+      } catch (err) {
+        console.error("Erro ao ler arquivo de logo:", err);
+        result.empresa_logo = null;
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Erro get-company-info:", error);
+    return {};
+  }
+});
+
+ipcMain.handle("save-company-info", async (event, data) => {
+  try {
+    const trx = await knex.transaction();
+    for (const [key, value] of Object.entries(data)) {
+      // Ignora campo auxiliar de URL
+      if (key === "empresa_logo_url") continue;
+
+      // Proteção: Se a logo for Base64, é apenas visualização. Não sobrescreva o caminho no banco.
+      if (key === "empresa_logo") {
+        if (typeof value === "string" && value.startsWith("data:image")) {
+          continue;
+        }
+      }
+
+      const existing = await trx("configuracoes").where("chave", key).first();
+      if (existing) {
+        await trx("configuracoes").where("chave", key).update({ valor: value });
+      } else {
+        await trx("configuracoes").insert({ chave: key, valor: value });
+      }
+    }
+    await trx.commit();
+    return { success: true };
+  } catch (error) {
+    console.error("Erro save-company-info:", error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("select-logo-file", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile"],
+    filters: [{ name: "Imagens", extensions: ["jpg", "png", "jpeg"] }],
+  });
+
+  if (canceled || filePaths.length === 0) return null;
+
+  const sourcePath = filePaths[0];
+  const ext = path.extname(sourcePath);
+  const destFileName = `logo_empresa${ext}`;
+  const destPath = path.join(app.getPath("userData"), destFileName);
+
+  try {
+    await fs.promises.copyFile(sourcePath, destPath);
+
+    // Salva/Atualiza o caminho no banco
+    const existing = await knex("configuracoes")
+      .where("chave", "empresa_logo")
+      .first();
+    if (existing) {
+      await knex("configuracoes")
+        .where("chave", "empresa_logo")
+        .update({ valor: destPath });
+    } else {
+      await knex("configuracoes").insert({
+        chave: "empresa_logo",
+        valor: destPath,
+      });
+    }
+
+    // Retorna também o base64 para atualização imediata na interface
+    const fileBuffer = await fs.promises.readFile(destPath);
+    const base64 = fileBuffer.toString("base64");
+    const extName = path.extname(destPath).replace(".", "");
+    return { path: destPath, base64: `data:image/${extName};base64,${base64}` };
+  } catch (error) {
+    console.error("Erro ao salvar logo:", error);
+    return null;
   }
 });
 
@@ -886,7 +998,10 @@ ipcMain.handle("check-for-updates", () => {
   updateCheckTimer = setTimeout(() => {
     console.log("⚠️ Update check timed out");
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("update_error", "Timeout - Verificação demorou muito");
+      mainWindow.webContents.send(
+        "update_error",
+        "Timeout - Verificação demorou muito",
+      );
     }
   }, 5000);
 

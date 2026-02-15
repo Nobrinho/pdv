@@ -15,6 +15,7 @@ const Recibos = () => {
   const [filteredSales, setFilteredSales] = useState([]);
   const [sellers, setSellers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [companyInfo, setCompanyInfo] = useState(null);
 
   // Filtros de Data e Período (Padrão: Semana Atual)
   const [periodType, setPeriodType] = useState("weekly");
@@ -54,12 +55,14 @@ const Recibos = () => {
       const salesData = await window.api.getSales();
       const peopleData = await window.api.getPeople();
       const clientsData = await window.api.getClients();
+      const companyData = await window.api.getCompanyInfo();
 
       // Ordenar decrescente por data
       setSales(salesData.sort((a, b) => b.data_venda - a.data_venda));
       setFilteredSales(salesData);
       setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
       setClients(clientsData || []);
+      setCompanyInfo(companyData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
     }
@@ -537,7 +540,7 @@ const Recibos = () => {
                     O CupomFiscal deve receber sale e items.
                 */}
               <div id="cupom-fiscal">
-                <CupomFiscal sale={selectedSale} items={saleItems} />
+                <CupomFiscal sale={selectedSale} items={saleItems} companyInfo={companyInfo} />
               </div>
             </div>
 

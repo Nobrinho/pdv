@@ -27,6 +27,16 @@ const Config = () => {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // Dados da Empresa
+  const [companyInfo, setCompanyInfo] = useState({
+    empresa_nome: "",
+    empresa_endereco: "",
+    empresa_telefone: "",
+    empresa_cnpj: "",
+    empresa_logo: "",
+    empresa_logo_url: "",
+  });
+
   useEffect(() => {
     loadData();
   }, []);
@@ -39,10 +49,12 @@ const Config = () => {
       const printerConfig = await window.api.getConfig("impressora_padrao");
       const printersData = await window.api.getPrinters();
       const usersData = await window.api.getUsers();
+      const companyData = await window.api.getCompanyInfo();
 
       setRoles(rolesData);
       setPrinters(printersData);
       setSystemUsers(usersData);
+      setCompanyInfo((prev) => ({ ...prev, ...companyData }));
 
       if (configData)
         setDefaultCommission((parseFloat(configData) * 100).toString());
@@ -178,11 +190,123 @@ const Config = () => {
     }
   };
 
+  // --- Lógica da Empresa ---
+  const handleSaveCompany = async () => {
+    setIsLoading(true);
+    const result = await window.api.saveCompanyInfo(companyInfo);
+    setIsLoading(false);
+    if (result.success) {
+      showAlert("Dados da empresa atualizados!", "Sucesso", "success");
+    } else {
+      showAlert("Erro ao salvar dados.", "Erro", "error");
+    }
+  };
+
+  const handleSelectLogo = async () => {
+    const result = await window.api.selectLogoFile();
+    if (result) {
+      setCompanyInfo((prev) => ({ 
+        ...prev, 
+        empresa_logo: result.path,
+        empresa_logo_url: result.base64 
+      }));
+      showAlert("Logo atualizada com sucesso!", "Sucesso", "success");
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setCompanyInfo((prev) => ({
+      ...prev,
+      empresa_logo: "",
+      empresa_logo_url: "",
+    }));
+  };
+
   return (
     <div className="p-6 h-full flex flex-col overflow-y-auto">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         Configurações do Sistema
       </h1>
+
+      {/* --- DADOS DA EMPRESA (WHITE LABEL) --- */}
+      <div className="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-indigo-500">
+        <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
+          <i className="fas fa-building text-indigo-500 mr-2"></i> Dados da Empresa (Recibo)
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Fantasia</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                value={companyInfo.empresa_nome}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_nome: e.target.value })}
+                placeholder="Ex: Minha Loja de Peças"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço Completo</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                value={companyInfo.empresa_endereco}
+                onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_endereco: e.target.value })}
+                placeholder="Rua Exemplo, 123 - Bairro - Cidade/UF"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone / WhatsApp</label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={companyInfo.empresa_telefone}
+                  onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_telefone: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CNPJ / Documento</label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={companyInfo.empresa_cnpj}
+                  onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_cnpj: e.target.value })}
+                  placeholder="00.000.000/0000-00"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Logo do Recibo</label>
+            {companyInfo.empresa_logo_url ? (
+              <div className="relative">
+                <img 
+                  src={companyInfo.empresa_logo_url} 
+                  alt="Logo Empresa" 
+                  className="h-24 object-contain mb-4" 
+                  onError={(e) => e.target.style.display = 'none'}
+                />
+                <button 
+                  onClick={handleRemoveLogo}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 shadow-md transition-transform hover:scale-110"
+                  title="Remover Logo"
+                >
+                  <i className="fas fa-trash text-xs"></i>
+                </button>
+              </div>
+            ) : (
+              <div className="h-24 w-24 bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-400">
+                <i className="fas fa-image text-2xl"></i>
+              </div>
+            )}
+            <button onClick={handleSelectLogo} className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 text-sm font-bold">
+              <i className="fas fa-upload mr-2"></i> Selecionar Imagem
+            </button>
+          </div>
+        </div>
+        <button onClick={handleSaveCompany} disabled={isLoading} className="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md w-full md:w-auto">
+          {isLoading ? "Salvando..." : "Salvar Dados da Empresa"}
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Card Comissão (ATUALIZADO) */}
