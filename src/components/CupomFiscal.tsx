@@ -2,14 +2,16 @@
 import React from "react";
 import dayjs from "dayjs";
 import { LOGO_BASE64 as logo } from "../assets/logoBase64";
+import { LOGO_FALLBACK_BASE64 } from "./shared/Logo";
 
 interface CupomFiscalProps {
   sale: any;
   items: any[];
   companyInfo?: any;
+  id?: string;
 }
 
-const CupomFiscal = ({ sale, items, companyInfo }: CupomFiscalProps) => {
+const CupomFiscal = ({ sale, items, companyInfo, id }: CupomFiscalProps) => {
   if (!sale || !items) return null;
 
   const styles = {
@@ -68,8 +70,8 @@ const CupomFiscal = ({ sale, items, companyInfo }: CupomFiscalProps) => {
   const empNome = companyInfo?.empresa_nome || "BARBA PNEUS";
   const empEnd = companyInfo?.empresa_endereco || "Av. Brigadeiro Hilario Gurjão, 22 - Jorge Teixeira 1 etapa - MANAUS/AM";
   const empTel = companyInfo?.empresa_telefone || "(92) 99148-7719";
-  // Lógica da Logo: Usa o base64 vindo do backend (empresa_logo)
-  const logoSrc = companyInfo?.empresa_logo || companyInfo?.empresa_logo_url || logo;
+  // Lógica da Logo: Usa o base64 vindo do backend (empresa_logo) ou o fallback do sistema
+  const logoSrc = companyInfo?.empresa_logo || companyInfo?.empresa_logo_url || LOGO_FALLBACK_BASE64;
 
   return (
     <div id="cupom-fiscal" style={styles.container}>
@@ -82,7 +84,7 @@ const CupomFiscal = ({ sale, items, companyInfo }: CupomFiscalProps) => {
             marginBottom: "5px",
           }}
         >
-          <img src={logoSrc} alt="logo" width={70} style={{ maxHeight: '70px', objectFit: 'contain' }} />
+          <img src={logoSrc} alt="logo" width={100} style={{ maxHeight: '100px', objectFit: 'contain', imageRendering: 'crisp-edges' }} />
         </div>
         <h2 style={{ ...styles.bold, fontSize: "14px", margin: "0" }}>
           {empNome}
