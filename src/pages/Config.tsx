@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useAlert } from "../context/AlertSystem";
 import { Role, User, CompanyInfo, Printer } from "../types";
+import { useTheme } from "../context/ThemeContext";
 
 const Config: React.FC = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { theme, setTheme } = useTheme();
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [newRole, setNewRole] = useState("");
@@ -234,14 +236,14 @@ const Config: React.FC = () => {
   };
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-y-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">
+    <div className="p-6 h-full flex flex-col overflow-y-auto bg-gray-50 dark:bg-slate-950">
+      <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-6">
         Configurações do Sistema
       </h1>
 
       {/* --- DADOS DA EMPRESA (WHITE LABEL) --- */}
-      <div className="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-indigo-500">
-        <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md mb-6 border-l-4 border-indigo-500">
+        <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 flex items-center border-b pb-2">
           <i className="fas fa-building text-indigo-500 mr-2"></i> Dados da Empresa (Recibo)
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -249,7 +251,7 @@ const Config: React.FC = () => {
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Fantasia</label>
               <input
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
                 value={companyInfo.empresa_nome}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_nome: e.target.value })}
                 placeholder="Ex: Minha Loja de Peças"
@@ -258,7 +260,7 @@ const Config: React.FC = () => {
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço Completo</label>
               <input
-                className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
                 value={companyInfo.empresa_endereco}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_endereco: e.target.value })}
                 placeholder="Rua Exemplo, 123 - Bairro - Cidade/UF"
@@ -268,7 +270,7 @@ const Config: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone / WhatsApp</label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
                   value={companyInfo.empresa_telefone}
                   onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_telefone: e.target.value })}
                   placeholder="(00) 00000-0000"
@@ -277,7 +279,7 @@ const Config: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CNPJ / Documento</label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
                   value={companyInfo.empresa_cnpj}
                   onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_cnpj: e.target.value })}
                   placeholder="00.000.000/0000-00"
@@ -286,7 +288,7 @@ const Config: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-lg p-4 bg-gray-50 dark:bg-slate-800/50">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Logo do Recibo</label>
             {companyInfo.empresa_logo_url ? (
               <div className="relative">
@@ -304,11 +306,11 @@ const Config: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="h-24 w-24 bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-400">
+              <div className="h-24 w-24 bg-gray-200 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 text-gray-400">
                 <i className="fas fa-image text-2xl"></i>
               </div>
             )}
-            <button onClick={handleSelectLogo} className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 text-sm font-bold">
+            <button onClick={handleSelectLogo} className="bg-gray-200 text-gray-700 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-300 text-sm font-bold">
               <i className="fas fa-upload mr-2"></i> Selecionar Imagem
             </button>
           </div>
@@ -320,8 +322,8 @@ const Config: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Card Comissão */}
-        <div className="bg-white p-6 rounded-xl shadow-md h-fit border-l-4 border-blue-500">
-          <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-blue-500">
+          <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 flex items-center border-b pb-2">
             <i className="fas fa-percent text-blue-500 mr-2"></i> Regras de
             Comissão
           </h2>
@@ -334,7 +336,7 @@ const Config: React.FC = () => {
               <div className="relative">
                 <input
                   type="number"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-blue-500 transition font-bold text-gray-700"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-blue-500 transition font-bold text-gray-700 dark:text-slate-300"
                   placeholder="Ex: 5"
                   value={defaultCommission}
                   onChange={(e) => setDefaultCommission(e.target.value)}
@@ -352,7 +354,7 @@ const Config: React.FC = () => {
               <div className="relative">
                 <input
                   type="number"
-                  className="w-full border border-orange-200 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-orange-500 transition font-bold text-orange-800 bg-orange-50"
+                  className="w-full border border-orange-200 dark:border-orange-900/30 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-orange-500 transition font-bold text-orange-800 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20"
                   placeholder="Ex: 25"
                   value={usedCommission}
                   onChange={(e) => setUsedCommission(e.target.value)}
@@ -373,10 +375,52 @@ const Config: React.FC = () => {
           </div>
         </div>
 
+        {/* Card Tema */}
+        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-brand-primary">
+          <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 dark:text-slate-200 flex items-center border-b dark:border-slate-800 pb-2">
+            <i className="fas fa-adjust text-brand-primary mr-2"></i> Tema do Sistema
+          </h2>
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => setTheme("light")}
+              className={`p-3 rounded-xl border-2 transition flex flex-col items-center gap-2 ${
+                theme === "light"
+                  ? "border-brand-primary bg-brand-primary/5 text-brand-primary shadow-sm"
+                  : "border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 dark:bg-slate-800 text-gray-500 hover:border-brand-primary/50"
+              }`}
+            >
+              <i className="fas fa-sun text-xl"></i>
+              <span className="text-xs font-bold uppercase">Claro</span>
+            </button>
+            <button
+              onClick={() => setTheme("dark")}
+              className={`p-3 rounded-xl border-2 transition flex flex-col items-center gap-2 ${
+                theme === "dark"
+                  ? "border-brand-primary bg-brand-primary/5 text-brand-primary shadow-sm"
+                  : "border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 dark:bg-slate-800 text-gray-500 hover:border-brand-primary/50"
+              }`}
+            >
+              <i className="fas fa-moon text-xl"></i>
+              <span className="text-xs font-bold uppercase">Escuro</span>
+            </button>
+            <button
+              onClick={() => setTheme("system")}
+              className={`p-3 rounded-xl border-2 transition flex flex-col items-center gap-2 ${
+                theme === "system"
+                  ? "border-brand-primary bg-brand-primary/5 text-brand-primary shadow-sm"
+                  : "border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 dark:bg-slate-800 text-gray-500 hover:border-brand-primary/50"
+              }`}
+            >
+              <i className="fas fa-desktop text-xl"></i>
+              <span className="text-xs font-bold uppercase">Sistema</span>
+            </button>
+          </div>
+        </div>
+
         {/* Card Impressora */}
-        <div className="bg-white p-6 rounded-xl shadow-md h-fit border-l-4 border-gray-600">
-          <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
-            <i className="fas fa-print text-gray-600 mr-2"></i> Impressora de
+        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-gray-700 dark:border-brand-dark">
+          <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 dark:text-slate-200 flex items-center border-b dark:border-slate-800 pb-2">
+            <i className="fas fa-print text-gray-700 dark:text-slate-300 dark:text-brand-dark mr-2"></i>
             Cupom
           </h2>
           <div className="flex gap-4 items-end">
@@ -385,7 +429,7 @@ const Config: React.FC = () => {
                 Dispositivo
               </label>
               <select
-                className="w-full border border-gray-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-gray-500 transition"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-gray-500 transition"
                 value={selectedPrinter}
                 onChange={(e) => setSelectedPrinter(e.target.value)}
               >
@@ -407,8 +451,8 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Background Login */}
-        <div className="bg-white p-6 rounded-xl shadow-md h-fit border-l-4 border-brand-primary">
-          <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
+        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-brand-primary">
+          <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 dark:text-slate-200 flex items-center border-b dark:border-slate-800 pb-2">
             <i className="fas fa-image text-brand-primary mr-2"></i> Fundo do Login
           </h2>
           <div className="flex flex-col gap-3">
@@ -428,7 +472,7 @@ const Config: React.FC = () => {
                     className={`h-10 w-full rounded border transition flex items-center justify-center font-bold ${
                       isSelected 
                         ? "border-brand-primary bg-brand-primary text-white shadow-sm" 
-                        : "border-gray-200 bg-gray-100 text-gray-600 hover:border-brand-primary hover:bg-brand-primary/5"
+                        : "border-gray-200 dark:border-slate-800 bg-gray-100 text-gray-600 hover:border-brand-primary hover:bg-brand-primary/5"
                     }`}
                   >
                     {i}
@@ -464,7 +508,7 @@ const Config: React.FC = () => {
                 className={`w-full py-3 rounded-xl border-2 border-dashed transition flex flex-col items-center justify-center gap-1 ${
                   selectedBg.startsWith("data:image")
                     ? "border-brand-primary bg-brand-primary/5 text-brand-primary"
-                    : "border-gray-300 bg-gray-50 text-gray-500 hover:border-brand-dark hover:bg-brand-primary/5 hover:text-brand-primary"
+                    : "border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 text-gray-500 hover:border-brand-dark hover:bg-brand-primary/5 hover:text-brand-primary"
                 }`}
               >
                 <i className={`fas ${selectedBg.startsWith("data:image") ? "fa-check-circle" : "fa-cloud-upload-alt"} text-xl`}></i>
@@ -477,8 +521,8 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Backup */}
-        <div className="bg-white p-6 rounded-xl shadow-md h-fit border-l-4 border-green-500">
-          <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-green-500">
+          <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 flex items-center border-b pb-2">
             <i className="fas fa-database text-green-500 mr-2"></i> Dados
           </h2>
           <div className="flex flex-col gap-3">
@@ -490,7 +534,7 @@ const Config: React.FC = () => {
             </button>
             <button
               onClick={handleRestore}
-              className="w-full bg-white border-2 border-orange-500 text-orange-600 py-3 rounded-lg font-bold hover:bg-orange-50 transition shadow-sm flex justify-center items-center gap-2"
+              className="w-full bg-white dark:bg-slate-900 border-2 border-orange-500 text-orange-600 py-3 rounded-lg font-bold hover:bg-orange-50 transition shadow-sm flex justify-center items-center gap-2"
             >
               <i className="fas fa-upload"></i> RESTAURAR DADOS
             </button>
@@ -498,14 +542,14 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Cargos */}
-        <div className="bg-white p-6 rounded-xl shadow-md h-fit md:col-span-2 border-l-4 border-purple-500">
-          <h2 className="text-lg font-bold mb-4 text-gray-700 flex items-center border-b pb-2">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit md:col-span-2 border-l-4 border-purple-500">
+          <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 flex items-center border-b pb-2">
             <i className="fas fa-id-badge text-purple-500 mr-2"></i> Cargos
           </h2>
           <form onSubmit={handleAddRole} className="flex gap-2 mb-4">
             <input
               type="text"
-              className="flex-1 border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="flex-1 border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="Nome do cargo..."
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
@@ -526,9 +570,9 @@ const Config: React.FC = () => {
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-100 group hover:border-purple-200 transition"
+                className="flex justify-between items-center p-2 bg-gray-50 dark:bg-slate-800/50 rounded border border-gray-100 group hover:border-purple-200 transition"
               >
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
                   {role.nome}
                 </span>
                 <button
@@ -545,8 +589,8 @@ const Config: React.FC = () => {
       </div>
 
       {/* --- GESTÃO DE USUÁRIOS DE LOGIN --- */}
-      <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-600 mt-2">
-        <h2 className="text-xl font-bold mb-6 text-gray-800 flex items-center">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md border-t-4 border-indigo-600 mt-2">
+        <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-slate-100 flex items-center">
           <i className="fas fa-users-cog text-indigo-600 mr-2"></i> Usuários de
           Acesso (Login)
         </h2>
@@ -563,7 +607,7 @@ const Config: React.FC = () => {
                   Nome
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Ex: João Silva"
                   value={newUser.nome}
                   onChange={(e) =>
@@ -577,7 +621,7 @@ const Config: React.FC = () => {
                   Login
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Ex: joao.vendas"
                   value={newUser.username}
                   onChange={(e) =>
@@ -594,7 +638,7 @@ const Config: React.FC = () => {
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full border border-gray-300 rounded-lg p-2 pr-10 outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 pr-10 outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="******"
                     value={newUser.password}
                     onChange={(e) =>
@@ -619,7 +663,7 @@ const Config: React.FC = () => {
                   Permissão
                 </label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
                   value={newUser.cargo}
                   onChange={(e) =>
                     setNewUser({ ...newUser, cargo: e.target.value as "caixa" | "admin" })
@@ -643,9 +687,9 @@ const Config: React.FC = () => {
             <h3 className="font-semibold text-gray-600 mb-4 text-sm uppercase tracking-wide">
               Usuários Cadastrados
             </h3>
-            <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-slate-800 shadow-sm">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-slate-800/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Nome
@@ -661,9 +705,9 @@ const Config: React.FC = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200">
                   {systemUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 transition">
+                    <tr key={user.id} className="hover:bg-gray-50 dark:bg-slate-800/50 transition">
                       <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                         {user.nome}
                       </td>

@@ -50,7 +50,7 @@ const Clientes: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nome.trim())
-      return showAlert("Nome é obrigatório.", "Atenção", "warning");
+      return showAlert("Nome é obrigatório.", "Atenção", "info");
 
     const clientToSave: Partial<Client> = {
       nome: formData.nome,
@@ -87,7 +87,7 @@ const Clientes: React.FC = () => {
         loadData();
         showAlert("Cliente excluído.", "Sucesso", "success");
       } else {
-        showAlert(result.error, "Não permitido", "warning");
+        showAlert(result.error, "Não permitido", "info");
       }
     }
   };
@@ -124,7 +124,7 @@ const Clientes: React.FC = () => {
 
     const valorPagar = parseFloat(paymentValue);
     if (valorPagar > saldoDevedor + 0.01)
-      return showAlert("Valor maior que a dívida.", "Aviso", "warning");
+      return showAlert("Valor maior que a dívida.", "Aviso", "info");
 
     const result = await window.api.payDebt({
       contaId: debtId,
@@ -154,7 +154,7 @@ const Clientes: React.FC = () => {
   return (
     <div className="p-6 h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Clientes & Fiado</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Clientes & Fiado</h1>
         <button
           onClick={() => {
             resetForm();
@@ -166,36 +166,36 @@ const Clientes: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-gray-100 flex items-center gap-2">
-        <i className="fas fa-search text-gray-400 ml-2"></i>
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm mb-4 border border-gray-100 dark:border-slate-800 flex items-center gap-2">
+        <i className="fas fa-search text-gray-400 dark:text-slate-500 ml-2"></i>
         <input
-          className="w-full border-none outline-none text-gray-700 placeholder-gray-400"
+          className="w-full border-none outline-none text-gray-700 dark:text-slate-300 placeholder-gray-400"
           placeholder="Buscar por nome, telefone ou documento..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <div className="bg-white rounded-xl shadow-md overflow-hidden flex-1 flex flex-col border border-gray-100">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md overflow-hidden flex-1 flex flex-col border border-gray-100 dark:border-slate-800">
         <div className="overflow-y-auto flex-1">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+            <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                   Nome
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                   Contato
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                   Saldo Devedor
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                   Ações
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
               {filteredClients.map((c) => (
                 <tr key={c.id} className="hover:bg-blue-50 transition">
                   <td className="px-6 py-4">
@@ -203,10 +203,10 @@ const Clientes: React.FC = () => {
                       {c.nome}
                     </div>
                     {c.documento && (
-                      <div className="text-xs text-gray-500">{c.documento}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">{c.documento}</div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">
                     {c.telefone ? (
                       <span className="flex items-center gap-1">
                         <i className="fas fa-phone-alt text-xs"></i>{" "}
@@ -254,7 +254,7 @@ const Clientes: React.FC = () => {
               ))}
               {filteredClients.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="text-center py-10 text-gray-400">
+                  <td colSpan={4} className="text-center py-10 text-gray-400 dark:text-slate-500">
                     Nenhum cliente encontrado.
                   </td>
                 </tr>
@@ -266,23 +266,23 @@ const Clientes: React.FC = () => {
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100">
-            <h2 className="text-xl font-bold mb-6 text-gray-800 border-b pb-4 flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100">
+            <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-slate-100 border-b pb-4 flex justify-between items-center">
               <span>{editingId ? "Editar" : "Novo"} Cliente</span>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:text-slate-400"
               >
                 <i className="fas fa-times"></i>
               </button>
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Nome Completo *
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
                   value={formData.nome}
                   onChange={(e) =>
                     setFormData({ ...formData, nome: e.target.value })
@@ -293,11 +293,11 @@ const Clientes: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                     Telefone
                   </label>
                   <input
-                    className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
                     value={formData.telefone}
                     onChange={(e) =>
                       setFormData({ ...formData, telefone: e.target.value })
@@ -305,11 +305,11 @@ const Clientes: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                     CPF / Documento
                   </label>
                   <input
-                    className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
                     value={formData.documento}
                     onChange={(e) =>
                       setFormData({ ...formData, documento: e.target.value })
@@ -318,11 +318,11 @@ const Clientes: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Endereço
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
                   value={formData.endereco}
                   onChange={(e) =>
                     setFormData({ ...formData, endereco: e.target.value })
@@ -333,7 +333,7 @@ const Clientes: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium text-sm"
+                  className="px-5 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700/50 transition font-medium text-sm"
                 >
                   Cancelar
                 </button>
@@ -351,14 +351,14 @@ const Clientes: React.FC = () => {
 
       {showDebtModal && selectedClient && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl h-[80vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 w-full max-w-3xl h-[80vh] flex flex-col">
             <div className="flex justify-between items-center mb-4 border-b pb-4">
               <div>
-                <h2 className="text-xl font-bold text-gray-800">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">
                   {selectedClient.nome}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-slate-400">
                     Saldo Devedor Total:
                   </span>
                   <span className="text-lg font-bold text-red-600">
@@ -368,37 +368,37 @@ const Clientes: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowDebtModal(false)}
-                className="bg-gray-100 text-gray-500 hover:text-gray-700 p-2 rounded-full w-10 h-10 transition"
+                className="bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:text-slate-300 p-2 rounded-full w-10 h-10 transition"
               >
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto mb-4 border border-gray-200 rounded-lg">
-              <table className="min-w-full divide-y divide-gray-100">
-                <thead className="bg-gray-50 sticky top-0 shadow-sm z-10">
+            <div className="flex-1 overflow-y-auto mb-4 border border-gray-200 dark:border-slate-800 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-800">
+                <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0 shadow-sm z-10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">
                       Data
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">
                       Descrição
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">
                       Valor Orig.
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">
                       Pago
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">
                       Restante
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase w-32">
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-32">
                       Abater
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 text-sm">
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-sm">
                   {debts.map((d) => {
                     const restante = (d.valor_total || 0) - (d.valor_pago || 0);
                     const isQuitado = restante <= 0.01;
@@ -408,16 +408,16 @@ const Clientes: React.FC = () => {
                         className={
                           isQuitado
                             ? "bg-green-50 opacity-60"
-                            : "hover:bg-gray-50 transition"
+                            : "hover:bg-gray-50 dark:bg-slate-950 transition"
                         }
                       >
-                        <td className="px-4 py-3 text-gray-600">
+                        <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
                           {dayjs(d.data_lancamento).format("DD/MM/YY")}
                         </td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">
+                        <td className="px-4 py-3 text-gray-800 dark:text-slate-100 font-medium">
                           {d.descricao}
                         </td>
-                        <td className="px-4 py-3 text-right text-gray-600">
+                        <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
                           {formatCurrency(d.valor_total || 0)}
                         </td>
                         <td className="px-4 py-3 text-right text-green-600 font-medium">
@@ -433,7 +433,7 @@ const Clientes: React.FC = () => {
                             <div className="flex items-center gap-2 justify-end">
                               <input
                                 type="number"
-                                className="w-20 border border-gray-300 rounded p-1.5 text-xs text-right focus:ring-1 focus:ring-green-500 outline-none"
+                                className="w-20 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-xs text-right focus:ring-1 focus:ring-green-500 outline-none"
                                 placeholder="R$"
                                 value={paymentValue}
                                 onChange={(e) =>
@@ -464,7 +464,7 @@ const Clientes: React.FC = () => {
                     <tr>
                       <td
                         colSpan={6}
-                        className="text-center py-10 text-gray-400"
+                        className="text-center py-10 text-gray-400 dark:text-slate-500"
                       >
                         Cliente sem débitos registrados.
                       </td>

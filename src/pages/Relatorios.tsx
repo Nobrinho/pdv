@@ -460,9 +460,9 @@ const Relatorios: React.FC = () => {
   );
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-gray-50">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-gray-50 dark:bg-slate-950">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-slate-100">
           Relatórios Financeiros
         </h1>
         <button
@@ -474,24 +474,24 @@ const Relatorios: React.FC = () => {
       </div>
 
       {/* --- BARRA DE FILTROS APRIMORADA --- */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm mb-6 border border-gray-100 dark:border-slate-800 flex flex-col gap-4">
         {/* Filtros Rápidos */}
         <div className="flex gap-2 border-b pb-4 overflow-x-auto">
           <button
             onClick={() => handlePeriodChange("weekly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700/80"}`}
           >
             Esta Semana
           </button>
           <button
             onClick={() => handlePeriodChange("monthly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700/80"}`}
           >
             Este Mês
           </button>
           <button
             onClick={() => handlePeriodChange("yearly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700/80"}`}
           >
             Este Ano
           </button>
@@ -500,7 +500,7 @@ const Relatorios: React.FC = () => {
         {/* Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
               Início
             </label>
             <input
@@ -514,7 +514,7 @@ const Relatorios: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
               Fim
             </label>
             <input
@@ -528,11 +528,11 @@ const Relatorios: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
               Vendedor
             </label>
             <select
-              className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border rounded p-2 text-sm bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
               value={selectedSeller}
               onChange={(e) => setSelectedSeller(e.target.value)}
             >
@@ -547,11 +547,11 @@ const Relatorios: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
               Pagamento
             </label>
             <select
-              className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border rounded p-2 text-sm bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
               value={selectedPayment}
               onChange={(e) => setSelectedPayment(e.target.value)}
             >
@@ -567,7 +567,7 @@ const Relatorios: React.FC = () => {
       </div>
 
       {/* --- KPIS (Cards) --- */}
-      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">
+      <h2 className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-1">
         Indicadores Financeiros
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-6">
@@ -647,39 +647,39 @@ const Relatorios: React.FC = () => {
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[500px]">
         {/* Esquerda: Vendas Detalhadas */}
-        <div className="flex-[2] bg-white rounded-xl shadow-md flex flex-col overflow-hidden border border-gray-100 min-h-[300px]">
-          <div className="p-3 bg-gray-50 border-b font-bold text-gray-700 text-sm flex justify-between items-center">
+        <div className="flex-[2] bg-white dark:bg-slate-900 rounded-xl shadow-md flex flex-col overflow-hidden border border-gray-100 dark:border-slate-800 min-h-[300px]">
+          <div className="p-3 bg-gray-50 dark:bg-slate-950 border-b font-bold text-gray-700 dark:text-slate-300 text-sm flex justify-between items-center">
             <span>Extrato de Vendas</span>
-            <span className="text-xs bg-white px-2 py-1 rounded border text-gray-500">
+            <span className="text-xs bg-white dark:bg-slate-900 px-2 py-1 rounded border text-gray-500 dark:text-slate-400">
               {filteredSales.length} registros
             </span>
           </div>
           <div className="overflow-y-auto flex-1 custom-scrollbar">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+              <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                     Data
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                     Vendedor
                   </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                     Total Venda
                   </th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                     Pagto
                   </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                     Comissão
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
                 {filteredSales.map((v) => (
                   <tr
                     key={v.id}
-                    className={`hover:bg-gray-50 ${v.cancelada ? "bg-red-50 text-red-400" : ""}`}
+                    className={`hover:bg-gray-50 dark:bg-slate-950 ${v.cancelada ? "bg-red-50 text-red-400" : ""}`}
                   >
                     <td className="px-4 py-2 text-sm">
                       {dayjs(v.data_venda).format("DD/MM HH:mm")}
@@ -698,7 +698,7 @@ const Relatorios: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        <span className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}>
+                        <span className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400"}`}>
                           {standardizeMethod(v.forma_pagamento) || "-"}
                         </span>
                       )}
@@ -710,7 +710,7 @@ const Relatorios: React.FC = () => {
                 ))}
                 {filteredSales.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-gray-400">
+                    <td colSpan={5} className="p-8 text-center text-gray-400 dark:text-slate-500">
                       Nenhuma venda neste período.
                     </td>
                   </tr>
@@ -723,26 +723,26 @@ const Relatorios: React.FC = () => {
         {/* Direita: Resumos */}
         <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-[300px]">
           {/* Tabela: Receita Produtos por Método */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col overflow-hidden max-h-[50%] border border-blue-100">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md flex flex-col overflow-hidden max-h-[50%] border border-blue-100">
             <div className="p-3 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 text-sm">
               Total Recebido (Por Método)
             </div>
             <div className="overflow-y-auto flex-1 custom-scrollbar">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+                <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                       Método
                     </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                       Valor
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
                   {paymentSummary.map((p, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm text-gray-900">
+                    <tr key={i} className="hover:bg-gray-50 dark:bg-slate-950">
+                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-slate-100">
                         {p.metodo}
                       </td>
                       <td className="px-4 py-2 text-sm text-right font-bold text-blue-600">
@@ -754,7 +754,7 @@ const Relatorios: React.FC = () => {
                     <tr>
                       <td
                         colSpan={2}
-                        className="p-4 text-center text-gray-400 text-xs"
+                        className="p-4 text-center text-gray-400 dark:text-slate-500 text-xs"
                       >
                         Sem dados
                       </td>
@@ -766,26 +766,26 @@ const Relatorios: React.FC = () => {
           </div>
 
           {/* Tabela: Mão de Obra a Pagar */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col overflow-hidden flex-1 border border-orange-100">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md flex flex-col overflow-hidden flex-1 border border-orange-100">
             <div className="p-3 bg-orange-50 border-b border-orange-100 font-bold text-orange-800 text-sm">
               Repasse Mão de Obra
             </div>
             <div className="overflow-y-auto flex-1 custom-scrollbar">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+                <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                       Nome
                     </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">
                       A Pagar
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
                   {laborSummary.map((l, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm text-gray-900">
+                    <tr key={i} className="hover:bg-gray-50 dark:bg-slate-950">
+                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-slate-100">
                         {l.nome}
                       </td>
                       <td className="px-4 py-2 text-sm text-right font-bold text-orange-600">
@@ -797,7 +797,7 @@ const Relatorios: React.FC = () => {
                     <tr>
                       <td
                         colSpan={2}
-                        className="p-4 text-center text-gray-400 text-xs"
+                        className="p-4 text-center text-gray-400 dark:text-slate-500 text-xs"
                       >
                         Sem dados
                       </td>

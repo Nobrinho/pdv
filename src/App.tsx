@@ -296,7 +296,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100 font-sans text-gray-900">
+    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-slate-950 font-sans text-gray-900 dark:text-slate-100 transition-colors duration-300">
       <aside className="w-64 bg-brand-deep text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-10">
         <div className="h-16 flex items-center justify-center border-b border-white/5 bg-black/10 shadow-md">
           <Logo size="sm" variant="glass" showText={true} />
@@ -398,7 +398,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
+      <main className="flex-1 overflow-hidden relative flex flex-col bg-gray-50 dark:bg-slate-950">
         <Routes>
           <Route
             path="/"

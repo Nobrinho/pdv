@@ -10,6 +10,7 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { DashboardStats, InventoryStats, WeeklySales, Product } from "../types";
+import { useTheme } from "../context/ThemeContext";
 
 ChartJS.register(
   CategoryScale,
@@ -21,6 +22,7 @@ ChartJS.register(
 );
 
 const Dashboard: React.FC = () => {
+  const { resolvedTheme } = useTheme();
   const [stats, setStats] = useState<DashboardStats>({
     faturamento: 0,
     lucro: 0,
@@ -92,13 +94,31 @@ const Dashboard: React.FC = () => {
       legend: { display: false },
       title: { display: false },
     },
-    scales: { y: { beginAtZero: true } },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: resolvedTheme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
+        },
+        ticks: {
+          color: resolvedTheme === "dark" ? "#94a3b8" : "#64748b",
+        },
+      },
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          color: resolvedTheme === "dark" ? "#94a3b8" : "#64748b",
+        },
+      },
+    },
   };
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-y-auto">
+    <div className="p-6 h-full flex flex-col overflow-y-auto bg-gray-50 dark:bg-slate-950">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Painel de Controle</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Painel de Controle</h1>
         <button
           onClick={loadDashboardData}
           className="text-brand-primary hover:text-brand-dark transition"
@@ -108,27 +128,27 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* --- SECÇÃO 1: MOVIMENTO DO DIA --- */}
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
+      <h2 className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-3">
         Movimento de Hoje
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-brand-primary">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border-l-4 border-brand-primary">
           <div className="flex justify-between">
             <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase">
                 Faturamento
               </p>
-              <p className="text-xl font-bold text-gray-800">
+              <p className="text-xl font-bold text-gray-800 dark:text-slate-100">
                 {formatCurrency(stats.faturamento)}
               </p>
             </div>
             <i className="fas fa-dollar-sign text-brand-primary/20 text-2xl"></i>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border-l-4 border-green-500">
           <div className="flex justify-between">
             <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase">
                 Lucro Líquido
               </p>
               <p className="text-xl font-bold text-green-600">
@@ -138,10 +158,10 @@ const Dashboard: React.FC = () => {
             <i className="fas fa-chart-line text-green-200 text-2xl"></i>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border-l-4 border-yellow-500">
           <div className="flex justify-between">
             <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase">
                 Vendas (Qtd)
               </p>
               <p className="text-xl font-bold text-yellow-600">
@@ -151,10 +171,10 @@ const Dashboard: React.FC = () => {
             <i className="fas fa-shopping-cart text-yellow-200 text-2xl"></i>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border-l-4 border-orange-500">
           <div className="flex justify-between">
             <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase">
                 Mão de Obra
               </p>
               <p className="text-xl font-bold text-orange-600">
@@ -164,10 +184,10 @@ const Dashboard: React.FC = () => {
             <i className="fas fa-wrench text-orange-200 text-2xl"></i>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border-l-4 border-purple-500">
           <div className="flex justify-between">
             <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase">
                 Comissões
               </p>
               <p className="text-xl font-bold text-purple-600">
@@ -180,7 +200,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* --- SECÇÃO 2: INTELIGÊNCIA DE ESTOQUE --- */}
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center">
+      <h2 className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-3 flex items-center">
         <i className="fas fa-boxes mr-2"></i> Valorização de Estoque
         (Patrimônio)
       </h2>
@@ -196,8 +216,8 @@ const Dashboard: React.FC = () => {
             Dinheiro parado em mercadoria
           </p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-500 font-bold uppercase mb-1">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+          <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase mb-1">
             Venda Potencial
           </p>
           <p className="text-2xl font-bold text-brand-primary tracking-tight">
@@ -207,8 +227,8 @@ const Dashboard: React.FC = () => {
             Se vender todo o estoque hoje
           </p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-500 font-bold uppercase mb-1">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+          <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase mb-1">
             Lucro Projetado
           </p>
           <p className="text-2xl font-bold text-green-600 tracking-tight">
@@ -216,20 +236,20 @@ const Dashboard: React.FC = () => {
           </p>
           <p className="text-xs text-gray-400 mt-2">Margem bruta acumulada</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500 flex flex-col justify-center">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border-l-4 border-red-500 flex flex-col justify-center">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-bold text-gray-600">
+            <span className="text-sm font-bold text-gray-600 dark:text-slate-300">
               Produtos Zerados
             </span>
-            <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">
+            <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-1 rounded text-xs font-bold">
               {inventoryStats.qtdZerados}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm font-bold text-gray-600">
+            <span className="text-sm font-bold text-gray-600 dark:text-slate-300">
               Baixo Estoque
             </span>
-            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">
+            <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 px-2 py-1 rounded text-xs font-bold">
               {inventoryStats.qtdBaixoEstoque}
             </span>
           </div>
@@ -242,8 +262,8 @@ const Dashboard: React.FC = () => {
       {/* --- SECÇÃO 3: GRÁFICOS E LISTAS --- */}
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[300px]">
         {/* Gráfico */}
-        <div className="flex-[2] bg-white p-6 rounded-xl shadow-md flex flex-col">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">
+        <div className="flex-[2] bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md flex flex-col">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4">
             Desempenho Semanal (Vendas + Serviços)
           </h2>
           <div className="flex-1 relative w-full h-full min-h-[250px]">
@@ -254,8 +274,8 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Alerta Estoque */}
-        <div className="flex-1 bg-white p-6 rounded-xl shadow-md flex flex-col">
-          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+        <div className="flex-1 bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md flex flex-col">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 flex items-center">
             <i className="fas fa-exclamation-triangle text-red-500 mr-2"></i>{" "}
             Reposição Urgente
           </h2>
@@ -264,16 +284,16 @@ const Dashboard: React.FC = () => {
               {lowStock.map((p) => (
                 <li
                   key={p.id}
-                  className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100"
+                  className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-100 dark:border-red-900/30"
                 >
                   <div>
                     <p
-                      className="font-medium text-gray-800 text-sm truncate w-32"
+                      className="font-medium text-gray-800 dark:text-slate-100 text-sm truncate w-32"
                       title={p.descricao}
                     >
                       {p.descricao}
                     </p>
-                    <p className="text-xs text-gray-500 font-mono">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 font-mono">
                       {p.codigo}
                     </p>
                   </div>

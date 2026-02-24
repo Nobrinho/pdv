@@ -195,7 +195,7 @@ const Vendas: React.FC = () => {
   const formatCurrency = (val: number) => `R$ ${val.toFixed(2).replace(".", ",")}`;
 
   return (
-    <div className="flex h-full gap-4 p-4 bg-gray-100">
+    <div className="flex h-full gap-4 p-4 bg-gray-100 dark:bg-slate-950">
       <div className="flex-1 flex flex-col gap-4">
         <ClientSearch
           clients={clients}
@@ -207,7 +207,7 @@ const Vendas: React.FC = () => {
           onOpenNewClientModal={() => setShowClientModal(true)}
         />
 
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
           <ProductSearch products={products} onAddToCart={addToCart} />
         </div>
 
@@ -245,9 +245,9 @@ const Vendas: React.FC = () => {
           total={totals.total}
         />
 
-        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-green-600">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-md border-t-4 border-green-600">
           <div className="flex justify-between text-sm mb-2">
-            <span className="text-gray-500 font-medium">Situação:</span>
+            <span className="text-gray-800 dark:text-slate-100 dark:text-slate-400 font-medium">Situação:</span>
             <span className={`font-bold ${totals.remaining <= 0.01 ? "text-green-600" : "text-amber-600"}`}>
               {totals.remaining <= 0.01 ? "PAGO TOTAL" : `FALTA ${formatCurrency(totals.remaining)}`}
             </span>
@@ -284,10 +284,10 @@ const Vendas: React.FC = () => {
 
       {showReceipt && lastSale && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4 bg-blur-sm">
-          <div className="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto relative animate-scale-in">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto relative animate-scale-in">
             <button
               onClick={() => setShowReceipt(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-slate-300"
             >
               <i className="fas fa-times text-xl"></i>
             </button>
@@ -306,7 +306,7 @@ const Vendas: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowReceipt(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition"
+                className="flex-1 bg-gray-100 dark:bg-slate-950 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition"
               >
                 Fechar
               </button>

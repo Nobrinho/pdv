@@ -5,6 +5,7 @@ import './index.css'
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { HashRouter } from 'react-router-dom'
 import { AlertProvider } from './context/AlertSystem';
+import { ThemeProvider } from './context/ThemeContext';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -25,7 +26,9 @@ ReactDOM.createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <HashRouter>
         <AlertProvider>
-          <App />
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
         </AlertProvider>
       </HashRouter>
     </QueryClientProvider>

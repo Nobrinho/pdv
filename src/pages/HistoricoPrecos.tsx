@@ -151,25 +151,25 @@ const HistoricoPrecos: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50">
+    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50 dark:bg-slate-950">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center">
+          <h1 className="text-2xl font-black text-gray-800 dark:text-slate-100 tracking-tight flex items-center">
             <i className="fas fa-history mr-3 text-orange-500"></i> Histórico de Alterações
           </h1>
-          <p className="text-gray-500 text-sm">Rastreamento de mudanças em preços e estoque.</p>
+          <p className="text-gray-500 dark:text-slate-400 text-sm">Rastreamento de mudanças em preços e estoque.</p>
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={exportSimplePDF}
-            className="flex-1 bg-white text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl font-bold hover:bg-blue-50 transition shadow-sm flex items-center justify-center gap-2"
+            className="flex-1 bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-700 px-4 py-2.5 rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-slate-800 transition shadow-sm flex items-center justify-center gap-2"
           >
             <i className="fas fa-file-invoice"></i> Tabela
           </button>
           <button
             onClick={exportFullPDF}
-            className="flex-1 bg-gray-800 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-gray-900 transition shadow-lg flex items-center justify-center gap-2"
+            className="flex-1 bg-gray-800 dark:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-gray-900 transition shadow-lg flex items-center justify-center gap-2"
           >
             <i className="fas fa-file-contract"></i> Auditoria
           </button>

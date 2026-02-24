@@ -41,18 +41,18 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
   };
 
   return (
-    <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-600 flex-1 flex flex-col">
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
+    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-md border-l-4 border-blue-600 flex-1 flex flex-col">
+      <h2 className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-4">
         Pagamento
       </h2>
-      <div className="flex-1 bg-gray-50 rounded-lg p-2 mb-4 overflow-y-auto max-h-40 border border-gray-100">
+      <div className="flex-1 bg-gray-50 dark:bg-slate-950/50 rounded-lg p-2 mb-4 overflow-y-auto max-h-40 border border-gray-200 dark:border-slate-800">
         {payments.map((p, idx) => (
           <div
             key={idx}
-            className="flex justify-between items-center p-2 bg-white rounded shadow-sm mb-1 text-sm"
+            className="flex justify-between items-center p-2 bg-white dark:bg-slate-900 rounded shadow-sm mb-1 text-sm"
           >
             <div>
-              <span className="font-bold text-gray-700">{p.metodo}</span>
+              <span className="font-bold text-gray-700 dark:text-slate-300">{p.metodo}</span>
               {p.detalhes && (
                 <span className="text-xs text-gray-400 ml-1">
                   ({p.detalhes})
@@ -60,7 +60,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-gray-800">
+              <span className="font-medium text-gray-800 dark:text-slate-100">
                 {formatCurrency(p.valor)}
               </span>
               <button
@@ -86,7 +86,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
       >
         <div className="grid grid-cols-2 gap-2">
           <select
-            className="border border-gray-300 rounded p-2 text-sm bg-white"
+            className="border border-gray-300 dark:border-slate-700 rounded p-2 text-sm bg-white dark:bg-slate-900"
             value={currentMethod}
             onChange={(e) => setCurrentMethod(e.target.value)}
           >
@@ -98,7 +98,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
           </select>
           {currentMethod === "Crédito" && (
             <select
-              className="border border-gray-300 rounded p-2 text-sm bg-white"
+              className="border border-gray-300 dark:border-slate-700 rounded p-2 text-sm bg-white dark:bg-slate-900"
               value={installments}
               onChange={(e) => setInstallments(Number(e.target.value))}
             >
@@ -113,7 +113,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
         <div className="flex gap-2">
           <input
             type="number"
-            className="flex-1 border border-gray-300 rounded p-2 text-right font-bold text-gray-800"
+            className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-2 text-right font-bold text-gray-800 dark:text-slate-100"
             placeholder="0.00"
             value={currentValue}
             onChange={(e) => setCurrentValue(e.target.value)}

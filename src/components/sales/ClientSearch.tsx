@@ -43,14 +43,14 @@ const ClientSearch: React.FC<ClientSearchProps> = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
       <div className="flex gap-4">
         <div className="w-1/2">
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+          <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
             Vendedor
           </label>
           <select
-            className="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 bg-gray-50 dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedSeller}
             onChange={(e) => onSelectSeller(e.target.value)}
           >
@@ -65,15 +65,15 @@ const ClientSearch: React.FC<ClientSearchProps> = ({
 
         <div className="w-1/2 flex gap-2 items-end">
           <div className="flex-1 relative">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
               Cliente
             </label>
             <div className="relative">
               <input
                 className={`w-full border rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-blue-500 ${
                   selectedClient
-                    ? "border-green-500 bg-green-50 text-green-800 font-bold"
-                    : "border-gray-300 bg-white"
+                    ? "border-green-500 bg-green-50 dark:bg-green-900/20 text-green-800 font-bold"
+                    : "border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900"
                 }`}
                 placeholder={selectedClient ? "" : "Buscar Cliente..."}
                 value={clientSearchTerm}
@@ -105,7 +105,7 @@ const ClientSearch: React.FC<ClientSearchProps> = ({
             </div>
             {showClientResults &&
               (clientSearchTerm.length > 0 || clients.length > 0) && (
-                <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
+                <div className="absolute top-full left-0 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
                   <div
                     className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-600 italic border-b"
                     onClick={() => handleSelectClient(null)}
@@ -118,7 +118,7 @@ const ClientSearch: React.FC<ClientSearchProps> = ({
                       onClick={() => handleSelectClient(c)}
                       className="p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm"
                     >
-                      <div className="font-bold text-gray-800">{c.nome}</div>
+                      <div className="font-bold text-gray-800 dark:text-slate-100">{c.nome}</div>
                     </div>
                   ))}
                 </div>

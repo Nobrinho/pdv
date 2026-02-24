@@ -18,49 +18,49 @@ const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
   getClientName,
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden flex-1 flex flex-col border border-gray-100">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md overflow-hidden flex-1 flex flex-col border border-gray-100 dark:border-slate-800">
       <div className="overflow-y-auto flex-1 custom-scrollbar">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+          <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0 z-10 shadow-sm">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Data</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Cliente</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Vendedor</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Pagamento</th>
-              <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Total</th>
-              <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Ação</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Data</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Cliente</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Vendedor</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Pagamento</th>
+              <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Total</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Status</th>
+              <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Ação</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
             {sales.map((sale) => (
               <tr
                 key={sale.id}
-                className={`hover:bg-blue-50 transition-colors ${sale.cancelada ? "bg-red-50" : ""}`}
+                className={`hover:bg-blue-50 dark:hover:bg-slate-800/80 transition-colors ${sale.cancelada ? "bg-red-50" : ""}`}
               >
-                <td className={`px-6 py-4 whitespace-nowrap text-sm font-mono ${sale.cancelada ? "text-red-400 line-through" : "text-gray-500"}`}>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm font-mono ${sale.cancelada ? "text-red-400 line-through" : "text-gray-500 dark:text-slate-400"}`}>
                   #{sale.id}
                 </td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${sale.cancelada ? "text-red-400" : "text-gray-900"}`}>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${sale.cancelada ? "text-red-400" : "text-gray-900 dark:text-slate-100"}`}>
                   {dayjs(sale.data_venda).format("DD/MM/YYYY HH:mm")}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium whitespace-normal min-w-[150px]">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300 font-medium whitespace-normal min-w-[150px]">
                   {getClientName(sale.cliente_id)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
                   {sale.vendedor_nome}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-700">
+                <td className="px-6 py-4 text-sm text-gray-700 dark:text-slate-300">
                   <div className="flex flex-col gap-1">
                     {sale.lista_pagamentos?.map((p, i) => (
-                      <span key={i} className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 w-fit whitespace-nowrap">
+                      <span key={i} className="text-[10px] bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-800 w-fit whitespace-nowrap">
                         {p.metodo}: {formatCurrency(p.valor)}
                       </span>
                     )) || <span className="text-xs">{sale.forma_pagamento}</span>}
                   </div>
                 </td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${sale.cancelada ? "text-red-400 line-through" : "text-gray-900"}`}>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${sale.cancelada ? "text-red-400 line-through" : "text-gray-900 dark:text-slate-100"}`}>
                   {formatCurrency(sale.total_final)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -92,7 +92,7 @@ const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
             ))}
             {sales.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-20 text-gray-400">
+                <td colSpan={8} className="text-center py-20 text-gray-400 dark:text-slate-500">
                   <i className="fas fa-history text-3xl mb-2 opacity-20"></i>
                   <p>Nenhuma venda encontrada no período.</p>
                 </td>

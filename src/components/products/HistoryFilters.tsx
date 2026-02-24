@@ -22,7 +22,7 @@ const HistoryFilters: React.FC<HistoryFiltersProps> = ({
   setSearchTerm,
 }) => {
   return (
-    <div className="bg-white p-5 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
+    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm mb-6 border border-gray-100 dark:border-slate-800 flex flex-col gap-4">
       {/* Filtros Rápidos */}
       <div className="flex gap-2 border-b pb-4 overflow-x-auto custom-scrollbar">
         {["weekly", "monthly", "yearly"].map((type) => (
@@ -32,7 +32,7 @@ const HistoryFilters: React.FC<HistoryFiltersProps> = ({
             className={`px-5 py-2 text-xs font-bold rounded-full transition whitespace-nowrap ${
               periodType === type
                 ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                : "bg-gray-100 dark:bg-slate-800/80 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700/80"
             }`}
           >
             {type === "weekly" ? "ESTA SEMANA" : type === "monthly" ? "ESTE MÊS" : "ESTE ANO"}
@@ -42,34 +42,34 @@ const HistoryFilters: React.FC<HistoryFiltersProps> = ({
 
       <div className="flex flex-wrap gap-4 items-end">
         <div className="w-full sm:w-auto">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Início</label>
+          <label className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 block">Início</label>
           <input
             type="date"
-            className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50"
+            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-950"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
         </div>
         <div className="w-full sm:w-auto">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Fim</label>
+          <label className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 block">Fim</label>
           <input
             type="date"
-            className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50"
+            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-950"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
         <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Buscar Produto</label>
+          <label className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 block">Buscar Produto</label>
           <div className="relative">
             <input
               type="text"
-              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm pl-10 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50"
+              className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm pl-10 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-950"
               placeholder="Nome ou código do produto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <i className="fas fa-search absolute left-3.5 top-3.5 text-gray-400 text-xs"></i>
+            <i className="fas fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-slate-500 text-xs"></i>
           </div>
         </div>
       </div>

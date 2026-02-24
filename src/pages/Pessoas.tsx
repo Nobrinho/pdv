@@ -133,7 +133,7 @@ const Pessoas: React.FC = () => {
       case "Trocador":
         return "fa-wrench text-orange-500";
       default:
-        return "fa-user text-gray-400";
+        return "fa-user text-gray-400 dark:text-slate-500";
     }
   };
 
@@ -144,14 +144,14 @@ const Pessoas: React.FC = () => {
       case "Trocador":
         return "border-l-4 border-orange-500";
       default:
-        return "border-l-4 border-gray-300";
+        return "border-l-4 border-gray-300 dark:border-slate-700";
     }
   };
 
   return (
     <div className="p-6 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Equipe (Pessoas)</h1>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Equipe (Pessoas)</h1>
         <button
           onClick={() => {
             resetForm();
@@ -165,7 +165,7 @@ const Pessoas: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto space-y-6 pb-4 custom-scrollbar">
         {peopleByRole.length === 0 && (
-          <div className="text-center py-20 text-gray-400 flex flex-col items-center">
+          <div className="text-center py-20 text-gray-400 dark:text-slate-500 flex flex-col items-center">
             <i className="fas fa-users text-4xl mb-3 opacity-30"></i>
             <p>Nenhuma pessoa cadastrada.</p>
           </div>
@@ -174,34 +174,34 @@ const Pessoas: React.FC = () => {
         {peopleByRole.map((group) => (
           <div
             key={group.role}
-            className={`bg-white rounded-xl shadow-md overflow-hidden ${getRoleColor(group.role)}`}
+            className={`bg-white dark:bg-slate-900 rounded-xl shadow-md overflow-hidden ${getRoleColor(group.role)}`}
           >
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-950/50 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
               <i className={`fas ${getRoleIcon(group.role)} text-lg`}></i>
-              <h2 className="text-lg font-bold text-gray-700">{group.role}</h2>
-              <span className="ml-auto bg-white border px-2 py-0.5 rounded text-xs text-gray-500 font-bold shadow-sm">
+              <h2 className="text-lg font-bold text-gray-700 dark:text-slate-300">{group.role}</h2>
+              <span className="ml-auto bg-white dark:bg-slate-900 border px-2 py-0.5 rounded text-xs text-gray-500 dark:text-slate-400 font-bold shadow-sm">
                 {group.list.length}
               </span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100">
-                <thead className="bg-white">
+              <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-800">
+                <thead className="bg-white dark:bg-slate-900">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
                       Nome
                     </th>
                     {group.role === "Vendedor" && (
-                      <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
                         Comissão
                       </th>
                     )}
-                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider w-24">
+                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider w-24">
                       Ações
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                   {group.list.map((person) => (
                     <tr
                       key={person.id}
@@ -209,10 +209,10 @@ const Pessoas: React.FC = () => {
                     >
                       <td className="px-6 py-3 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xs mr-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800/80 flex items-center justify-center text-gray-500 dark:text-slate-400 font-bold text-xs mr-3">
                             {person.nome.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
                             {person.nome}
                           </span>
                         </div>
@@ -229,7 +229,7 @@ const Pessoas: React.FC = () => {
                             </span>
                           ) : (
                             <span
-                              className="bg-gray-100 text-gray-600 py-1 px-3 rounded-full text-xs font-medium border border-gray-200"
+                              className="bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400 py-1 px-3 rounded-full text-xs font-medium border border-gray-200 dark:border-slate-800"
                               title={`Taxa padrão do sistema: ${defaultCommission}%`}
                             >
                               {defaultCommission}% (Padrão)
@@ -267,12 +267,12 @@ const Pessoas: React.FC = () => {
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100">
-            <h2 className="text-xl font-bold mb-6 text-gray-800 border-b pb-4 flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100">
+            <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-slate-100 border-b pb-4 flex justify-between items-center">
               <span>{editingId ? "Editar" : "Adicionar"} Pessoa</span>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition"
+                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:text-slate-400 transition"
               >
                 <i className="fas fa-times"></i>
               </button>
@@ -280,11 +280,11 @@ const Pessoas: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Nome Completo
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
                   value={formData.nome}
                   onChange={(e) =>
                     setFormData({ ...formData, nome: e.target.value })
@@ -296,12 +296,12 @@ const Pessoas: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Cargo / Função
                 </label>
                 <div className="relative">
                   <select
-                    className="w-full border border-gray-300 rounded-lg p-3 bg-white outline-none focus:ring-2 focus:ring-blue-500 transition appearance-none"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-blue-500 transition appearance-none"
                     value={formData.cargo_id}
                     onChange={(e) =>
                       setFormData({ ...formData, cargo_id: e.target.value })
@@ -315,7 +315,7 @@ const Pessoas: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-slate-300">
                     <i className="fas fa-chevron-down text-xs"></i>
                   </div>
                 </div>
@@ -360,7 +360,7 @@ const Pessoas: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium text-sm"
+                  className="px-5 py-2.5 bg-gray-100 dark:bg-slate-800/80 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700/80 transition font-medium text-sm"
                 >
                   Cancelar
                 </button>

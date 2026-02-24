@@ -105,12 +105,12 @@ const Recibos: React.FC = () => {
 
   const getClientName = (id?: number | null) => {
     if (!id) return "Consumidor Final";
-    const client = clients.find((c) => c.id === id);
+    const client = clients.find((c: any) => c.id === id);
     return client ? client.nome : "Desconhecido";
   };
 
   const handleViewReceipt = async (sale: Sale) => {
-    const items = await getSaleItems(sale.id);
+    const items = await getSaleItems(sale.id!);
     const saleWithClientName = { ...sale, cliente_nome: getClientName(sale.cliente_id || null) };
     setSelectedSale(saleWithClientName);
     setSaleItems(items);
@@ -125,7 +125,8 @@ const Recibos: React.FC = () => {
   const handleConfirmCancel = async (id: number, reason: string, user: string, pass: string) => {
     const auth = await window.api.loginAttempt({ username: user, password: pass });
     if (!auth.success || auth.user.cargo !== "admin") {
-      return showAlert("Permissão negada.", "Erro", "error");
+      showAlert("Permissão negada.", "Erro", "error");
+      return;
     }
 
     const res = await cancelSale(id, `${reason} (Autorizado por: ${auth.user.nome})`);
@@ -150,12 +151,12 @@ const Recibos: React.FC = () => {
   const formatCurrency = (val: number) => `R$ ${val.toFixed(2).replace(".", ",")}`;
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50">
+    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50 dark:bg-slate-950">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center">
+        <h1 className="text-2xl font-black text-gray-800 dark:text-slate-100 tracking-tight flex items-center">
           <i className="fas fa-file-invoice-dollar mr-3 text-blue-600"></i> Histórico de Vendas
         </h1>
-        <p className="text-gray-500 text-sm">Visualize e gerencie transações realizadas.</p>
+        <p className="text-gray-500 dark:text-slate-400 text-sm">Visualize e gerencie transações realizadas.</p>
       </div>
 
       <SalesFilters
@@ -203,9 +204,9 @@ const Recibos: React.FC = () => {
       {/* Modal de Recibo */}
       {showReceiptModal && selectedSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 animate-fade-in backdrop-blur-sm">
-          <div className="bg-gray-100 p-6 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] w-full max-w-sm">
+          <div className="bg-gray-100 dark:bg-slate-800 p-6 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] w-full max-w-sm">
             <div className="overflow-y-auto pr-1 flex-1 custom-scrollbar">
-              <div id="cupom-fiscal" className="bg-white p-2 text-black">
+              <div id="cupom-fiscal" className="bg-white dark:bg-slate-900 p-2 text-black">
                 <CupomFiscal sale={selectedSale} items={saleItems} companyInfo={companyInfo} />
               </div>
             </div>
@@ -218,7 +219,7 @@ const Recibos: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowReceiptModal(false)}
-                className="flex-1 bg-white text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-50 transition border border-gray-200"
+                className="flex-1 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 py-3 rounded-xl font-bold hover:bg-gray-50 dark:bg-slate-950 transition border border-gray-200 dark:border-slate-800"
               >
                 Fechar
               </button>

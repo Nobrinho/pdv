@@ -15,46 +15,46 @@ const ProductTable: React.FC<ProductTableProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-md flex-1 overflow-hidden border border-gray-100 flex flex-col">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md flex-1 overflow-hidden border border-gray-100 dark:border-slate-800 flex flex-col">
       <div className="overflow-auto flex-1 custom-scrollbar">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
+          <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0 z-10 shadow-sm">
             <tr>
-              <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20">
+              <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider w-20">
                 Cód.
               </th>
-              <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[150px]">
+              <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider min-w-[150px]">
                 Descrição
               </th>
-              <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Tipo
               </th>
-              <th className="hidden md:table-cell px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <th className="hidden md:table-cell px-3 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Custo
               </th>
-              <th className="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Venda
               </th>
-              <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 Saldo
               </th>
-              <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-28">
+              <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider w-28">
                 Ações
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
             {products.map((p) => (
               <tr
                 key={p.id}
-                className={`hover:bg-gray-50 transition-colors ${
+                className={`hover:bg-gray-50 dark:bg-slate-950 transition-colors ${
                   p.estoque_atual === 0 ? "bg-red-50" : ""
                 }`}
               >
-                <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
+                <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 dark:text-slate-100">
                   {p.codigo}
                 </td>
-                <td className="px-3 py-3 text-xs md:text-sm text-gray-700 break-words whitespace-normal font-medium">
+                <td className="px-3 py-3 text-xs md:text-sm text-gray-700 dark:text-slate-300 break-words whitespace-normal font-medium">
                   {p.descricao}
                 </td>
 
@@ -70,10 +70,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
                   </span>
                 </td>
 
-                <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right text-gray-500">
+                <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right text-gray-500 dark:text-slate-400">
                   R$ {p.custo.toFixed(2)}
                 </td>
-                <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right font-medium text-gray-900">
+                <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right font-medium text-gray-900 dark:text-slate-100">
                   R$ {p.preco_venda.toFixed(2)}
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap text-center">
@@ -120,7 +120,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               <tr>
                 <td
                   colSpan={7}
-                  className="px-6 py-12 text-center text-gray-500 flex flex-col items-center justify-center"
+                  className="px-6 py-12 text-center text-gray-500 dark:text-slate-400 flex flex-col items-center justify-center"
                 >
                   <i className="fas fa-box-open text-3xl mb-2 opacity-30"></i>
                   <span className="text-sm">Nenhum produto encontrado.</span>

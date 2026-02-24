@@ -97,14 +97,14 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return {
           icon: "fa-times",
           color: "text-red-500",
-          bg: "bg-red-100",
+          bg: "bg-red-500/10",
           btn: "bg-red-600 hover:bg-red-700",
         };
       case "success":
         return {
           icon: "fa-check",
           color: "text-green-500",
-          bg: "bg-green-100",
+          bg: "bg-green-500/10",
           btn: "bg-green-600 hover:bg-green-700",
         };
       case "confirm":
@@ -118,7 +118,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return {
           icon: "fa-info",
           color: "text-blue-500",
-          bg: "bg-blue-100",
+          bg: "bg-blue-500/10",
           btn: "bg-blue-600 hover:bg-blue-700",
         };
     }
@@ -137,7 +137,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           onClick={(e) => e.stopPropagation()}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-[90%] transform transition-all scale-100 border border-gray-100"
+            className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 w-96 max-w-[90%] transform transition-all scale-100 border border-gray-100 dark:border-slate-800"
             role="dialog"
             aria-modal="true"
           >
@@ -147,12 +147,12 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               >
                 <i className={`fas ${styles.icon} text-lg`}></i>
               </div>
-              <h3 className="text-xl font-bold text-gray-800">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-slate-100">
                 {alertState.title}
               </h3>
             </div>
 
-            <p className="text-gray-600 mb-6 text-base leading-relaxed">
+            <p className="text-gray-600 dark:text-slate-400 mb-6 text-base leading-relaxed">
               {alertState.message}
             </p>
 
@@ -162,7 +162,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   onClick={() => {
                     if (alertState.onCancel) alertState.onCancel();
                   }}
-                  className="px-5 py-2 rounded-lg text-gray-700 font-semibold hover:bg-gray-100 transition"
+                  className="px-5 py-2 rounded-lg text-gray-700 dark:text-slate-300 font-semibold hover:bg-gray-100 dark:hover:bg-slate-800 transition"
                 >
                   Cancelar
                 </button>
