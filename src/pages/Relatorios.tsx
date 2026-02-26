@@ -437,24 +437,24 @@ const Relatorios: React.FC = () => {
 
   const StatCard: React.FC<{ title: string; value: number; color: string; tooltip: string; icon: string }> = ({ title, value, color, tooltip, icon }) => (
     <div
-      className={`bg-white p-4 rounded-xl shadow-sm border-l-4 border-${color}-500 relative group cursor-help transition-transform hover:scale-[1.02] flex items-center justify-between`}
+      className={`bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border-l-4 border-${color}-500 dark:border-${color}-600 relative group cursor-help transition-transform hover:scale-[1.02] flex items-center justify-between border-y border-r border-y-transparent border-r-transparent dark:border-y-slate-800/50 dark:border-r-slate-800/50`}
     >
-      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded p-2 z-50 text-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-800 dark:bg-slate-700 text-white text-xs rounded p-2 z-50 text-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         {tooltip}
-        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800 dark:border-t-slate-700"></div>
       </div>
       <div>
-        <p className="text-xs text-gray-500 font-bold uppercase mb-1 w-fit">
+        <p className="text-xs text-gray-500 dark:text-slate-400 font-bold uppercase mb-1 w-fit">
           {title}
         </p>
         <p
-          className={`text-xl font-bold ${color === "blue" || color === "gray" ? "text-gray-800" : "text-" + color + "-600"}`}
+          className={`text-xl font-bold ${color === "blue" || color === "gray" ? "text-gray-800 dark:text-slate-100" : "text-" + color + "-600 dark:text-" + color + "-400"}`}
         >
           {formatCurrency(value)}
         </p>
       </div>
       {icon && (
-        <i className={`fas ${icon} text-2xl text-${color}-200 opacity-50`}></i>
+        <i className={`fas ${icon} text-2xl text-${color}-200 dark:text-${color}-900/30 opacity-50`}></i>
       )}
     </div>
   );
@@ -476,7 +476,7 @@ const Relatorios: React.FC = () => {
       {/* --- BARRA DE FILTROS APRIMORADA --- */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm mb-6 border border-gray-100 dark:border-slate-800 flex flex-col gap-4">
         {/* Filtros Rápidos */}
-        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+        <div className="flex gap-2 border-b dark:border-slate-800 pb-4 overflow-x-auto">
           <button
             onClick={() => handlePeriodChange("weekly")}
             className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700/80"}`}
@@ -505,7 +505,7 @@ const Relatorios: React.FC = () => {
             </label>
             <input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border border-gray-200 dark:border-slate-700 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
@@ -519,7 +519,7 @@ const Relatorios: React.FC = () => {
             </label>
             <input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border border-gray-200 dark:border-slate-700 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
@@ -532,7 +532,7 @@ const Relatorios: React.FC = () => {
               Vendedor
             </label>
             <select
-              className="w-full border rounded p-2 text-sm bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border border-gray-200 dark:border-slate-700 rounded p-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
               value={selectedSeller}
               onChange={(e) => setSelectedSeller(e.target.value)}
             >
@@ -540,7 +540,7 @@ const Relatorios: React.FC = () => {
               {allPeople
                 .filter((p) => p.cargo_nome === "Vendedor")
                 .map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <option key={p.id} value={p.id} className="dark:bg-slate-800">
                     {p.nome}
                   </option>
                 ))}
@@ -551,13 +551,13 @@ const Relatorios: React.FC = () => {
               Pagamento
             </label>
             <select
-              className="w-full border rounded p-2 text-sm bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border border-gray-200 dark:border-slate-700 rounded p-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
               value={selectedPayment}
               onChange={(e) => setSelectedPayment(e.target.value)}
             >
               <option value="all">Todos</option>
               {paymentMethods.map((method) => (
-                <option key={method} value={method}>
+                <option key={method} value={method} className="dark:bg-slate-800">
                   {method}
                 </option>
               ))}
@@ -616,17 +616,17 @@ const Relatorios: React.FC = () => {
       </div>
 
       {/* Lucro Líquido */}
-      <div className="bg-green-50 p-4 rounded-xl shadow-sm border border-green-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl shadow-sm border border-green-200 dark:border-green-800/50 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
-          <p className="text-sm text-green-700 font-bold uppercase">
+          <p className="text-sm text-green-700 dark:text-green-400 font-bold uppercase">
             Lucro Líquido Real
           </p>
-          <p className="text-xs text-green-600">
+          <p className="text-xs text-green-600 dark:text-green-500/80">
             Fat. Peças + Acréscimos - (Custo Peças + Comissões + Mão de Obra
             Total)
           </p>
         </div>
-        <p className="text-3xl font-bold text-green-700 tracking-tight">
+        <p className="text-3xl font-bold text-green-700 dark:text-green-400 tracking-tight">
           {formatCurrency(metrics.lucro)}
         </p>
       </div>
@@ -679,7 +679,7 @@ const Relatorios: React.FC = () => {
                 {filteredSales.map((v) => (
                   <tr
                     key={v.id}
-                    className={`hover:bg-gray-50 dark:bg-slate-950 ${v.cancelada ? "bg-red-50 text-red-400" : ""}`}
+                    className={`hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors ${v.cancelada ? "bg-red-50 dark:bg-red-950/20 text-red-400 dark:text-red-400/80" : "bg-white dark:bg-slate-900"}`}
                   >
                     <td className="px-4 py-2 text-sm">
                       {dayjs(v.data_venda).format("DD/MM HH:mm")}
@@ -692,18 +692,18 @@ const Relatorios: React.FC = () => {
                       {v.lista_pagamentos && v.lista_pagamentos.length > 0 ? (
                         <div className="flex flex-col gap-1 items-center">
                           {v.lista_pagamentos.map((p, i) => (
-                            <span key={i} className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 whitespace-nowrap text-[10px]">
+                            <span key={i} className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/50 whitespace-nowrap text-[10px]">
                               {p.metodo}: {formatCurrency(p.valor)}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400"}`}>
+                        <span className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800" : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-slate-700"}`}>
                           {standardizeMethod(v.forma_pagamento) || "-"}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-sm text-right text-purple-600">
+                    <td className="px-4 py-2 text-sm text-right text-purple-600 dark:text-purple-400 font-bold">
                       {v.cancelada ? "-" : formatCurrency(v.comissao_calculada)}
                     </td>
                   </tr>
@@ -724,7 +724,7 @@ const Relatorios: React.FC = () => {
         <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-[300px]">
           {/* Tabela: Receita Produtos por Método */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md flex flex-col overflow-hidden max-h-[50%] border border-blue-100">
-            <div className="p-3 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 text-sm">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/30 font-bold text-blue-800 dark:text-blue-400 text-sm">
               Total Recebido (Por Método)
             </div>
             <div className="overflow-y-auto flex-1 custom-scrollbar">
@@ -767,7 +767,7 @@ const Relatorios: React.FC = () => {
 
           {/* Tabela: Mão de Obra a Pagar */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-md flex flex-col overflow-hidden flex-1 border border-orange-100">
-            <div className="p-3 bg-orange-50 border-b border-orange-100 font-bold text-orange-800 text-sm">
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-100 dark:border-orange-900/30 font-bold text-orange-800 dark:text-orange-400 text-sm">
               Repasse Mão de Obra
             </div>
             <div className="overflow-y-auto flex-1 custom-scrollbar">

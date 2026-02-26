@@ -249,18 +249,18 @@ const Config: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Fantasia</label>
+              <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">Nome Fantasia</label>
               <input
-                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
                 value={companyInfo.empresa_nome}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_nome: e.target.value })}
                 placeholder="Ex: Minha Loja de Peças"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço Completo</label>
+              <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">Endereço Completo</label>
               <input
-                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
                 value={companyInfo.empresa_endereco}
                 onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_endereco: e.target.value })}
                 placeholder="Rua Exemplo, 123 - Bairro - Cidade/UF"
@@ -268,18 +268,18 @@ const Config: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone / WhatsApp</label>
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">Telefone / WhatsApp</label>
                 <input
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
                   value={companyInfo.empresa_telefone}
                   onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_telefone: e.target.value })}
                   placeholder="(00) 00000-0000"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CNPJ / Documento</label>
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">CNPJ / Documento</label>
                 <input
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
                   value={companyInfo.empresa_cnpj}
                   onChange={(e) => setCompanyInfo({ ...companyInfo, empresa_cnpj: e.target.value })}
                   placeholder="00.000.000/0000-00"
@@ -310,7 +310,7 @@ const Config: React.FC = () => {
                 <i className="fas fa-image text-2xl"></i>
               </div>
             )}
-            <button onClick={handleSelectLogo} className="bg-gray-200 text-gray-700 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-300 text-sm font-bold">
+            <button onClick={handleSelectLogo} className="bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-200 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-slate-600 text-sm font-bold transition-colors">
               <i className="fas fa-upload mr-2"></i> Selecionar Imagem
             </button>
           </div>
@@ -320,9 +320,9 @@ const Config: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {/* Card Comissão */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-blue-500">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-full border-l-4 border-blue-500">
           <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 flex items-center border-b pb-2">
             <i className="fas fa-percent text-blue-500 mr-2"></i> Regras de
             Comissão
@@ -330,36 +330,36 @@ const Config: React.FC = () => {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                 Peças Novas (Sobre Venda)
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-blue-500 transition font-bold text-gray-700 dark:text-slate-300"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-blue-500 transition font-bold text-gray-700 dark:text-slate-100 bg-white dark:bg-slate-800"
                   placeholder="Ex: 5"
                   value={defaultCommission}
                   onChange={(e) => setDefaultCommission(e.target.value)}
                 />
-                <span className="absolute right-3 top-3 text-gray-400 font-bold">
+                <span className="absolute right-3 top-3 text-gray-400 dark:text-slate-500 font-bold">
                   %
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-orange-600 uppercase mb-1">
+              <label className="block text-xs font-bold text-orange-600 dark:text-orange-400 uppercase mb-1">
                 Peças Usadas (Sobre Lucro)
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  className="w-full border border-orange-200 dark:border-orange-900/30 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-orange-500 transition font-bold text-orange-800 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20"
+                  className="w-full border border-orange-200 dark:border-orange-900/40 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-orange-500 transition font-bold text-orange-800 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/20"
                   placeholder="Ex: 25"
                   value={usedCommission}
                   onChange={(e) => setUsedCommission(e.target.value)}
                 />
-                <span className="absolute right-3 top-3 text-orange-400 font-bold">
+                <span className="absolute right-3 top-3 text-orange-400 dark:text-orange-600 font-bold">
                   %
                 </span>
               </div>
@@ -376,7 +376,7 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Tema */}
-        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-brand-primary">
+        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-full border-l-4 border-brand-primary">
           <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 dark:text-slate-200 flex items-center border-b dark:border-slate-800 pb-2">
             <i className="fas fa-adjust text-brand-primary mr-2"></i> Tema do Sistema
           </h2>
@@ -418,24 +418,24 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Impressora */}
-        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-gray-700 dark:border-brand-dark">
+        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-full border-l-4 border-gray-700 dark:border-brand-dark">
           <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 dark:text-slate-200 flex items-center border-b dark:border-slate-800 pb-2">
             <i className="fas fa-print text-gray-700 dark:text-slate-300 dark:text-brand-dark mr-2"></i>
             Cupom
           </h2>
           <div className="flex gap-4 items-end">
             <div className="flex-1">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                 Dispositivo
               </label>
               <select
-                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-gray-500 transition"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-gray-500 transition"
                 value={selectedPrinter}
                 onChange={(e) => setSelectedPrinter(e.target.value)}
               >
-                <option value="">Padrão do Windows</option>
+                <option value="" className="dark:bg-slate-800">Padrão do Windows</option>
                 {printers.map((p) => (
-                  <option key={p.name} value={p.name}>
+                  <option key={p.name} value={p.name} className="dark:bg-slate-800">
                     {p.name}
                   </option>
                 ))}
@@ -451,12 +451,12 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Background Login */}
-        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-brand-primary">
+        <div className="bg-white dark:bg-slate-900 dark:bg-slate-900 p-6 rounded-xl shadow-md h-full border-l-4 border-brand-primary">
           <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 dark:text-slate-200 flex items-center border-b dark:border-slate-800 pb-2">
             <i className="fas fa-image text-brand-primary mr-2"></i> Fundo do Login
           </h2>
           <div className="flex flex-col gap-3">
-            <label className="block text-xs font-bold text-gray-500 uppercase">Tema do Fundo</label>
+            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Tema do Fundo</label>
             <div className="grid grid-cols-5 gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => {
                 const bgName = `bg${i}.png`;
@@ -472,7 +472,7 @@ const Config: React.FC = () => {
                     className={`h-10 w-full rounded border transition flex items-center justify-center font-bold ${
                       isSelected 
                         ? "border-brand-primary bg-brand-primary text-white shadow-sm" 
-                        : "border-gray-200 dark:border-slate-800 bg-gray-100 text-gray-600 hover:border-brand-primary hover:bg-brand-primary/5"
+                        : "border-gray-200 dark:border-slate-800 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:border-brand-primary hover:bg-brand-primary/5 dark:hover:bg-slate-700"
                     }`}
                   >
                     {i}
@@ -521,7 +521,7 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Backup */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit border-l-4 border-green-500">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-full border-l-4 border-green-500">
           <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 flex items-center border-b pb-2">
             <i className="fas fa-database text-green-500 mr-2"></i> Dados
           </h2>
@@ -542,14 +542,14 @@ const Config: React.FC = () => {
         </div>
 
         {/* Card Cargos */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-fit md:col-span-2 border-l-4 border-purple-500">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md h-full border-l-4 border-purple-500">
           <h2 className="text-lg font-bold mb-4 text-gray-700 dark:text-slate-300 flex items-center border-b pb-2">
             <i className="fas fa-id-badge text-purple-500 mr-2"></i> Cargos
           </h2>
           <form onSubmit={handleAddRole} className="flex gap-2 mb-4">
             <input
               type="text"
-              className="flex-1 border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-500"
+              className="flex-1 border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
               placeholder="Nome do cargo..."
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
@@ -563,21 +563,21 @@ const Config: React.FC = () => {
           </form>
           <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
             {roles.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-2">
+              <p className="text-gray-400 dark:text-slate-500 text-sm text-center py-2">
                 Nenhum cargo cadastrado.
               </p>
             )}
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="flex justify-between items-center p-2 bg-gray-50 dark:bg-slate-800/50 rounded border border-gray-100 group hover:border-purple-200 transition"
+                className="flex justify-between items-center p-2 bg-gray-50 dark:bg-slate-800/80 rounded border border-gray-100 dark:border-slate-700 group hover:border-purple-200 dark:hover:border-purple-900 transition"
               >
-                <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
                   {role.nome}
                 </span>
                 <button
                   onClick={() => handleDeleteRole(role.id)}
-                  className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition"
+                  className="text-red-400 dark:text-red-900/60 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 p-1.5 rounded transition"
                   title="Excluir"
                 >
                   <i className="fas fa-trash"></i>
@@ -597,17 +597,17 @@ const Config: React.FC = () => {
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Formulário */}
-          <div className="lg:w-1/3 border-r pr-6 border-gray-100">
+          <div className="lg:w-1/3 border-r lg:pr-6 border-transparent lg:border-gray-100 lg:dark:border-slate-800">
             <h3 className="font-semibold text-gray-600 mb-4 text-sm uppercase tracking-wide">
               Novo Usuário
             </h3>
             <form onSubmit={handleAddUser} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Nome
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
                   placeholder="Ex: João Silva"
                   value={newUser.nome}
                   onChange={(e) =>
@@ -617,11 +617,11 @@ const Config: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Login
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
                   placeholder="Ex: joao.vendas"
                   value={newUser.username}
                   onChange={(e) =>
@@ -632,13 +632,13 @@ const Config: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Senha
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 pr-10 outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 pr-10 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 transition"
                     placeholder="******"
                     value={newUser.password}
                     onChange={(e) =>
@@ -649,7 +649,7 @@ const Config: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-2 text-gray-400 hover:text-indigo-600 focus:outline-none"
+                    className="absolute right-2 top-2 text-gray-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 focus:outline-none"
                   >
                     <i
                       className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"}`}
@@ -659,18 +659,18 @@ const Config: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">
                   Permissão
                 </label>
                 <select
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 transition"
                   value={newUser.cargo}
                   onChange={(e) =>
                     setNewUser({ ...newUser, cargo: e.target.value as "caixa" | "admin" })
                   }
                 >
-                  <option value="caixa">Caixa (Restrito)</option>
-                  <option value="admin">Administrador (Total)</option>
+                  <option value="caixa" className="dark:bg-slate-800">Caixa (Restrito)</option>
+                  <option value="admin" className="dark:bg-slate-800">Administrador (Total)</option>
                 </select>
               </div>
               <button
@@ -689,37 +689,37 @@ const Config: React.FC = () => {
             </h3>
             <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-slate-800 shadow-sm">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 dark:bg-slate-800/50">
+                <thead className="bg-gray-50 dark:bg-slate-800 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Nome
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Login
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Permissão
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Ação
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200">
                   {systemUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 dark:bg-slate-800/50 transition">
-                      <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors bg-white dark:bg-slate-900">
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-slate-100 font-medium">
                         {user.nome}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 font-mono">
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400 font-mono">
                         {user.username}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span
-                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          className={`px-3 py-1 text-xs font-bold rounded-full ${
                             user.cargo === "admin"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-green-100 text-green-800"
+                              ? "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                              : "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800"
                           }`}
                         >
                           {user.cargo === "admin" ? "Admin" : "Caixa"}
@@ -728,7 +728,7 @@ const Config: React.FC = () => {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition"
+                          className="bg-red-50 dark:bg-slate-800 text-red-400 dark:text-red-400 p-1.5 rounded hover:bg-red-100 dark:hover:bg-slate-700 transition"
                           title="Remover Acesso"
                         >
                           <i className="fas fa-trash"></i>

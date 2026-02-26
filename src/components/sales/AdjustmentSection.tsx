@@ -50,7 +50,7 @@ const AdjustmentSection: React.FC<AdjustmentSectionProps> = ({
         <div className="flex gap-2">
           <input
             type="number"
-            className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-right text-sm font-medium focus:ring-1 focus:ring-blue-500 outline-none"
+            className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-right text-sm font-medium focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             value={laborInput}
             onChange={(e) => setLaborInput(e.target.value)}
             placeholder="0.00"
@@ -96,7 +96,7 @@ const AdjustmentSection: React.FC<AdjustmentSectionProps> = ({
         </div>
         <input
           type="number"
-          className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-right text-sm text-green-600 outline-none"
+          className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-right text-sm text-green-600 outline-none bg-white dark:bg-slate-800"
           placeholder="Acréscimo"
           value={surchargeValue}
           onChange={(e) => setSurchargeValue(e.target.value)}
@@ -127,7 +127,7 @@ const AdjustmentSection: React.FC<AdjustmentSectionProps> = ({
         </div>
         <input
           type="number"
-          className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-right text-sm text-red-600 outline-none"
+          className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-right text-sm text-red-600 outline-none bg-white dark:bg-slate-800"
           placeholder="Desconto"
           value={discountValue}
           onChange={(e) => setDiscountValue(e.target.value)}

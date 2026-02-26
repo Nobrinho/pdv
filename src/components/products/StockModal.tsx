@@ -65,7 +65,7 @@ const StockModal: React.FC<StockModalProps> = ({
             <input
               type="number"
               min="1"
-              className="block w-full border-2 border-green-100 rounded-lg p-3 text-xl font-bold text-center text-green-700 focus:border-green-500 focus:ring-0 outline-none transition"
+              className="block w-full border-2 border-green-100 dark:border-green-900/30 rounded-lg p-3 text-xl font-bold text-center text-green-700 dark:text-green-400 focus:border-green-500 focus:ring-0 outline-none transition bg-white dark:bg-slate-800"
               value={quantityToAdd}
               onChange={(e) => setQuantityToAdd(e.target.value)}
               disabled={isSubmitting}

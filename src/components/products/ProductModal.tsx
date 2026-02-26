@@ -114,7 +114,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">Código</label>
             <input
               {...register("codigo")}
-              className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.codigo ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500'}`}
+              className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.codigo ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200' : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500'}`}
               placeholder="Ex: 12345"
               autoFocus
             />
@@ -125,7 +125,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase mb-1">Descrição</label>
             <input
               {...register("descricao")}
-              className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.descricao ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500'}`}
+              className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.descricao ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200' : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500'}`}
               placeholder="Ex: Óleo de Motor 1L"
             />
             {errors.descricao && <p className="text-red-500 text-[10px] mt-1">{errors.descricao.message}</p>}
@@ -138,7 +138,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 type="number"
                 step="0.01"
                 {...register("custo")}
-                className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.custo ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500'}`}
+                className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.custo ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200' : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500'}`}
               />
               {errors.custo && <p className="text-red-500 text-[10px] mt-1">{errors.custo.message}</p>}
             </div>
@@ -148,7 +148,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 type="number"
                 step="0.01"
                 {...register("preco_venda")}
-                className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.preco_venda ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500'}`}
+                className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.preco_venda ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200' : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500'}`}
               />
               {errors.preco_venda && <p className="text-red-500 text-[10px] mt-1">{errors.preco_venda.message}</p>}
             </div>
@@ -161,7 +161,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <input
               type="number"
               {...register("estoque_atual")}
-              className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.estoque_atual ? 'border-red-500 bg-red-50' : 'border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500'}`}
+              className={`block w-full border rounded-lg p-2.5 outline-none transition ${errors.estoque_atual ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200' : 'border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500'}`}
             />
             {errors.estoque_atual && <p className="text-red-500 text-[10px] mt-1">{errors.estoque_atual.message}</p>}
           </div>

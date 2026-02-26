@@ -209,7 +209,7 @@ const Servicos: React.FC = () => {
                 Descrição do Serviço
               </label>
               <textarea
-                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
+                className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 rows={3}
                 placeholder="Ex: Troca de óleo, Regulagem..."
                 value={formData.descricao}
@@ -229,7 +229,7 @@ const Servicos: React.FC = () => {
                   type="number"
                   step="0.01"
                   min="0"
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 pl-3 text-lg font-bold text-orange-600 shadow-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 pl-3 text-lg font-bold text-orange-600 shadow-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-slate-800"
                   placeholder="0.00"
                   value={formData.valor}
                   onChange={(e) =>
@@ -288,7 +288,7 @@ const Servicos: React.FC = () => {
                 </label>
                 <input
                   type="date"
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   value={startDate}
                   onChange={(e) => {
                     setStartDate(e.target.value);
@@ -302,7 +302,7 @@ const Servicos: React.FC = () => {
                 </label>
                 <input
                   type="date"
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   value={endDate}
                   onChange={(e) => {
                     setEndDate(e.target.value);

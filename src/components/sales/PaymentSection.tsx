@@ -113,7 +113,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
         <div className="flex gap-2">
           <input
             type="number"
-            className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-2 text-right font-bold text-gray-800 dark:text-slate-100"
+            className="flex-1 border border-gray-300 dark:border-slate-700 rounded p-2 text-right font-bold text-gray-800 dark:text-slate-100 bg-white dark:bg-slate-800"
             placeholder="0.00"
             value={currentValue}
             onChange={(e) => setCurrentValue(e.target.value)}

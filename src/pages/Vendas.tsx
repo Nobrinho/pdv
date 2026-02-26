@@ -260,7 +260,7 @@ const Vendas: React.FC = () => {
           )}
           <button
             onClick={handleFinishSale}
-            className="w-full py-4 bg-green-600 text-white rounded-xl font-black text-lg hover:bg-green-700 transition shadow-lg shadow-green-200 flex items-center justify-center gap-2"
+            className="w-full py-4 bg-green-600 text-white rounded-xl font-black text-lg hover:bg-green-700 transition shadow-lg shadow-green-200 dark:shadow-green-900/30 flex items-center justify-center gap-2"
           >
             <i className="fas fa-check-double"></i>
             FINALIZAR VENDA

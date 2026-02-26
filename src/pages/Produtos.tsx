@@ -139,7 +139,7 @@ const Produtos: React.FC<ProdutosProps> = ({ user }) => {
           <i className="fas fa-search absolute left-3 top-3 text-gray-400 dark:text-slate-500"></i>
           <input
             type="text"
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             placeholder="Buscar por nome ou código..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -147,7 +147,7 @@ const Produtos: React.FC<ProdutosProps> = ({ user }) => {
         </div>
         <div className="w-full md:w-48">
           <select
-            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-slate-900"
+            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >

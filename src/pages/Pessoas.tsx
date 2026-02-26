@@ -8,6 +8,7 @@ const Pessoas: React.FC = () => {
   const [people, setPeople] = useState<Person[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [defaultCommission, setDefaultCommission] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
@@ -37,29 +38,16 @@ const Pessoas: React.FC = () => {
     }
   };
 
-  // --- AGRUPAMENTO POR CARGO ---
-  const peopleByRole = useMemo(() => {
-    const groups: Record<string, Person[]> = {};
-
-    people.forEach((person) => {
-      const cargo = person.cargo_nome || "Sem Cargo";
-      if (!groups[cargo]) groups[cargo] = [];
-      groups[cargo].push(person);
+  // --- FILTRAGEM ---
+  const filteredPeople = useMemo(() => {
+    return people.filter((person) => {
+      const term = searchTerm.toLowerCase();
+      return (
+        person.nome.toLowerCase().includes(term) ||
+        (person.cargo_nome || "").toLowerCase().includes(term)
+      );
     });
-
-    const orderedKeys = Object.keys(groups).sort((a, b) => {
-      if (a === "Vendedor") return -1;
-      if (b === "Vendedor") return 1;
-      if (a === "Trocador") return -1;
-      if (b === "Trocador") return 1;
-      return a.localeCompare(b);
-    });
-
-    return orderedKeys.map((key) => ({
-      role: key,
-      list: groups[key],
-    }));
-  }, [people]);
+  }, [people, searchTerm]);
 
   // --- LÓGICA DO MODAL ---
   const selectedRoleName = useMemo(() => {
@@ -137,21 +125,24 @@ const Pessoas: React.FC = () => {
     }
   };
 
-  const getRoleColor = (roleName: string) => {
+  const getRoleBadgeStyle = (roleName: string) => {
     switch (roleName) {
       case "Vendedor":
-        return "border-l-4 border-blue-500";
+        return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800";
       case "Trocador":
-        return "border-l-4 border-orange-500";
+        return "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800";
       default:
-        return "border-l-4 border-gray-300 dark:border-slate-700";
+        return "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700";
     }
   };
 
   return (
     <div className="p-6 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Equipe (Pessoas)</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100">Equipe</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Gerencie os colaboradores da sua oficina</p>
+        </div>
         <button
           onClick={() => {
             resetForm();
@@ -159,110 +150,113 @@ const Pessoas: React.FC = () => {
           }}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center shadow-md text-sm sm:text-base whitespace-nowrap"
         >
-          <i className="fas fa-user-plus mr-2"></i> Adicionar Pessoa
+          <i className="fas fa-user-plus mr-2"></i> Adicionar Colaborador
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-6 pb-4 custom-scrollbar">
-        {peopleByRole.length === 0 && (
-          <div className="text-center py-20 text-gray-400 dark:text-slate-500 flex flex-col items-center">
-            <i className="fas fa-users text-4xl mb-3 opacity-30"></i>
-            <p>Nenhuma pessoa cadastrada.</p>
-          </div>
-        )}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <i className="fas fa-search absolute left-3 top-3.5 text-gray-400 dark:text-slate-500"></i>
+          <input
+            type="text"
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-slate-100 transition-all"
+            placeholder="Buscar por nome ou cargo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
 
-        {peopleByRole.map((group) => (
-          <div
-            key={group.role}
-            className={`bg-white dark:bg-slate-900 rounded-xl shadow-md overflow-hidden ${getRoleColor(group.role)}`}
-          >
-            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-950/50 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
-              <i className={`fas ${getRoleIcon(group.role)} text-lg`}></i>
-              <h2 className="text-lg font-bold text-gray-700 dark:text-slate-300">{group.role}</h2>
-              <span className="ml-auto bg-white dark:bg-slate-900 border px-2 py-0.5 rounded text-xs text-gray-500 dark:text-slate-400 font-bold shadow-sm">
-                {group.list.length}
-              </span>
-            </div>
+      <div className="flex-1 overflow-hidden bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 flex flex-col">
+        <div className="overflow-y-auto flex-1 custom-scrollbar">
+          <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-800">
+            <thead className="bg-gray-50 dark:bg-slate-950 sticky top-0 z-10 shadow-sm">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                  Colaborador
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                  Cargo
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                  Comissão
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider w-24">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-slate-800 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+              {filteredPeople.map((person) => (
+                <tr
+                  key={person.id}
+                  className="hover:bg-blue-50 dark:hover:bg-slate-800/50 transition-colors group"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-slate-800 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm mr-3 border border-blue-100 dark:border-slate-700">
+                        {person.nome.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-semibold">
+                        {person.nome}
+                      </span>
+                    </div>
+                  </td>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100 dark:divide-slate-800">
-                <thead className="bg-white dark:bg-slate-900">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
-                      Nome
-                    </th>
-                    {group.role === "Vendedor" && (
-                      <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
-                        Comissão
-                      </th>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getRoleBadgeStyle(person.cargo_nome || "")}`}>
+                      <i className={`fas ${getRoleIcon(person.cargo_nome || "")} text-[10px]`}></i>
+                      {person.cargo_nome}
+                    </span>
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                    {person.cargo_nome === "Vendedor" ? (
+                      person.comissao_fixa ? (
+                        <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 py-1 px-3 rounded-full text-xs font-bold shadow-sm border border-green-200 dark:border-green-800">
+                          {person.comissao_fixa}%
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 dark:text-slate-500 italic text-xs">
+                          Padrão ({defaultCommission}%)
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-gray-300 dark:text-slate-700">—</span>
                     )}
-                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider w-24">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
-                  {group.list.map((person) => (
-                    <tr
-                      key={person.id}
-                      className="hover:bg-blue-50 transition-colors group"
-                    >
-                      <td className="px-6 py-3 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800/80 flex items-center justify-center text-gray-500 dark:text-slate-400 font-bold text-xs mr-3">
-                            {person.nome.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                            {person.nome}
-                          </span>
-                        </div>
-                      </td>
+                  </td>
 
-                      {group.role === "Vendedor" && (
-                        <td className="px-6 py-3 whitespace-nowrap text-center text-sm">
-                          {person.comissao_fixa ? (
-                            <span
-                              className="bg-green-100 text-green-800 py-1 px-3 rounded-full text-xs font-bold shadow-sm border border-green-200"
-                              title="Taxa individual configurada"
-                            >
-                              {person.comissao_fixa}%
-                            </span>
-                          ) : (
-                            <span
-                              className="bg-gray-100 dark:bg-slate-800/80 text-gray-600 dark:text-slate-400 py-1 px-3 rounded-full text-xs font-medium border border-gray-200 dark:border-slate-800"
-                              title={`Taxa padrão do sistema: ${defaultCommission}%`}
-                            >
-                              {defaultCommission}% (Padrão)
-                            </span>
-                          )}
-                        </td>
-                      )}
-
-                      <td className="px-6 py-3 whitespace-nowrap text-center text-sm font-medium">
-                        <div className="flex justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleEdit(person)}
-                            className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded transition"
-                            title="Editar"
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button
-                            onClick={() => { if(person.id) handleDelete(person.id); }}
-                            className="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded transition"
-                            title="Excluir"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))}
+                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => handleEdit(person)}
+                        className="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition"
+                        title="Editar"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </button>
+                      <button
+                        onClick={() => { if(person.id) handleDelete(person.id); }}
+                        className="text-red-500 hover:text-red-700 bg-red-50 dark:bg-slate-800 p-2 rounded-lg transition"
+                        title="Excluir"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredPeople.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="text-center py-20 text-gray-400 dark:text-slate-500">
+                    <i className="fas fa-users text-4xl mb-3 opacity-20"></i>
+                    <p>Nenhum colaborador encontrado.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showModal && (
@@ -284,7 +278,7 @@ const Pessoas: React.FC = () => {
                   Nome Completo
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   value={formData.nome}
                   onChange={(e) =>
                     setFormData({ ...formData, nome: e.target.value })
@@ -301,7 +295,7 @@ const Pessoas: React.FC = () => {
                 </label>
                 <div className="relative">
                   <select
-                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-blue-500 transition appearance-none"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 transition appearance-none"
                     value={formData.cargo_id}
                     onChange={(e) =>
                       setFormData({ ...formData, cargo_id: e.target.value })
@@ -322,12 +316,9 @@ const Pessoas: React.FC = () => {
               </div>
 
               {selectedRoleName === "Vendedor" && (
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 animate-fade-in-down">
-                  <label className="block text-xs font-bold text-blue-700 uppercase mb-1">
-                    Comissão Individual (%){" "}
-                    <span className="text-blue-400 font-normal ml-1">
-                      (Opcional)
-                    </span>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800 animate-fade-in-down">
+                  <label className="block text-xs font-bold text-blue-700 dark:text-blue-300 uppercase mb-1">
+                    Comissão Individual (%) <span className="text-blue-400 dark:text-blue-500 font-normal ml-1">(Opcional)</span>
                   </label>
                   <div className="relative">
                     <input
@@ -335,7 +326,7 @@ const Pessoas: React.FC = () => {
                       step="0.1"
                       min="0"
                       max="100"
-                      className="w-full border border-blue-200 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-blue-500 transition text-blue-900 font-bold"
+                      className="w-full border border-blue-200 dark:border-blue-900/30 rounded-lg p-2.5 pr-8 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white dark:bg-slate-800 text-blue-900 dark:text-blue-400 font-bold"
                       placeholder={defaultCommission.toString()}
                       value={formData.comissao_fixa}
                       onChange={(e) =>
@@ -349,7 +340,7 @@ const Pessoas: React.FC = () => {
                       %
                     </span>
                   </div>
-                  <p className="text-[10px] text-blue-500 mt-1.5 leading-tight">
+                  <p className="text-[10px] text-blue-500 dark:text-blue-400 mt-1.5 leading-tight">
                     <i className="fas fa-info-circle mr-1"></i>
                     Deixe vazio para usar a taxa padrão ({defaultCommission}%).
                   </p>

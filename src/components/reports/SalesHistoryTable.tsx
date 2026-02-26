@@ -37,7 +37,7 @@ const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
             {sales.map((sale) => (
               <tr
                 key={sale.id}
-                className={`hover:bg-blue-50 dark:hover:bg-slate-800/80 transition-colors ${sale.cancelada ? "bg-red-50" : ""}`}
+                className={`hover:bg-blue-50 dark:hover:bg-slate-800/80 transition-colors ${sale.cancelada ? "bg-red-50 dark:bg-red-950/20" : ""}`}
               >
                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-mono ${sale.cancelada ? "text-red-400 line-through" : "text-gray-500 dark:text-slate-400"}`}>
                   #{sale.id}
@@ -64,7 +64,7 @@ const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
                   {formatCurrency(sale.total_final)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
-                  <span className={`px-2 py-1 text-[10px] font-bold rounded-full ${sale.cancelada ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+                  <span className={`px-2 py-1 text-[10px] font-bold rounded-full ${sale.cancelada ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400" : "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400"}`}>
                     {sale.cancelada ? "CANCELADA" : "OK"}
                   </span>
                 </td>
@@ -72,7 +72,7 @@ const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
                   <div className="flex justify-center gap-2">
                     <button
                       onClick={() => onView(sale)}
-                      className="text-blue-600 hover:text-blue-900 bg-blue-50 p-2 rounded-lg transition"
+                      className="text-blue-600 hover:text-blue-900 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition"
                       title="Ver Recibo"
                     >
                       <i className="fas fa-eye text-sm"></i>
@@ -80,7 +80,7 @@ const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
                     {!sale.cancelada && (
                       <button
                         onClick={() => onCancel(sale)}
-                        className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-lg transition"
+                        className="text-red-600 hover:text-red-900 bg-red-50 dark:bg-slate-800 p-2 rounded-lg transition"
                         title="Cancelar Venda"
                       >
                         <i className="fas fa-ban text-sm"></i>

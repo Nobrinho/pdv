@@ -169,7 +169,7 @@ const Clientes: React.FC = () => {
       <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm mb-4 border border-gray-100 dark:border-slate-800 flex items-center gap-2">
         <i className="fas fa-search text-gray-400 dark:text-slate-500 ml-2"></i>
         <input
-          className="w-full border-none outline-none text-gray-700 dark:text-slate-300 placeholder-gray-400"
+          className="w-full border-none outline-none bg-transparent text-gray-700 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500"
           placeholder="Buscar por nome, telefone ou documento..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -197,9 +197,9 @@ const Clientes: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
               {filteredClients.map((c) => (
-                <tr key={c.id} className="hover:bg-blue-50 transition">
+                <tr key={c.id} className="hover:bg-blue-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                       {c.nome}
                     </div>
                     {c.documento && (
@@ -218,7 +218,7 @@ const Clientes: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${(c.saldo_devedor || 0) > 0.01 ? "bg-red-100 text-red-600 border border-red-200" : "bg-green-100 text-green-700 border border-green-200"}`}
+                      className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${(c.saldo_devedor || 0) > 0.01 ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800" : "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800"}`}
                     >
                       {(c.saldo_devedor || 0) > 0.01
                         ? formatCurrency(c.saldo_devedor || 0)
@@ -229,21 +229,21 @@ const Clientes: React.FC = () => {
                     <div className="flex justify-center gap-2">
                       <button
                         onClick={() => handleOpenDebt(c)}
-                        className="bg-indigo-100 text-indigo-700 p-2 rounded hover:bg-indigo-200 transition"
+                        className="bg-indigo-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-400 p-2 rounded hover:bg-indigo-200 dark:hover:bg-slate-700 transition"
                         title="Ver Conta / Pagar"
                       >
                         <i className="fas fa-file-invoice-dollar w-4 h-4 flex items-center justify-center"></i>
                       </button>
                       <button
                         onClick={() => handleEdit(c)}
-                        className="bg-blue-50 text-blue-600 p-2 rounded hover:bg-blue-100 transition"
+                        className="bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 p-2 rounded hover:bg-blue-100 dark:hover:bg-slate-700 transition"
                         title="Editar Dados"
                       >
                         <i className="fas fa-edit w-4 h-4 flex items-center justify-center"></i>
                       </button>
                       <button
                         onClick={() => { if(c.id) handleDelete(c.id); }}
-                        className="bg-red-50 text-red-500 p-2 rounded hover:bg-red-100 transition"
+                        className="bg-red-50 dark:bg-slate-800 text-red-500 dark:text-red-400 p-2 rounded hover:bg-red-100 dark:hover:bg-slate-700 transition"
                         title="Excluir"
                       >
                         <i className="fas fa-trash w-4 h-4 flex items-center justify-center"></i>
@@ -282,7 +282,7 @@ const Clientes: React.FC = () => {
                   Nome Completo *
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   value={formData.nome}
                   onChange={(e) =>
                     setFormData({ ...formData, nome: e.target.value })
@@ -297,7 +297,7 @@ const Clientes: React.FC = () => {
                     Telefone
                   </label>
                   <input
-                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                     value={formData.telefone}
                     onChange={(e) =>
                       setFormData({ ...formData, telefone: e.target.value })
@@ -309,7 +309,7 @@ const Clientes: React.FC = () => {
                     CPF / Documento
                   </label>
                   <input
-                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                     value={formData.documento}
                     onChange={(e) =>
                       setFormData({ ...formData, documento: e.target.value })
@@ -322,7 +322,7 @@ const Clientes: React.FC = () => {
                   Endereço
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   value={formData.endereco}
                   onChange={(e) =>
                     setFormData({ ...formData, endereco: e.target.value })
@@ -333,7 +333,7 @@ const Clientes: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700/50 transition font-medium text-sm"
+                  className="px-5 py-2.5 bg-gray-100 dark:bg-slate-800/80 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700/80 transition font-medium text-sm border border-transparent dark:border-slate-700"
                 >
                   Cancelar
                 </button>
@@ -407,8 +407,8 @@ const Clientes: React.FC = () => {
                         key={d.id}
                         className={
                           isQuitado
-                            ? "bg-green-50 opacity-60"
-                            : "hover:bg-gray-50 dark:bg-slate-950 transition"
+                            ? "bg-green-50 dark:bg-green-900/20 opacity-80"
+                            : "hover:bg-gray-50 dark:hover:bg-slate-800 transition"
                         }
                       >
                         <td className="px-4 py-3 text-gray-600 dark:text-slate-400">
@@ -433,7 +433,7 @@ const Clientes: React.FC = () => {
                             <div className="flex items-center gap-2 justify-end">
                               <input
                                 type="number"
-                                className="w-20 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-xs text-right focus:ring-1 focus:ring-green-500 outline-none"
+                                className="w-20 border border-gray-300 dark:border-slate-700 rounded p-1.5 text-xs text-right focus:ring-1 focus:ring-green-500 outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                                 placeholder="R$"
                                 value={paymentValue}
                                 onChange={(e) =>

@@ -62,7 +62,7 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
       </label>
       <input
         ref={searchInputRef}
-        className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 pl-10 text-lg outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 pl-10 text-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
         placeholder="Código ou Nome..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}

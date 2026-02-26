@@ -68,7 +68,7 @@ const SalesFilters: React.FC<SalesFiltersProps> = ({
           </label>
           <input
             type="date"
-            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-950"
+            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
@@ -79,7 +79,7 @@ const SalesFilters: React.FC<SalesFiltersProps> = ({
           </label>
           <input
             type="date"
-            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-950"
+            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
@@ -89,7 +89,7 @@ const SalesFilters: React.FC<SalesFiltersProps> = ({
             Vendedor
           </label>
           <select
-            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm bg-gray-50 dark:bg-slate-950 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+            className="w-full border border-gray-300 dark:border-slate-700 rounded-lg p-2.5 text-sm bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none font-medium"
             value={sellerId}
             onChange={(e) => setSellerId(e.target.value)}
           >
@@ -110,8 +110,8 @@ const SalesFilters: React.FC<SalesFiltersProps> = ({
             <input
               className={`w-full border rounded-lg p-2.5 text-sm pl-9 outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
                 clientId
-                  ? "border-green-500 bg-green-50 text-green-800 font-bold"
-                  : "border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-950"
+                  ? "border-green-500 bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 font-bold"
+                  : "border-gray-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-slate-100"
               }`}
               placeholder={clientId ? "" : "Nome ou Doc..."}
               value={clientSearchTerm}
