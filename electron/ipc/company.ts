@@ -1,8 +1,10 @@
 import { ipcMain, dialog, app, BrowserWindow } from "electron";
-import { knex } from "../database/knex";
+import { SystemRepository } from "../database/repositories/SystemRepository";
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
+
+const systemRepo = new SystemRepository();
 
 export function registerCompanyHandlers(mainWindow: BrowserWindow) {
   ipcMain.handle("get-company-info", async () => {
@@ -14,11 +16,11 @@ export function registerCompanyHandlers(mainWindow: BrowserWindow) {
         "empresa_cnpj",
         "empresa_logo",
       ];
-      const configs = await knex("configuracoes").whereIn("chave", keys);
+      
       const result: any = {};
-      configs.forEach((c) => {
-        result[c.chave] = c.valor;
-      });
+      for (const key of keys) {
+        result[key] = await systemRepo.getConfig(key);
+      }
 
       if (result.empresa_logo) {
         try {
@@ -47,7 +49,6 @@ export function registerCompanyHandlers(mainWindow: BrowserWindow) {
 
   ipcMain.handle("save-company-info", async (_event, data: any) => {
     try {
-      const trx = await knex.transaction();
       for (const [key, value] of Object.entries(data)) {
         if (key === "empresa_logo_url") continue;
 
@@ -57,16 +58,8 @@ export function registerCompanyHandlers(mainWindow: BrowserWindow) {
           }
         }
 
-        const existing = await trx("configuracoes").where("chave", key).first();
-        if (existing) {
-          await trx("configuracoes")
-            .where("chave", key)
-            .update({ valor: value });
-        } else {
-          await trx("configuracoes").insert({ chave: key, valor: value });
-        }
+        await systemRepo.saveConfig(key, value);
       }
-      await trx.commit();
       return { success: true };
     } catch (error: any) {
       console.error("Erro save-company-info:", error);
@@ -88,25 +81,13 @@ export function registerCompanyHandlers(mainWindow: BrowserWindow) {
     const destPath = path.join(app.getPath("userData"), destFileName);
 
     try {
-      // Processar com Sharp: Redimensionar para 300px de largura e converter para escala de cinza para térmica
+      // Processar com Sharp
       await sharp(sourcePath)
         .resize(300)
         .grayscale()
         .toFile(destPath);
 
-      const existing = await knex("configuracoes")
-        .where("chave", "empresa_logo")
-        .first();
-      if (existing) {
-        await knex("configuracoes")
-          .where("chave", "empresa_logo")
-          .update({ valor: destPath });
-      } else {
-        await knex("configuracoes").insert({
-          chave: "empresa_logo",
-          valor: destPath,
-        });
-      }
+      await systemRepo.saveConfig("empresa_logo", destPath);
 
       const fileBuffer = await fs.promises.readFile(destPath);
       const base64 = fileBuffer.toString("base64");

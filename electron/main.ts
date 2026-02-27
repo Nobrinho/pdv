@@ -9,19 +9,31 @@ import { registerServiceHandlers } from "./ipc/services";
 import { registerCompanyHandlers } from "./ipc/company";
 import { registerSystemHandlers } from "./ipc/system";
 import { registerPrintHandlers } from "./ipc/print";
+import { machineIdSync } from "node-machine-id";
 import { knex } from "./database/knex";
+import CompanyContext from "./database/context/CompanyContext";
 
 const isDev = !app.isPackaged;
 let mainWindow: BrowserWindow | null = null;
 
-// Configuração do AutoUpdater
-autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = true;
-
 async function initDb() {
   try {
+    // Inicializar Contexto de Empresa (Boot Monoloja)
+    CompanyContext.setCompany("EMPRESA_LOCAL_001");
+    
     await knex.migrate.latest();
     console.log("Banco de dados sincronizado.");
+    
+    // Inicialização do SaaS Config e Device ID
+    const deviceId = machineIdSync();
+    const config = await knex("saas_config").first();
+    if (config && !config.device_id) {
+      await knex("saas_config").where("id", config.id).update({
+        device_id: deviceId,
+        updated_at: Date.now()
+      });
+      console.log("Device ID registrado:", deviceId);
+    }
   } catch (error) {
     console.error("Erro ao inicializar banco de dados:", error);
   }

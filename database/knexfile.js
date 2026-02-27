@@ -14,7 +14,7 @@ module.exports = {
   production: {
     client: "better-sqlite3",
     connection: {
-      filename: path.join(process.resourcesPath, "syscontrol.sqlite3"),
+      filename: path.join(process.resourcesPath || path.join(__dirname, ".."), "syscontrol.sqlite3"),
     },
     useNullAsDefault: true,
   },
