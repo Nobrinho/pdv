@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("api", {
   // --- PRODUTOS ---
   getProducts: () => ipcRenderer.invoke("get-products"),
+  searchProducts: (params) => ipcRenderer.invoke("search-products", params),
   saveProduct: (product) => ipcRenderer.invoke("save-product", product),
   deleteProduct: (id) => ipcRenderer.invoke("delete-product", id),
 
@@ -13,11 +14,11 @@ contextBridge.exposeInMainWorld("api", {
 
   // --- VENDAS & RECIBOS ---
   createSale: (saleData) => ipcRenderer.invoke("create-sale", saleData),
-  getSales: () => ipcRenderer.invoke("get-sales"),
+  getSales: (filters) => ipcRenderer.invoke("get-sales", filters),
   getSaleItems: (vendaId) => ipcRenderer.invoke("get-sale-items", vendaId),
 
   // --- SERVIÇOS AVULSOS ---
-  getServices: () => ipcRenderer.invoke("get-services"),
+  getServices: (filters) => ipcRenderer.invoke("get-services", filters),
   createService: (serviceData) =>
     ipcRenderer.invoke("create-service", serviceData),
 
@@ -49,7 +50,7 @@ contextBridge.exposeInMainWorld("api", {
   cancelSale: (data) => ipcRenderer.invoke("cancel-sale", data),
 
   // --- NOVO: HISTÓRICO ---
-  getProductHistory: () => ipcRenderer.invoke("get-product-history"),
+  getProductHistory: (filters) => ipcRenderer.invoke("get-product-history", filters),
 
   // --- AUTO UPDATE ---
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

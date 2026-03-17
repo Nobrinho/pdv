@@ -52,6 +52,7 @@ const Vendas = () => {
 
   const searchInputRef = useRef(null);
   const paymentInputRef = useRef(null);
+  const searchTimerRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -147,21 +148,36 @@ const Vendas = () => {
     setShowClientResults(false);
   };
 
-  // --- BUSCA DE PRODUTOS ---
+  // --- BUSCA DE PRODUTOS (Server-side com debounce) ---
   useEffect(() => {
     if (searchTerm.length < 2) {
       setSearchResults([]);
       return;
     }
-    const lowerTerm = searchTerm.toLowerCase();
-    const results = products.filter(
-      (p) =>
-        (p.descricao.toLowerCase().includes(lowerTerm) ||
-          p.codigo.toLowerCase().includes(lowerTerm)) &&
-        p.estoque_atual > 0,
+
+    // Match exato por código (instantâneo, sem debounce)
+    const exactMatch = products.find(
+      (p) => p.codigo.trim() === searchTerm.trim(),
     );
-    setSearchResults(results);
-  }, [searchTerm, products]);
+    if (exactMatch) {
+      setSearchResults([exactMatch]);
+      return;
+    }
+
+    // Debounce 300ms para busca por texto
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await window.api.searchProducts({ term: searchTerm, limit: 15 });
+        setSearchResults(results.filter((p) => p.estoque_atual > 0));
+      } catch (err) {
+        console.error("Erro na busca:", err);
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchTerm]);
 
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") {

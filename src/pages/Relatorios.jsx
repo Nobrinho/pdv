@@ -67,18 +67,25 @@ const Relatorios = () => {
   const [filteredSales, setFilteredSales] = useState([]);
   const [laborSummary, setLaborSummary] = useState([]);
   const [paymentSummary, setPaymentSummary] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // Recarregar do backend quando datas mudam
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadData();
+    }
+  }, [startDate, endDate]);
+
+  // Processar localmente quando filtros de vendedor/pagamento mudam
   useEffect(() => {
     processData();
   }, [
     allSales,
     allServices,
-    startDate,
-    endDate,
     selectedSeller,
     selectedPayment,
     defaultCommission,
@@ -86,8 +93,23 @@ const Relatorios = () => {
 
   const loadData = async () => {
     try {
-      const sales = await window.api.getSales();
-      const services = await window.api.getServices();
+      setLoading(true);
+      // Filtros server-side por data
+      const startTimestamp = startDate
+        ? dayjs(startDate).startOf("day").valueOf()
+        : undefined;
+      const endTimestamp = endDate
+        ? dayjs(endDate).endOf("day").valueOf()
+        : undefined;
+
+      const sales = await window.api.getSales({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
+      const services = await window.api.getServices({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
       const people = await window.api.getPeople();
       const configComissao = await window.api.getConfig("comissao_padrao");
 
@@ -99,6 +121,8 @@ const Relatorios = () => {
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       showAlert("Erro ao carregar dados do banco.", "Erro", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -118,17 +142,6 @@ const Relatorios = () => {
     }
   };
 
-  const isWithinRange = (timestamp) => {
-    const start = dayjs(startDate).startOf("day");
-    const end = dayjs(endDate).endOf("day");
-    const dateToCheck = dayjs(timestamp);
-    return (
-      dateToCheck.isSame(start) ||
-      dateToCheck.isSame(end) ||
-      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
-    );
-  };
-
   const formatCurrency = (val) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -137,9 +150,8 @@ const Relatorios = () => {
   };
 
   const processData = () => {
-    // 1. Filtragem de Vendas
+    // 1. Filtragem de Vendas (dados já vêm filtrados por data do backend)
     let vendasFiltradas = allSales.filter((s) => {
-      const inDate = isWithinRange(s.data_venda);
       const isSeller =
         selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
       const metodoNormalizado = standardizeMethod(s.forma_pagamento);
@@ -150,13 +162,11 @@ const Relatorios = () => {
         isPayment = s.lista_pagamentos.some((p) => standardizeMethod(p.metodo) === selectedPayment);
       }
 
-      return inDate && isSeller && isPayment;
+      return isSeller && isPayment;
     });
 
-    // 2. Filtragem de Serviços
-    let servicosFiltrados = allServices.filter((s) => {
-      return isWithinRange(s.data_servico);
-    });
+    // 2. Serviços (já filtrados por data do backend)
+    let servicosFiltrados = allServices;
 
     let totalFaturamentoPecas = 0;
     let totalCustoPecas = 0;

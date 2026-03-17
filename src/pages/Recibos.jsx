@@ -15,6 +15,7 @@ const Recibos = () => {
   const [filteredSales, setFilteredSales] = useState([]);
   const [sellers, setSellers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Filtros de Data e Período (Padrão: Semana Atual)
   const [periodType, setPeriodType] = useState("weekly");
@@ -45,23 +46,42 @@ const Recibos = () => {
     loadData();
   }, []);
 
+  // Recarregar do backend quando datas mudam
+  useEffect(() => {
+    if (filters.startDate && filters.endDate) {
+      loadData();
+    }
+  }, [filters.startDate, filters.endDate]);
+
+  // Filtrar localmente somente por vendedor/cliente (dados já vêm filtrados por data)
   useEffect(() => {
     applyFilters();
-  }, [filters, sales]);
+  }, [filters.sellerId, filters.clientId, sales]);
 
   const loadData = async () => {
     try {
-      const salesData = await window.api.getSales();
+      setLoading(true);
+      const startTimestamp = filters.startDate 
+        ? dayjs(filters.startDate).startOf("day").valueOf() 
+        : undefined;
+      const endTimestamp = filters.endDate 
+        ? dayjs(filters.endDate).endOf("day").valueOf() 
+        : undefined;
+
+      const salesData = await window.api.getSales({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
       const peopleData = await window.api.getPeople();
       const clientsData = await window.api.getClients();
 
-      // Ordenar decrescente por data
       setSales(salesData.sort((a, b) => b.data_venda - a.data_venda));
-      setFilteredSales(salesData);
       setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
       setClients(clientsData || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,23 +107,10 @@ const Recibos = () => {
     setFilters((prev) => ({ ...prev, startDate: newStart, endDate: newEnd }));
   };
 
-  // Lógica robusta de verificação de intervalo de datas (00:00 - 23:59)
-  const isWithinRange = (timestamp) => {
-    const start = dayjs(filters.startDate).startOf("day");
-    const end = dayjs(filters.endDate).endOf("day");
-    const dateToCheck = dayjs(timestamp);
-    return (
-      dateToCheck.isSame(start) ||
-      dateToCheck.isSame(end) ||
-      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
-    );
-  };
-
   const applyFilters = () => {
     let result = sales;
 
-    // Filtro Data (Corrigido)
-    result = result.filter((s) => isWithinRange(s.data_venda));
+    // Data já filtrada no backend - filtrar localmente só vendedor/cliente
 
     // Filtro Vendedor
     if (filters.sellerId && filters.sellerId !== "all") {
@@ -442,7 +449,20 @@ const Recibos = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSales.map((sale) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-10">
+                    <i className="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+                    <p className="text-gray-400 mt-2 text-sm">Carregando...</p>
+                  </td>
+                </tr>
+              ) : filteredSales.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-10 text-gray-400">
+                    Nenhuma venda encontrada.
+                  </td>
+                </tr>
+              ) : (filteredSales.map((sale) => (
                 <tr
                   key={sale.id}
                   className={`hover:bg-blue-50 ${sale.cancelada ? "bg-red-50" : ""}`}
@@ -515,14 +535,8 @@ const Recibos = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
-              {filteredSales.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="text-center py-10 text-gray-400">
-                    Nenhuma venda encontrada.
-                  </td>
-                </tr>
-              )}
+              )))
+              }
             </tbody>
           </table>
         </div>

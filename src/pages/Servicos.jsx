@@ -32,6 +32,7 @@ const Servicos = () => {
   const [selectedMechanicFilter, setSelectedMechanicFilter] = useState("all");
 
   const [filteredServices, setFilteredServices] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [reportSummary, setReportSummary] = useState({
     totalCount: 0,
     totalValue: 0,
@@ -49,23 +50,40 @@ const Servicos = () => {
     loadData();
   }, []);
 
+  // Recarregar do backend quando datas mudam
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadData();
+    }
+  }, [startDate, endDate]);
+
+  // Filtrar localmente só por mecânico (dados já vêm filtrados por data)
   useEffect(() => {
     applyFilters();
-  }, [startDate, endDate, selectedMechanicFilter, services]);
+  }, [selectedMechanicFilter, services]);
 
   const loadData = async () => {
     try {
-      const servicesData = await window.api.getServices();
+      setLoading(true);
+      // Filtros server-side por data
+      const startTimestamp = startDate
+        ? dayjs(startDate).startOf("day").valueOf()
+        : undefined;
+      const endTimestamp = endDate
+        ? dayjs(endDate).endOf("day").valueOf()
+        : undefined;
+
+      const servicesData = await window.api.getServices({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
       const peopleData = await window.api.getPeople();
 
-      // Ordenar: Mais recente primeiro
       const sortedServices = servicesData.sort(
         (a, b) => b.data_servico - a.data_servico,
       );
 
       setServices(sortedServices);
-
-      // Filtra apenas quem tem cargo de "Trocador"
       setMechanics(peopleData.filter((p) => p.cargo_nome === "Trocador"));
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -74,6 +92,8 @@ const Servicos = () => {
         "Erro Técnico",
         "error",
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -129,19 +149,9 @@ const Servicos = () => {
     }
   };
 
-  const isWithinRange = (timestamp) => {
-    const start = dayjs(startDate).startOf("day");
-    const end = dayjs(endDate).endOf("day");
-    const dateToCheck = dayjs(timestamp);
-    return (
-      dateToCheck.isSame(start) ||
-      dateToCheck.isSame(end) ||
-      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
-    );
-  };
-
   const applyFilters = () => {
-    let result = services.filter((s) => isWithinRange(s.data_servico));
+    // Data já filtrada no backend - filtrar localmente só por mecânico
+    let result = services;
 
     if (selectedMechanicFilter && selectedMechanicFilter !== "all") {
       result = result.filter(
@@ -151,7 +161,6 @@ const Servicos = () => {
 
     setFilteredServices(result);
 
-    // Atualiza totais
     const totalValue = result.reduce((acc, curr) => acc + curr.valor, 0);
     setReportSummary({
       totalCount: result.length,
@@ -386,7 +395,24 @@ const Servicos = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredServices.map((service) => (
+                  {loading ? (
+                    <tr>
+                      <td colSpan="4" className="text-center py-10">
+                        <i className="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+                        <p className="text-gray-400 mt-2 text-sm">Carregando...</p>
+                      </td>
+                    </tr>
+                  ) : filteredServices.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="4"
+                        className="px-6 py-12 text-center text-gray-400 bg-gray-50"
+                      >
+                        <i className="fas fa-search mb-2 text-2xl block opacity-50"></i>
+                        Nenhum serviço encontrado para este filtro.
+                      </td>
+                    </tr>
+                  ) : (filteredServices.map((service) => (
                     <tr
                       key={service.id}
                       className="hover:bg-blue-50 transition-colors"
@@ -410,18 +436,7 @@ const Servicos = () => {
                         {formatCurrency(service.valor)}
                       </td>
                     </tr>
-                  ))}
-                  {filteredServices.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan="4"
-                        className="px-6 py-12 text-center text-gray-400 bg-gray-50"
-                      >
-                        <i className="fas fa-search mb-2 text-2xl block opacity-50"></i>
-                        Nenhum serviço encontrado para este filtro.
-                      </td>
-                    </tr>
-                  )}
+                  )))}
                 </tbody>
               </table>
             </div>
