@@ -23,17 +23,82 @@ import { useAlert } from "./context/AlertSystem";
 
 // Definição de permissões por cargo
 const PERMISSOES_CAIXA = [
-  "/",
   "/vendas",
   "/servicos",
   "/recibos",
   "/historico",
+  "/produtos",
+];
+
+// Configuração do Menu (Estática)
+const MENU_ITEMS = [
+  {
+    path: "/",
+    label: "Painel",
+    icon: "fa-tachometer-alt",
+    restricted: true,
+  },
+  {
+    path: "/vendas",
+    label: "Registrar Venda",
+    icon: "fa-cash-register",
+    restricted: false,
+  },
+  {
+    path: "/servicos",
+    label: "Serviços",
+    icon: "fa-wrench",
+    restricted: false,
+  },
+  {
+    path: "/recibos",
+    label: "Recibos",
+    icon: "fa-receipt",
+    restricted: false,
+  },
+  {
+    path: "/produtos",
+    label: "Produtos",
+    icon: "fa-box-open",
+    restricted: false,
+  },
+  {
+    path: "/historico",
+    label: "Auditoria de Preços",
+    icon: "fa-history",
+    restricted: false,
+  },
+  {
+    path: "/pessoas",
+    label: "Equipe",
+    icon: "fa-user-friends",
+    restricted: true,
+  },
+  {
+    path: "/relatorios",
+    label: "Relatórios",
+    icon: "fa-chart-line",
+    restricted: true,
+  },
+  {
+    path: "/clientes",
+    label: "Clientes",
+    icon: "fa-users",
+    restricted: true,
+  },
+  {
+    path: "/config",
+    label: "Configurações",
+    icon: "fa-cog",
+    restricted: true,
+  },
 ];
 
 function App() {
   const [user, setUser] = useState(null);
   const [appVersion, setAppVersion] = useState("");
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [pendingRoute, setPendingRoute] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
   const { showAlert } = useAlert();
@@ -59,9 +124,9 @@ function App() {
   }, []);
 
   const hasAccess = (path) => {
+    if (!user) return false;
     if (user?.cargo === "admin") return true;
-    const item = menuItems.find((i) => i.path === path);
-    if (item && !item.restricted) return true;
+    if (PERMISSOES_CAIXA.includes(path)) return true;
     if (unlockedRoutes.includes(path)) return true;
     return false;
   };
@@ -77,10 +142,18 @@ function App() {
     }
   };
 
+  const closeSupervisorModal = () => {
+    setShowSupervisorModal(false);
+    setAdminUser("");
+    setAdminPass("");
+  };
+
   const handleSupervisorAuth = async (e) => {
     e.preventDefault();
     if (!adminUser || !adminPass)
       return showAlert("Preencha os dados do administrador.");
+
+    setIsAuthLoading(true);
 
     try {
       const result = await window.api.loginAttempt({
@@ -90,7 +163,7 @@ function App() {
 
       if (result.success && result.user.cargo === "admin") {
         setUnlockedRoutes((prev) => [...prev, pendingRoute]);
-        setShowSupervisorModal(false);
+        closeSupervisorModal();
         navigate(pendingRoute);
       } else if (result.success) {
         showAlert("Este usuário não tem permissão de Administrador.");
@@ -100,6 +173,8 @@ function App() {
     } catch (error) {
       console.error(error);
       showAlert("Erro ao validar permissão.");
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -107,69 +182,12 @@ function App() {
     return <Login onLoginSuccess={(userData) => setUser(userData)} />;
   }
 
-  const menuItems = [
-    {
-      path: "/",
-      label: "Painel",
-      icon: "fa-tachometer-alt",
-      restricted: false,
-    },
-    {
-      path: "/vendas",
-      label: "Registrar Venda",
-      icon: "fa-cash-register",
-      restricted: false,
-    },
-    {
-      path: "/servicos",
-      label: "Serviços",
-      icon: "fa-wrench",
-      restricted: false,
-    },
-    {
-      path: "/recibos",
-      label: "Recibos",
-      icon: "fa-receipt",
-      restricted: false,
-    },
+  // Helper context wrapper for Protected Route logic
+  const AppContext = { user, unlockedRoutes, hasAccess };
 
-    {
-      path: "/produtos",
-      label: "Produtos",
-      icon: "fa-box-open",
-      restricted: true,
-    },
-    {
-      path: "/historico",
-      label: "Auditoria de Preços",
-      icon: "fa-history",
-      restricted: false,
-    },
-    {
-      path: "/pessoas",
-      label: "Equipe",
-      icon: "fa-user-friends",
-      restricted: true,
-    },
-    {
-      path: "/relatorios",
-      label: "Relatórios",
-      icon: "fa-chart-line",
-      restricted: true,
-    },
-    {
-      path: "/clientes",
-      label: "Clientes",
-      icon: "fa-users",
-      restricted: true,
-    },
-    {
-      path: "/config",
-      label: "Configurações",
-      icon: "fa-cog",
-      restricted: true,
-    },
-  ];
+  // Note: we can't extract ProtectedRoute fully outside without passing props
+  // But we can wrap it effectively or just memoize the routes!
+  // Or better, inline the logic in the Route elements!
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 font-sans text-gray-900">
@@ -222,7 +240,7 @@ function App() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-          {menuItems.map((item) => {
+          {MENU_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
             const isLocked = !hasAccess(item.path);
 
@@ -277,38 +295,16 @@ function App() {
 
       <main className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/vendas" element={<Vendas />} />
-          <Route path="/servicos" element={<Servicos />} />
-          <Route path="/recibos" element={<Recibos />} />
-          <Route path="/historico" element={<HistoricoPrecos />} />
-
-          <Route
-            path="/produtos"
-            element={
-              hasAccess("/produtos") ? <Produtos /> : <Navigate to="/" />
-            }
-          />
-          <Route
-            path="/pessoas"
-            element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/clientes"
-            element={
-              hasAccess("/clientes") ? <Clientes /> : <Navigate to="/" />
-            }
-          />
-          <Route
-            path="/relatorios"
-            element={
-              hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/" />
-            }
-          />
-          <Route
-            path="/config"
-            element={hasAccess("/config") ? <Config /> : <Navigate to="/" />}
-          />
+          <Route path="/" element={hasAccess("/") ? <Dashboard /> : <Navigate to="/vendas" replace />} />
+          <Route path="/vendas" element={hasAccess("/vendas") ? <Vendas /> : <Navigate to="/vendas" replace />} />
+          <Route path="/servicos" element={hasAccess("/servicos") ? <Servicos /> : <Navigate to="/vendas" replace />} />
+          <Route path="/recibos" element={hasAccess("/recibos") ? <Recibos /> : <Navigate to="/vendas" replace />} />
+          <Route path="/historico" element={hasAccess("/historico") ? <HistoricoPrecos /> : <Navigate to="/vendas" replace />} />
+          <Route path="/produtos" element={hasAccess("/produtos") ? <Produtos user={user} /> : <Navigate to="/vendas" replace />} />
+          <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
+          <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
+          <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
+          <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
@@ -340,6 +336,7 @@ function App() {
                   placeholder="Admin"
                   value={adminUser}
                   onChange={(e) => setAdminUser(e.target.value)}
+                  disabled={isAuthLoading}
                   autoFocus
                 />
               </div>
@@ -353,17 +350,22 @@ function App() {
                   placeholder="••••••"
                   value={adminPass}
                   onChange={(e) => setAdminPass(e.target.value)}
+                  disabled={isAuthLoading}
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-lg"
+                disabled={isAuthLoading}
+                className={`w-full py-3 rounded-lg font-bold transition shadow-lg flex justify-center items-center ${
+                  isAuthLoading ? "bg-red-400 cursor-not-allowed text-white" : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
               >
-                LIBERAR ACESSO
+                {isAuthLoading ? <i className="fas fa-circle-notch fa-spin"></i> : "LIBERAR ACESSO"}
               </button>
               <button
                 type="button"
-                onClick={() => setShowSupervisorModal(false)}
+                onClick={closeSupervisorModal}
+                disabled={isAuthLoading}
                 className="w-full bg-gray-100 text-gray-600 py-3 rounded-lg font-medium hover:bg-gray-200 transition"
               >
                 Cancelar

@@ -42,9 +42,14 @@ const Relatorios = () => {
   };
 
   const paymentMethods = useMemo(() => {
-    const methods = new Set(
-      allSales.map((s) => standardizeMethod(s.forma_pagamento)),
-    );
+    const methods = new Set();
+    allSales.forEach((s) => {
+      if (s.lista_pagamentos && s.lista_pagamentos.length > 0) {
+        s.lista_pagamentos.forEach((p) => methods.add(standardizeMethod(p.metodo)));
+      } else {
+        methods.add(standardizeMethod(s.forma_pagamento));
+      }
+    });
     return Array.from(methods).sort();
   }, [allSales]);
 
@@ -62,18 +67,25 @@ const Relatorios = () => {
   const [filteredSales, setFilteredSales] = useState([]);
   const [laborSummary, setLaborSummary] = useState([]);
   const [paymentSummary, setPaymentSummary] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  // Recarregar do backend quando datas mudam
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadData();
+    }
+  }, [startDate, endDate]);
+
+  // Processar localmente quando filtros de vendedor/pagamento mudam
   useEffect(() => {
     processData();
   }, [
     allSales,
     allServices,
-    startDate,
-    endDate,
     selectedSeller,
     selectedPayment,
     defaultCommission,
@@ -81,8 +93,23 @@ const Relatorios = () => {
 
   const loadData = async () => {
     try {
-      const sales = await window.api.getSales();
-      const services = await window.api.getServices();
+      setLoading(true);
+      // Filtros server-side por data
+      const startTimestamp = startDate
+        ? dayjs(startDate).startOf("day").valueOf()
+        : undefined;
+      const endTimestamp = endDate
+        ? dayjs(endDate).endOf("day").valueOf()
+        : undefined;
+
+      const sales = await window.api.getSales({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
+      const services = await window.api.getServices({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
       const people = await window.api.getPeople();
       const configComissao = await window.api.getConfig("comissao_padrao");
 
@@ -94,6 +121,8 @@ const Relatorios = () => {
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       showAlert("Erro ao carregar dados do banco.", "Erro", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,17 +142,6 @@ const Relatorios = () => {
     }
   };
 
-  const isWithinRange = (timestamp) => {
-    const start = dayjs(startDate).startOf("day");
-    const end = dayjs(endDate).endOf("day");
-    const dateToCheck = dayjs(timestamp);
-    return (
-      dateToCheck.isSame(start) ||
-      dateToCheck.isSame(end) ||
-      (dateToCheck.isAfter(start) && dateToCheck.isBefore(end))
-    );
-  };
-
   const formatCurrency = (val) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -132,22 +150,23 @@ const Relatorios = () => {
   };
 
   const processData = () => {
-    // 1. Filtragem de Vendas
+    // 1. Filtragem de Vendas (dados já vêm filtrados por data do backend)
     let vendasFiltradas = allSales.filter((s) => {
-      const inDate = isWithinRange(s.data_venda);
       const isSeller =
         selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
       const metodoNormalizado = standardizeMethod(s.forma_pagamento);
-      const isPayment =
+      let isPayment =
         selectedPayment === "all" || metodoNormalizado === selectedPayment;
 
-      return inDate && isSeller && isPayment;
+      if (!isPayment && s.lista_pagamentos && s.lista_pagamentos.length > 0) {
+        isPayment = s.lista_pagamentos.some((p) => standardizeMethod(p.metodo) === selectedPayment);
+      }
+
+      return isSeller && isPayment;
     });
 
-    // 2. Filtragem de Serviços
-    let servicosFiltrados = allServices.filter((s) => {
-      return isWithinRange(s.data_servico);
-    });
+    // 2. Serviços (já filtrados por data do backend)
+    let servicosFiltrados = allServices;
 
     let totalFaturamentoPecas = 0;
     let totalCustoPecas = 0;
@@ -180,6 +199,9 @@ const Relatorios = () => {
       const valorFinalProdutos = subtotalProdutos - desconto;
       const custoReal = venda.custo_total_real || 0;
 
+      const receitaLoja = valorFinalProdutos + acrescimo;
+
+      // --- CORREÇÃO DA COMISSÃO ---
       let comissao = 0;
       if (venda.comissao_real !== undefined && venda.comissao_real !== null) {
         comissao = venda.comissao_real;
@@ -194,16 +216,38 @@ const Relatorios = () => {
       const moVenda = venda.mao_de_obra || 0;
 
       if (!venda.cancelada) {
-        const receitaLoja = valorFinalProdutos + acrescimo;
+        let valorConsiderado = 0;
 
-        totalFaturamentoPecas += receitaLoja;
-        totalCustoPecas += custoReal;
-        totalDespesaMO += moVenda;
-        totalAcrescimos += acrescimo;
-        totalDescontos += desconto;
-        totalComissoes += comissao;
+        if (selectedPayment === "all") {
+          valorConsiderado = receitaLoja;
+          // Decomposição total para visualização geral
+          if (venda.lista_pagamentos && venda.lista_pagamentos.length > 0) {
+            venda.lista_pagamentos.forEach((p) => {
+              addPaymentToMap(p.metodo, p.valor);
+            });
+          } else {
+            addPaymentToMap(venda.forma_pagamento, receitaLoja);
+          }
+        } else {
+          // Filtro Específico: Soma apenas a parte correspondente ao método selecionado
+          if (venda.lista_pagamentos && venda.lista_pagamentos.length > 0) {
+            const pagamentosFiltrados = venda.lista_pagamentos.filter((p) => standardizeMethod(p.metodo) === selectedPayment);
+            valorConsiderado = pagamentosFiltrados.reduce((acc, p) => acc + p.valor, 0);
+          } else {
+            valorConsiderado = receitaLoja;
+          }
+          addPaymentToMap(selectedPayment, valorConsiderado);
+        }
 
-        addPaymentToMap(venda.forma_pagamento, receitaLoja);
+        // Rateio proporcional para métricas (se estiver filtrando, ajusta custos/comissões)
+        const ratio = (receitaLoja > 0 && selectedPayment !== "all") ? (valorConsiderado / receitaLoja) : 1;
+
+        totalFaturamentoPecas += valorConsiderado;
+        totalCustoPecas += (custoReal * ratio);
+        totalDespesaMO += (moVenda * ratio);
+        totalAcrescimos += (acrescimo * ratio);
+        totalDescontos += (desconto * ratio);
+        totalComissoes += (comissao * ratio);
       }
 
       return { ...venda, comissao_calculada: comissao };
@@ -304,7 +348,7 @@ const Relatorios = () => {
       let finalY = doc.lastAutoTable.finalY || 40;
 
       if (paymentSummary.length > 0) {
-        doc.text("Receita de Produtos por Método", 14, finalY + 15);
+        doc.text("Total Recebido (Por Método)", 14, finalY + 15);
         autoTable(doc, {
           startY: finalY + 20,
           head: [["Método", "Valor Total"]],
@@ -329,15 +373,25 @@ const Relatorios = () => {
       }
 
       doc.text("Vendas Detalhadas", 14, finalY + 15);
-      const tableData = filteredSales.map((v) => [
-        dayjs(v.data_venda).format("DD/MM HH:mm"),
-        v.vendedor_nome,
-        formatCurrency(v.subtotal),
-        v.acrescimo > 0 ? formatCurrency(v.acrescimo) : "-",
-        v.desconto_valor > 0 ? formatCurrency(v.desconto_valor) : "-",
-        formatCurrency(v.total_final),
-        v.cancelada ? "CANCELADA" : formatCurrency(v.comissao_calculada),
-      ]);
+      const tableData = filteredSales.map((v) => {
+        let pagamentoInfo = v.forma_pagamento || "-";
+        if (v.lista_pagamentos && v.lista_pagamentos.length > 0) {
+          pagamentoInfo = v.lista_pagamentos
+            .map((p) => `${p.metodo}: ${formatCurrency(p.valor)}`)
+            .join("\n");
+        }
+
+        return [
+          dayjs(v.data_venda).format("DD/MM HH:mm"),
+          v.vendedor_nome,
+          formatCurrency(v.subtotal),
+          v.acrescimo > 0 ? formatCurrency(v.acrescimo) : "-",
+          v.desconto_valor > 0 ? formatCurrency(v.desconto_valor) : "-",
+          formatCurrency(v.total_final),
+          pagamentoInfo,
+          v.cancelada ? "CANCELADA" : formatCurrency(v.comissao_calculada),
+        ];
+      });
 
       autoTable(doc, {
         startY: finalY + 20,
@@ -349,12 +403,13 @@ const Relatorios = () => {
             "Acrésc.",
             "Desc.",
             "Total",
+            "Pagamento",
             "Comissão",
           ],
         ],
         body: tableData,
         didParseCell: function (data) {
-          if (data.row.raw[6] === "CANCELADA") {
+          if (data.row.raw[7] === "CANCELADA") {
             data.cell.styles.textColor = [255, 0, 0];
           }
         },
@@ -617,11 +672,19 @@ const Relatorios = () => {
                       {formatCurrency(v.total_final)}
                     </td>
                     <td className="px-4 py-2 text-center text-xs">
-                      <span
-                        className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}
-                      >
-                        {standardizeMethod(v.forma_pagamento) || "-"}
-                      </span>
+                      {v.lista_pagamentos && v.lista_pagamentos.length > 0 ? (
+                        <div className="flex flex-col gap-1 items-center">
+                          {v.lista_pagamentos.map((p, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 whitespace-nowrap text-[10px]">
+                              {p.metodo}: {formatCurrency(p.valor)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}>
+                          {standardizeMethod(v.forma_pagamento) || "-"}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-sm text-right text-purple-600">
                       {v.cancelada ? "-" : formatCurrency(v.comissao_calculada)}
@@ -645,7 +708,7 @@ const Relatorios = () => {
           {/* Tabela: Receita Produtos por Método */}
           <div className="bg-white rounded-xl shadow-md flex flex-col overflow-hidden max-h-[50%] border border-blue-100">
             <div className="p-3 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 text-sm">
-              Receita Produtos (Por Método)
+              Total Recebido (Por Método)
             </div>
             <div className="overflow-y-auto flex-1 custom-scrollbar">
               <table className="min-w-full divide-y divide-gray-200">

@@ -91,6 +91,24 @@ ipcMain.handle("get-products", async () => {
   }
 });
 
+// Busca lazy de produtos (autocomplete server-side)
+ipcMain.handle("search-products", async (event, { term, limit = 20 }) => {
+  try {
+    if (!term || term.length < 2) return [];
+    return await knex("produtos")
+      .where("ativo", true)
+      .where(function () {
+        this.where("descricao", "like", `%${term}%`)
+          .orWhere("codigo", "like", `%${term}%`);
+      })
+      .select("*")
+      .limit(limit);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+});
+
 ipcMain.handle("save-product", async (event, product) => {
   try {
     if (product.id) {
@@ -144,14 +162,25 @@ ipcMain.handle("delete-product", async (event, id) => {
   }
 });
 
-ipcMain.handle("get-product-history", async () => {
+ipcMain.handle("get-product-history", async (event, filters = {}) => {
   try {
-    return await knex("historico_produtos")
+    const page = filters.page || 1;
+    const limit = filters.limit || 200;
+    const offset = (page - 1) * limit;
+
+    const query = knex("historico_produtos")
       .join("produtos", "historico_produtos.produto_id", "produtos.id")
       .select("historico_produtos.*", "produtos.descricao", "produtos.codigo")
       .orderBy("historico_produtos.data_alteracao", "desc");
+
+    const countResult = await knex("historico_produtos").count("id as total").first();
+    const total = countResult.total;
+
+    const data = await query.limit(limit).offset(offset);
+
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   } catch (error) {
-    return [];
+    return { data: [], total: 0, page: 1, totalPages: 0 };
   }
 });
 
@@ -281,10 +310,9 @@ ipcMain.handle("create-sale", async (event, saleData) => {
   }
 });
 
-ipcMain.handle("get-sales", async () => {
+ipcMain.handle("get-sales", async (event, filters = {}) => {
   try {
-    // 1. Busca as vendas
-    const vendas = await knex("vendas")
+    const query = knex("vendas")
       .leftJoin("pessoas as vendedor", "vendas.vendedor_id", "vendedor.id")
       .leftJoin("pessoas as trocador", "vendas.trocador_id", "trocador.id")
       .select(
@@ -294,18 +322,97 @@ ipcMain.handle("get-sales", async () => {
       )
       .orderBy("data_venda", "desc");
 
-    // 2. Busca o custo real somado dos itens de cada venda
-    const custos = await knex("venda_itens")
-      .select("venda_id")
-      .sum({ total: knex.raw("custo_unitario * quantidade") })
-      .groupBy("venda_id");
+    // Filtro server-side por data (evita carregar tudo)
+    if (filters.startDate) {
+      query.where("vendas.data_venda", ">=", filters.startDate);
+    }
+    if (filters.endDate) {
+      query.where("vendas.data_venda", "<=", filters.endDate);
+    }
+    if (filters.sellerId) {
+      query.where("vendas.vendedor_id", filters.sellerId);
+    }
+    if (filters.limit) {
+      query.limit(filters.limit);
+    }
 
-    // 3. Mescla o custo real na lista de vendas
-    const vendasComCusto = vendas.map((venda) => {
-      const custoItem = custos.find((c) => c.venda_id === venda.id);
+    const vendas = await query;
+
+    const vendaIds = vendas.map((v) => v.id);
+
+    // Busca itens com o TIPO do produto para saber qual regra aplicar
+    const allItems = await knex("venda_itens")
+      .leftJoin("produtos", "venda_itens.produto_id", "produtos.id")
+      .whereIn("venda_id", vendaIds)
+      .select("venda_itens.*", "produtos.tipo");
+
+    // Busca pagamentos para detalhamento
+    const allPayments = await knex("venda_pagamentos")
+      .whereIn("venda_id", vendaIds)
+      .select("*");
+
+    // 1. CARREGAR CONFIGURAÇÕES GLOBAIS
+    const configPadrao = await knex("configuracoes")
+      .where("chave", "comissao_padrao")
+      .first();
+    const configUsados = await knex("configuracoes")
+      .where("chave", "comissao_usados")
+      .first();
+
+    const comissaoPadrao = configPadrao ? parseFloat(configPadrao.valor) : 0.3; // Default 30%
+    const comissaoUsados = configUsados ? parseFloat(configUsados.valor) : 0.25; // Default 25%
+
+    const vendasProcessadas = vendas.map((venda) => {
+      const itensVenda = allItems.filter((i) => i.venda_id === venda.id);
+      const pagamentosVenda = allPayments.filter((p) => p.venda_id === venda.id);
+      const custoTotal = itensVenda.reduce(
+        (acc, item) => acc + item.custo_unitario * item.quantidade,
+        0,
+      );
+
+      let comissaoTotal = 0;
+
+      // Se o vendedor tiver taxa fixa, usa ela para NOVOS. Se não, usa a padrão.
+      // Para USADOS, a regra é sempre a margem configurada (comissaoUsados).
+      const taxaVendedorNovos = venda.comissao_fixa
+        ? venda.comissao_fixa / 100
+        : comissaoPadrao;
+
+      itensVenda.forEach((item) => {
+        const totalItem = item.preco_unitario * item.quantidade;
+
+        // Rateio proporcional do desconto da venda para o item
+        let descontoItem = 0;
+        if (venda.desconto_tipo === "fixed") {
+          const ratio = venda.subtotal > 0 ? totalItem / venda.subtotal : 0;
+          descontoItem = venda.desconto_valor * ratio;
+        } else {
+          descontoItem = (totalItem * venda.desconto_valor) / 100;
+        }
+
+        const receitaLiqItem = totalItem - descontoItem;
+
+        // --- A MÁGICA: CÁLCULO HÍBRIDO ---
+        if (item.tipo === "usado") {
+          // REGRA USADO: % sobre LUCRO (Receita - Custo)
+          const custoItem = item.custo_unitario * item.quantidade;
+          const lucroItem = receitaLiqItem - custoItem;
+          if (lucroItem > 0) {
+            comissaoTotal += lucroItem * comissaoUsados;
+          }
+        } else {
+          // REGRA NOVO: % sobre FATURAMENTO (Receita)
+          if (receitaLiqItem > 0) {
+            comissaoTotal += receitaLiqItem * taxaVendedorNovos;
+          }
+        }
+      });
+
       return {
         ...venda,
-        custo_total_real: custoItem ? custoItem.total : 0,
+        custo_total_real: custoTotal,
+        comissao_real: comissaoTotal,
+        lista_pagamentos: pagamentosVenda,
       };
     });
 
@@ -347,20 +454,20 @@ ipcMain.handle("cancel-sale", async (event, { vendaId, motivo }) => {
 
 ipcMain.handle("get-clients", async () => {
   try {
-    const clientes = await knex("clientes").where("ativo", true);
-
-    // Calcula saldo devedor de cada um
-    for (let cli of clientes) {
-      const dividas = await knex("contas_receber")
-        .where("cliente_id", cli.id)
-        .whereNot("status", "PAGO");
-
-      const totalDivida = dividas.reduce(
-        (acc, d) => acc + (d.valor_total - d.valor_pago),
-        0,
-      );
-      cli.saldo_devedor = totalDivida;
-    }
+    // Corrigido: LEFT JOIN com subquery para eliminar N+1 queries
+    const clientes = await knex("clientes")
+      .leftJoin(
+        knex("contas_receber")
+          .select("cliente_id")
+          .sum({ saldo_devedor: knex.raw("valor_total - valor_pago") })
+          .whereNot("status", "PAGO")
+          .groupBy("cliente_id")
+          .as("dividas"),
+        "clientes.id",
+        "dividas.cliente_id",
+      )
+      .where("clientes.ativo", true)
+      .select("clientes.*", knex.raw("COALESCE(dividas.saldo_devedor, 0) as saldo_devedor"));
 
     return clientes;
   } catch (error) {
@@ -371,15 +478,38 @@ ipcMain.handle("get-clients", async () => {
 
 ipcMain.handle("save-client", async (event, client) => {
   try {
+    if (client.documento) {
+      const existing = await knex("clientes")
+        .where("documento", client.documento)
+        .where("ativo", true)
+        .first();
+      
+      if (existing && existing.id !== client.id) {
+        return { success: false, error: "CPF/CNPJ já cadastrado para outro cliente." };
+      }
+    }
+
     if (client.id) {
       await knex("clientes").where("id", client.id).update(client);
-      return { success: true };
+      return { success: true, id: client.id };
     } else {
-      await knex("clientes").insert({ ...client, ativo: true });
-      return { success: true };
+      const [id] = await knex("clientes").insert({ ...client, ativo: true });
+      return { success: true, id };
     }
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("find-client-by-doc", async (event, documento) => {
+  try {
+    const client = await knex("clientes")
+      .where("documento", documento)
+      .where("ativo", true)
+      .first();
+    return { success: true, client };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
 
@@ -437,11 +567,23 @@ ipcMain.handle("pay-debt", async (event, { contaId, valorPago }) => {
 });
 
 // --- SERVIÇOS ---
-ipcMain.handle("get-services", async () => {
-  return await knex("servicos_avulsos")
+ipcMain.handle("get-services", async (event, filters = {}) => {
+  const query = knex("servicos_avulsos")
     .leftJoin("pessoas", "servicos_avulsos.trocador_id", "pessoas.id")
     .select("servicos_avulsos.*", "pessoas.nome as trocador_nome")
     .orderBy("data_servico", "desc");
+
+  if (filters.startDate) {
+    query.where("servicos_avulsos.data_servico", ">=", filters.startDate);
+  }
+  if (filters.endDate) {
+    query.where("servicos_avulsos.data_servico", "<=", filters.endDate);
+  }
+  if (filters.limit) {
+    query.limit(filters.limit);
+  }
+
+  return await query;
 });
 
 ipcMain.handle("create-service", async (e, data) => {
@@ -562,28 +704,43 @@ ipcMain.handle("get-dashboard-stats", async () => {
   }
 });
 ipcMain.handle("get-weekly-sales", async () => {
-  const labels = [];
-  const data = [];
-  const today = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
-    const nextD = new Date(d);
-    nextD.setDate(d.getDate() + 1);
+  try {
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
 
-    // Soma apenas o valor dos produtos (Total Final - Mão de Obra)
-    const vendas = await knex("vendas")
-      .whereBetween("data_venda", [d.getTime(), nextD.getTime()])
+    // Uma única query com GROUP BY em vez de 7 queries
+    const rows = await knex("vendas")
+      .whereBetween("data_venda", [sevenDaysAgo.getTime(), endOfToday.getTime()])
       .where("cancelada", 0)
-      .sum({ total: knex.raw("total_final - mao_de_obra") }); // <--- CORREÇÃO AQUI
+      .select(
+        knex.raw("CAST((data_venda / 86400000) AS INTEGER) as day_key"),
+        knex.raw("SUM(total_final - mao_de_obra) as total"),
+      )
+      .groupByRaw("CAST((data_venda / 86400000) AS INTEGER)");
 
-    // Não somamos serviços avulsos ao gráfico de vendas pois agora são despesa
+    // Monta mapa de totais por dia
+    const dayMap = {};
+    rows.forEach((r) => { dayMap[r.day_key] = r.total || 0; });
 
-    labels.push(d.toLocaleDateString("pt-BR", { weekday: "short" }));
-    data.push(vendas[0].total || 0);
+    const labels = [];
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const dayKey = Math.floor(d.getTime() / 86400000);
+      labels.push(d.toLocaleDateString("pt-BR", { weekday: "short" }));
+      data.push(dayMap[dayKey] || 0);
+    }
+    return { labels, data };
+  } catch (error) {
+    console.error("Erro get-weekly-sales:", error);
+    return { labels: [], data: [] };
   }
-  return { labels, data };
 });
 ipcMain.handle("get-low-stock", async () => {
   return await knex("produtos")

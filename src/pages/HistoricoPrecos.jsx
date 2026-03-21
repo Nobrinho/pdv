@@ -8,6 +8,12 @@ const HistoricoPrecos = () => {
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
 
+  // Paginação server-side
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const LIMIT = 100;
+
   // Filtros
   const [startDate, setStartDate] = useState(
     dayjs().subtract(30, "day").format("YYYY-MM-DD"),
@@ -17,33 +23,45 @@ const HistoricoPrecos = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     filterData();
-  }, [history, startDate, endDate, searchTerm]);
+  }, [history, searchTerm]);
 
   const loadData = async () => {
     try {
-      const data = await window.api.getProductHistory();
-      setHistory(data || []);
+      const result = await window.api.getProductHistory({ page, limit: LIMIT });
+      setHistory(result.data || []);
+      setTotalPages(result.totalPages || 0);
+      setTotalRecords(result.total || 0);
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
   };
 
+  // --- CONTROLE DE PERÍODOS RÁPIDOS ---
+  const handlePeriodChange = (type) => {
+    setPeriodType(type);
+    const now = dayjs();
+
+    if (type === "weekly") {
+      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
+    } else if (type === "monthly") {
+      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
+    } else if (type === "yearly") {
+      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
+    }
+    // Se for 'custom', não muda as datas automaticamente
+  };
+
   const filterData = () => {
     let result = history;
 
-    if (startDate)
-      result = result.filter((h) =>
-        dayjs(h.data_alteracao).isAfter(dayjs(startDate).subtract(1, "day")),
-      );
-    if (endDate)
-      result = result.filter((h) =>
-        dayjs(h.data_alteracao).isBefore(dayjs(endDate).add(1, "day")),
-      );
-
+    // Filtro Texto (local)
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
       result = result.filter(
@@ -377,6 +395,31 @@ const HistoricoPrecos = () => {
           </table>
         </div>
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center mt-4 bg-white p-3 rounded-xl shadow-sm border border-gray-200">
+          <span className="text-sm text-gray-500">
+            {totalRecords} registros — Página {page} de {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page <= 1}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${page <= 1 ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+            >
+              <i className="fas fa-chevron-left mr-1"></i> Anterior
+            </button>
+            <button
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page >= totalPages}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${page >= totalPages ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+            >
+              Próximo <i className="fas fa-chevron-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

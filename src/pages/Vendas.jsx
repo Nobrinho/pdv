@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAlert } from "../context/AlertSystem";
 import dayjs from "dayjs";
 import CupomFiscal from "../components/CupomFiscal";
+import { applyCpfCnpjMask, applyNameMask, applyPhoneMask, validarDocumento } from "../utils/validators";
 
 const Vendas = () => {
   const { showAlert } = useAlert();
@@ -42,6 +43,11 @@ const Vendas = () => {
   const [showClientModal, setShowClientModal] = useState(false);
   const [lastSale, setLastSale] = useState(null);
 
+  // --- CPF RECIBO ---
+  const [optsCpfReceipt, setOptsCpfReceipt] = useState(false);
+  const [receiptCpf, setReceiptCpf] = useState("");
+  const [receiptName, setReceiptName] = useState("");
+
   // --- DADOS NOVO CLIENTE ---
   const [newClientData, setNewClientData] = useState({
     nome: "",
@@ -52,6 +58,7 @@ const Vendas = () => {
 
   const searchInputRef = useRef(null);
   const paymentInputRef = useRef(null);
+  const searchTimerRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -127,12 +134,18 @@ const Vendas = () => {
     if (!clientSearchTerm) return [];
     const lower = clientSearchTerm.toLowerCase();
     return clients
-      .filter(
-        (c) =>
+      .filter((c) => {
+        const rawSearch = clientSearchTerm.replace(/\D/g, "");
+        const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+        const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+        return (
           c.nome.toLowerCase().includes(lower) ||
           (c.documento && c.documento.includes(lower)) ||
-          (c.telefone && c.telefone.includes(lower)),
-      )
+          (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
+          (c.telefone && c.telefone.includes(lower)) ||
+          (rawSearch && telRaw && telRaw.includes(rawSearch))
+        );
+      })
       .slice(0, 10);
   }, [clientSearchTerm, clients]);
 
@@ -147,21 +160,36 @@ const Vendas = () => {
     setShowClientResults(false);
   };
 
-  // --- BUSCA DE PRODUTOS ---
+  // --- BUSCA DE PRODUTOS (Server-side com debounce) ---
   useEffect(() => {
     if (searchTerm.length < 2) {
       setSearchResults([]);
       return;
     }
-    const lowerTerm = searchTerm.toLowerCase();
-    const results = products.filter(
-      (p) =>
-        (p.descricao.toLowerCase().includes(lowerTerm) ||
-          p.codigo.toLowerCase().includes(lowerTerm)) &&
-        p.estoque_atual > 0,
+
+    // Match exato por código (instantâneo, sem debounce)
+    const exactMatch = products.find(
+      (p) => p.codigo.trim() === searchTerm.trim(),
     );
-    setSearchResults(results);
-  }, [searchTerm, products]);
+    if (exactMatch) {
+      setSearchResults([exactMatch]);
+      return;
+    }
+
+    // Debounce 300ms para busca por texto
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await window.api.searchProducts({ term: searchTerm, limit: 15 });
+        setSearchResults(results.filter((p) => p.estoque_atual > 0));
+      } catch (err) {
+        console.error("Erro na busca:", err);
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchTerm]);
 
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -278,13 +306,28 @@ const Vendas = () => {
     e.preventDefault();
     if (
       !newClientData.nome ||
-      !newClientData.documento ||
       !newClientData.telefone
     ) {
       return showAlert(
-        "Nome, Documento e Telefone são obrigatórios!",
+        "Nome e Telefone são obrigatórios!",
         "Dados Incompletos",
         "warning",
+      );
+    }
+    
+    if (newClientData.documento && !validarDocumento(newClientData.documento)) {
+      return showAlert(
+        "O CPF/CNPJ informado é inválido.",
+        "Atenção",
+        "error"
+      );
+    }
+
+    if (newClientData.endereco && newClientData.endereco.trim().length > 0 && newClientData.endereco.trim().length < 4) {
+      return showAlert(
+        "O endereço informado é muito curto.",
+        "Atenção",
+        "warning"
       );
     }
     try {
@@ -345,10 +388,56 @@ const Vendas = () => {
       );
     }
 
+    let finalClientId = selectedClient || null;
+    let finalClientObj = clients.find((c) => c.id == selectedClient);
+
+    // --- CPF NO RECIBO LOGIC ---
+    if (optsCpfReceipt) {
+      if (finalClientId && finalClientObj?.documento) {
+        // Já tem documento, segue normal
+      } else if (finalClientId && !finalClientObj?.documento) {
+        // Cliente selecionado não tem documento
+        if (!receiptCpf) return showAlert("Informe o CPF/CNPJ para o recibo.", "Aviso", "warning");
+        if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
+        
+        const res = await window.api.saveClient({ id: finalClientId, ...finalClientObj, documento: receiptCpf });
+        if (res.success) {
+           finalClientObj = { ...finalClientObj, documento: receiptCpf };
+        } else {
+           return showAlert("Erro ao salvar documento do cliente.", "Erro", "error");
+        }
+      } else {
+        // Sem cliente selecionado (Consumidor Final)
+        if (!receiptCpf || !receiptName) {
+           return showAlert("Nome e CPF são obrigatórios para emissão com CPF.", "Aviso", "warning");
+        }
+        if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
+        
+        try {
+          const searchRes = await window.api.findClientByDoc(receiptCpf);
+          if (searchRes.success && searchRes.client) {
+             // Cliente já existe, vincula a venda a ele silenciosamente
+             finalClientId = searchRes.client.id;
+             finalClientObj = searchRes.client;
+          } else {
+             const res = await window.api.saveClient({ nome: receiptName, documento: receiptCpf });
+             if (res.success && res.id) {
+                finalClientId = res.id;
+                finalClientObj = { id: res.id, nome: receiptName, documento: receiptCpf };
+             } else {
+                return showAlert("Erro ao salvar dados do cliente: " + res.error, "Erro", "error");
+             }
+          }
+        } catch (error) {
+           return showAlert("Erro na verificação de cliente: " + error.message, "Erro", "error");
+        }
+      }
+    }
+
     const saleData = {
       vendedor_id: selectedSeller,
       trocador_id: selectedMechanicState || null,
-      cliente_id: selectedClient || null,
+      cliente_id: finalClientId,
       subtotal: totals.subtotal,
       acrescimo_valor: totals.surchargeAmount,
       desconto_valor: totals.discountAmount,
@@ -367,7 +456,7 @@ const Vendas = () => {
         const mechanicName = mechanics.find(
           (m) => m.id == selectedMechanicState,
         )?.nome;
-        const clientName = clients.find((c) => c.id == selectedClient)?.nome;
+        const clientName = finalClientObj?.nome;
 
         setLastSale({
           ...saleData,
@@ -376,6 +465,7 @@ const Vendas = () => {
           vendedor_nome: sellerName,
           trocador_nome: mechanicName,
           cliente_nome: clientName,
+          cliente: finalClientObj,
         });
 
         setShowReceipt(true);
@@ -388,6 +478,9 @@ const Vendas = () => {
         setLaborInput(0);
         setSearchTerm("");
         handleSelectClient(null);
+        setOptsCpfReceipt(false);
+        setReceiptCpf("");
+        setReceiptName("");
         loadData();
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
@@ -811,6 +904,29 @@ const Vendas = () => {
                 <span>{formatCurrency(totals.change)}</span>
               </div>
             )}
+
+            <div className="mt-4 border-t border-gray-200 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-700">
+                <input type="checkbox" className="w-4 h-4 text-blue-600" checked={optsCpfReceipt} onChange={e => setOptsCpfReceipt(e.target.checked)} />
+                Deseja CPF no Recibo?
+              </label>
+              {optsCpfReceipt && (
+                <div className="mt-2 space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  {selectedClient && clients.find(c => c.id == selectedClient)?.documento ? (
+                    <p className="text-xs text-blue-800 font-medium"><i className="fas fa-check-circle mr-1"></i> Cliente já possui CPF/CNPJ cadastrado.</p>
+                  ) : selectedClient ? (
+                    <div>
+                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="Digite o CPF/CNPJ" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
+                    </div>
+                  ) : (
+                    <>
+                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="Nome Completo *" value={receiptName} onChange={e => setReceiptName(e.target.value)} />
+                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="CPF/CNPJ *" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={handleFinishSale}
               disabled={totals.remaining > 0.01}
@@ -835,29 +951,43 @@ const Vendas = () => {
                   Nome Completo *
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className={`w-full border rounded p-2 focus:ring-2 outline-none ${
+                    newClientData.nome && newClientData.nome.trim().length < 3
+                      ? "border-red-500 focus:ring-red-500 bg-red-50"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                   value={newClientData.nome}
                   onChange={(e) =>
-                    setNewClientData({ ...newClientData, nome: e.target.value })
+                    setNewClientData({ ...newClientData, nome: applyNameMask(e.target.value) })
                   }
                   autoFocus
                   required
                 />
+                {newClientData.nome && newClientData.nome.trim().length < 3 && (
+                    <span className="text-red-500 text-xs mt-1 block">Nome muito curto</span>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  CPF / Documento *
+                  CPF / Documento
+                  {newClientData.documento && !validarDocumento(newClientData.documento) && (
+                    <span className="text-red-500 ml-2 normal-case font-normal text-xs">Inválido</span>
+                  )}
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className={`w-full border rounded p-2 focus:ring-2 outline-none ${
+                    newClientData.documento && !validarDocumento(newClientData.documento)
+                      ? "border-red-500 focus:ring-red-500 bg-red-50"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                   value={newClientData.documento}
                   onChange={(e) =>
                     setNewClientData({
                       ...newClientData,
-                      documento: e.target.value,
+                      documento: applyCpfCnpjMask(e.target.value),
                     })
                   }
-                  required
+                  maxLength="18"
                 />
               </div>
               <div>
@@ -870,18 +1000,26 @@ const Vendas = () => {
                   onChange={(e) =>
                     setNewClientData({
                       ...newClientData,
-                      telefone: e.target.value,
+                      telefone: applyPhoneMask(e.target.value),
                     })
                   }
+                  maxLength="15"
                   required
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Endereço (Opcional)
+                  {newClientData.endereco && newClientData.endereco.trim().length > 0 && newClientData.endereco.trim().length < 4 && (
+                      <span className="text-red-500 ml-2 normal-case text-xs font-normal">Muito curto</span>
+                  )}
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className={`w-full border rounded p-2 focus:ring-2 outline-none ${
+                    newClientData.endereco && newClientData.endereco.trim().length > 0 && newClientData.endereco.trim().length < 4
+                      ? "border-red-500 focus:ring-red-500 bg-red-50"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                   value={newClientData.endereco}
                   onChange={(e) =>
                     setNewClientData({
@@ -901,7 +1039,18 @@ const Vendas = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 shadow-md"
+                  disabled={
+                    !newClientData.nome || newClientData.nome.trim().length < 3 || !newClientData.telefone ||
+                    (newClientData.documento && !validarDocumento(newClientData.documento)) ||
+                    (newClientData.endereco && newClientData.endereco.trim().length > 0 && newClientData.endereco.trim().length < 4)
+                  }
+                  className={`px-4 py-2 text-white rounded font-bold shadow-md ${
+                    (!newClientData.nome || newClientData.nome.trim().length < 3 || !newClientData.telefone ||
+                    (newClientData.documento && !validarDocumento(newClientData.documento)) ||
+                    (newClientData.endereco && newClientData.endereco.trim().length > 0 && newClientData.endereco.trim().length < 4))
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
                 >
                   Salvar e Selecionar
                 </button>

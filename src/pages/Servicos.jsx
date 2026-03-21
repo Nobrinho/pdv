@@ -26,6 +26,7 @@ const Servicos = () => {
     mechanicId: "",
   });
   const [filteredServices, setFilteredServices] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [reportSummary, setReportSummary] = useState({
     totalCount: 0,
     totalValue: 0,
@@ -44,24 +45,40 @@ const Servicos = () => {
     loadData();
   }, []);
 
-  // Atualizar lista filtrada quando filtros ou dados mudam
+  // Recarregar do backend quando datas mudam
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadData();
+    }
+  }, [startDate, endDate]);
+
+  // Filtrar localmente só por mecânico (dados já vêm filtrados por data)
   useEffect(() => {
     applyFilters();
-  }, [filters, services]);
+  }, [selectedMechanicFilter, services]);
 
   const loadData = async () => {
     try {
-      const servicesData = await window.api.getServices();
+      setLoading(true);
+      // Filtros server-side por data
+      const startTimestamp = startDate
+        ? dayjs(startDate).startOf("day").valueOf()
+        : undefined;
+      const endTimestamp = endDate
+        ? dayjs(endDate).endOf("day").valueOf()
+        : undefined;
+
+      const servicesData = await window.api.getServices({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
       const peopleData = await window.api.getPeople();
 
-      // Ordenar serviços do mais recente para o mais antigo
       const sortedServices = servicesData.sort(
         (a, b) => b.data_servico - a.data_servico,
       );
 
       setServices(sortedServices);
-
-      // Filtra apenas quem tem cargo de "Trocador"
       setMechanics(peopleData.filter((p) => p.cargo_nome === "Trocador"));
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -70,6 +87,8 @@ const Servicos = () => {
         "Erro Técnico",
         "error",
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,26 +129,28 @@ const Servicos = () => {
     }
   };
 
-  // --- LÓGICA DE RELATÓRIO ---
+  // --- FILTROS RÁPIDOS ---
+  const handlePeriodChange = (type) => {
+    setPeriodType(type);
+    const now = dayjs();
+
+    if (type === "weekly") {
+      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
+    } else if (type === "monthly") {
+      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
+    } else if (type === "yearly") {
+      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
+      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
+    }
+  };
+
   const applyFilters = () => {
+    // Data já filtrada no backend - filtrar localmente só por mecânico
     let result = services;
 
-    // Filtro de Data
-    if (filters.startDate) {
-      result = result.filter((s) =>
-        dayjs(s.data_servico).isAfter(
-          dayjs(filters.startDate).subtract(1, "day"),
-        ),
-      );
-    }
-    if (filters.endDate) {
-      result = result.filter((s) =>
-        dayjs(s.data_servico).isBefore(dayjs(filters.endDate).add(1, "day")),
-      );
-    }
-
-    // Filtro de Responsável
-    if (filters.mechanicId && filters.mechanicId !== "all") {
+    if (selectedMechanicFilter && selectedMechanicFilter !== "all") {
       result = result.filter(
         (s) => s.trocador_id === parseInt(filters.mechanicId),
       );
@@ -139,8 +160,7 @@ const Servicos = () => {
     updateSummary(result);
   };
 
-  const updateSummary = (data) => {
-    const totalValue = data.reduce((acc, curr) => acc + curr.valor, 0);
+    const totalValue = result.reduce((acc, curr) => acc + curr.valor, 0);
     setReportSummary({
       totalCount: data.length,
       totalValue: totalValue,
@@ -361,7 +381,24 @@ const Servicos = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredServices.map((service) => (
+                  {loading ? (
+                    <tr>
+                      <td colSpan="4" className="text-center py-10">
+                        <i className="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+                        <p className="text-gray-400 mt-2 text-sm">Carregando...</p>
+                      </td>
+                    </tr>
+                  ) : filteredServices.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="4"
+                        className="px-6 py-12 text-center text-gray-400 bg-gray-50"
+                      >
+                        <i className="fas fa-search mb-2 text-2xl block opacity-50"></i>
+                        Nenhum serviço encontrado para este filtro.
+                      </td>
+                    </tr>
+                  ) : (filteredServices.map((service) => (
                     <tr
                       key={service.id}
                       className="hover:bg-blue-50 transition-colors"
@@ -385,18 +422,7 @@ const Servicos = () => {
                         {formatCurrency(service.valor)}
                       </td>
                     </tr>
-                  ))}
-                  {filteredServices.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan="4"
-                        className="px-6 py-12 text-center text-gray-400 bg-gray-50"
-                      >
-                        <i className="fas fa-search mb-2 text-2xl block opacity-50"></i>
-                        Nenhum serviço encontrado para este filtro.
-                      </td>
-                    </tr>
-                  )}
+                  )))}
                 </tbody>
               </table>
             </div>

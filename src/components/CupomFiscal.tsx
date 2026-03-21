@@ -59,7 +59,20 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
   const desconto = sale.desconto_valor || 0;
   const total = sale.total_final || 0;
   const data = sale.data_venda || new Date();
-  const cliente = sale.cliente || null;
+  const clienteObj = sale.cliente || null;
+  const clienteNome = clienteObj?.nome || sale.cliente_nome || null;
+  const listaPagamentos = sale.lista_pagamentos || sale.pagamentos || [];
+  // Formatter function inside CupomFiscal
+  const formatDocument = (v) => {
+    if (!v) return "";
+    let clean = v.replace(/\D/g, "");
+    if (clean.length === 11) {
+      return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    } else if (clean.length === 14) {
+      return clean.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+    return v; // in case it's something totally weird, just return string
+  };
 
   return (
     <div id="cupom-fiscal" style={styles.container}>
@@ -93,18 +106,18 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
       </div>
 
       {/* Cliente */}
-      {cliente && (cliente.nome || cliente.telefone || cliente.documento) && (
+      {(clienteNome || (clienteObj && (clienteObj.telefone || clienteObj.documento))) && (
         <div style={styles.borderBottom}>
-          {cliente.nome && (
+          {clienteNome && (
             <p style={{ margin: "1px 0" }}>
-              Cliente: <b>{cliente.nome}</b>
+              Cliente: <b>{clienteNome}</b>
             </p>
           )}
-          {cliente.telefone && (
-            <p style={{ margin: "1px 0" }}>Tel: {cliente.telefone}</p>
+          {clienteObj?.telefone && (
+            <p style={{ margin: "1px 0" }}>Tel: {clienteObj.telefone}</p>
           )}
-          {cliente.documento && (
-            <p style={{ margin: "1px 0" }}>Doc: {cliente.documento}</p>
+          {clienteObj?.documento && (
+            <p style={{ margin: "1px 0" }}>Doc: {formatDocument(clienteObj.documento)}</p>
           )}
         </div>
       )}
@@ -182,8 +195,8 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
 
       <div style={{ ...styles.borderBottom, margin: "10px 0" }}>
         <p style={{ margin: "0", fontWeight: "bold" }}>Pagamento:</p>
-        {Array.isArray(sale.pagamentos) ? (
-          sale.pagamentos.map((p, i) => (
+        {listaPagamentos.length > 0 ? (
+          listaPagamentos.map((p, i) => (
             <div
               key={i}
               style={{
@@ -195,7 +208,7 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
               <span>
                 {p.metodo} {p.detalhes && `(${p.detalhes})`}
               </span>
-              <span>{p.valor.toFixed(2)}</span>
+              <span>{Number(p.valor).toFixed(2)}</span>
             </div>
           ))
         ) : (

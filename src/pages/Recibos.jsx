@@ -11,6 +11,7 @@ const Recibos = () => {
   const [filteredSales, setFilteredSales] = useState([]);
   const [sellers, setSellers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -78,40 +79,73 @@ const Recibos = () => {
     loadData();
   }, []);
 
+  // Recarregar do backend quando datas mudam
+  useEffect(() => {
+    if (filters.startDate && filters.endDate) {
+      loadData();
+    }
+  }, [filters.startDate, filters.endDate]);
+
+  // Filtrar localmente somente por vendedor/cliente (dados já vêm filtrados por data)
   useEffect(() => {
     applyFilters();
-  }, [filters, sales]);
+  }, [filters.sellerId, filters.clientId, sales]);
 
   const loadData = async () => {
     try {
-      const salesData = await window.api.getSales();
+      setLoading(true);
+      const startTimestamp = filters.startDate 
+        ? dayjs(filters.startDate).startOf("day").valueOf() 
+        : undefined;
+      const endTimestamp = filters.endDate 
+        ? dayjs(filters.endDate).endOf("day").valueOf() 
+        : undefined;
+
+      const salesData = await window.api.getSales({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
       const peopleData = await window.api.getPeople();
       const clientsData = await window.api.getClients();
 
-      setSales(salesData);
-      setFilteredSales(salesData);
+      setSales(salesData.sort((a, b) => b.data_venda - a.data_venda));
       setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
       setClients(clientsData || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // --- FILTROS RÁPIDOS ---
+  const handlePeriodChange = (type) => {
+    setPeriodType(type);
+    const now = dayjs();
+
+    let newStart = filters.startDate;
+    let newEnd = filters.endDate;
+
+    if (type === "weekly") {
+      newStart = now.startOf("week").format("YYYY-MM-DD");
+      newEnd = now.endOf("week").format("YYYY-MM-DD");
+    } else if (type === "monthly") {
+      newStart = now.startOf("month").format("YYYY-MM-DD");
+      newEnd = now.endOf("month").format("YYYY-MM-DD");
+    } else if (type === "yearly") {
+      newStart = now.startOf("year").format("YYYY-MM-DD");
+      newEnd = now.endOf("year").format("YYYY-MM-DD");
+    }
+
+    setFilters((prev) => ({ ...prev, startDate: newStart, endDate: newEnd }));
   };
 
   const applyFilters = () => {
     let result = sales;
 
-    if (filters.startDate) {
-      result = result.filter((s) =>
-        dayjs(s.data_venda).isAfter(
-          dayjs(filters.startDate).subtract(1, "day"),
-        ),
-      );
-    }
-    if (filters.endDate) {
-      result = result.filter((s) =>
-        dayjs(s.data_venda).isBefore(dayjs(filters.endDate).add(1, "day")),
-      );
-    }
+    // Data já filtrada no backend - filtrar localmente só vendedor/cliente
+
+    // Filtro Vendedor
     if (filters.sellerId && filters.sellerId !== "all") {
       result = result.filter(
         (s) => s.vendedor_id === parseInt(filters.sellerId),
@@ -131,12 +165,18 @@ const Recibos = () => {
     if (!clientSearchTerm) return [];
     const lower = clientSearchTerm.toLowerCase();
     return clients
-      .filter(
-        (c) =>
+      .filter((c) => {
+        const rawSearch = clientSearchTerm.replace(/\D/g, "");
+        const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+        const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+        return (
           c.nome.toLowerCase().includes(lower) ||
           (c.documento && c.documento.includes(lower)) ||
-          (c.telefone && c.telefone.includes(lower)),
-      )
+          (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
+          (c.telefone && c.telefone.includes(lower)) ||
+          (rawSearch && telRaw && telRaw.includes(rawSearch))
+        );
+      })
       .slice(0, 10);
   }, [clientSearchTerm, clients]);
 
@@ -160,10 +200,11 @@ const Recibos = () => {
   const handleViewReceipt = async (sale) => {
     console.log("FRONTEND: Solicitando itens para venda:", sale.id);
     const items = await window.api.getSaleItems(sale.id);
-    console.log("FRONTEND: Itens recebidos:", items);
+    const clientObj = clients.find((c) => c.id === sale.cliente_id);
     const saleWithClientName = {
       ...sale,
       cliente_nome: getClientName(sale.cliente_id),
+      cliente: clientObj,
     };
     setSelectedSale(saleWithClientName);
     setSaleItems(items);
@@ -399,6 +440,9 @@ const Recibos = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Vendedor
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Pagamento
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                   Total
                 </th>
@@ -411,7 +455,20 @@ const Recibos = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSales.map((sale) => (
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-10">
+                    <i className="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
+                    <p className="text-gray-400 mt-2 text-sm">Carregando...</p>
+                  </td>
+                </tr>
+              ) : filteredSales.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-10 text-gray-400">
+                    Nenhuma venda encontrada.
+                  </td>
+                </tr>
+              ) : (filteredSales.map((sale) => (
                 <tr
                   key={sale.id}
                   className={`hover:bg-blue-50 ${sale.cancelada ? "bg-red-50" : ""}`}
@@ -431,6 +488,19 @@ const Recibos = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {sale.vendedor_nome}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {sale.lista_pagamentos && sale.lista_pagamentos.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {sale.lista_pagamentos.map((p, i) => (
+                          <span key={i} className="text-xs bg-gray-100 px-2 py-0.5 rounded border border-gray-200 w-fit whitespace-nowrap">
+                            {p.metodo}: {formatCurrency(p.valor)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span>{sale.forma_pagamento}</span>
+                    )}
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${sale.cancelada ? "text-red-400 line-through" : "text-gray-900"}`}
@@ -471,14 +541,8 @@ const Recibos = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
-              {filteredSales.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="text-center py-10 text-gray-400">
-                    Nenhuma venda encontrada.
-                  </td>
-                </tr>
-              )}
+              )))
+              }
             </tbody>
           </table>
         </div>
