@@ -185,7 +185,6 @@ const Relatorios = () => {
     };
 
     const vendasProcessadas = vendasFiltradas.map((venda) => {
-      const vendedor = allPeople.find((p) => p.id === venda.vendedor_id);
       const subtotalProdutos = venda.subtotal;
 
       let desconto = 0;
@@ -204,19 +203,14 @@ const Relatorios = () => {
 
       // --- CORREÇÃO DA COMISSÃO ---
       let comissao = 0;
-
-      // 1. Tenta usar o valor calculado pelo Backend (Preciso)
       if (venda.comissao_real !== undefined && venda.comissao_real !== null) {
         comissao = venda.comissao_real;
-      }
-      // 2. Fallback: Se o backend não mandou (versão antiga ou venda sem itens), calcula estimativa no Front
-      else {
+      } else {
+        const vendedor = allPeople.find((p) => p.id === venda.vendedor_id);
         const taxa = vendedor?.comissao_fixa
           ? vendedor.comissao_fixa / 100
           : defaultCommission;
-        if (valorFinalProdutos > 0) {
-          comissao = valorFinalProdutos * taxa;
-        }
+        if (valorFinalProdutos > 0) comissao = valorFinalProdutos * taxa;
       }
 
       const moVenda = venda.mao_de_obra || 0;
@@ -467,7 +461,6 @@ const Relatorios = () => {
         </button>
       </div>
 
-      {/* --- BARRA DE FILTROS APRIMORADA --- */}
       <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
         {/* Filtros Rápidos */}
         <div className="flex gap-2 border-b pb-4 overflow-x-auto">
@@ -491,7 +484,6 @@ const Relatorios = () => {
           </button>
         </div>
 
-        {/* Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
@@ -560,7 +552,6 @@ const Relatorios = () => {
         </div>
       </div>
 
-      {/* --- KPIS (Cards) --- */}
       <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">
         Indicadores Financeiros
       </h2>
@@ -609,7 +600,6 @@ const Relatorios = () => {
         />
       </div>
 
-      {/* Lucro Líquido */}
       <div className="bg-green-50 p-4 rounded-xl shadow-sm border border-green-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
           <p className="text-sm text-green-700 font-bold uppercase">
@@ -625,7 +615,6 @@ const Relatorios = () => {
         </p>
       </div>
 
-      {/* --- TABELAS --- */}
       {selectedPayment === "Múltiplos" && (
         <div className="mb-6 bg-indigo-50 rounded-xl border border-indigo-200 p-4">
           <h3 className="text-indigo-800 font-bold mb-2 flex items-center">
