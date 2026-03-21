@@ -416,7 +416,7 @@ ipcMain.handle("get-sales", async (event, filters = {}) => {
       };
     });
 
-    return vendasComCusto;
+    return vendasProcessadas;
   } catch (error) {
     console.error("Erro get-sales:", error);
     return [];
