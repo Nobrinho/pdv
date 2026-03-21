@@ -25,6 +25,10 @@ const Servicos = () => {
     endDate: "",
     mechanicId: "",
   });
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [periodType, setPeriodType] = useState("monthly");
+  const [selectedMechanicFilter, setSelectedMechanicFilter] = useState("all");
   const [filteredServices, setFilteredServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [reportSummary, setReportSummary] = useState({
@@ -152,7 +156,7 @@ const Servicos = () => {
 
     if (selectedMechanicFilter && selectedMechanicFilter !== "all") {
       result = result.filter(
-        (s) => s.trocador_id === parseInt(filters.mechanicId),
+        (s) => s.trocador_id === parseInt(selectedMechanicFilter),
       );
     }
 
@@ -160,7 +164,8 @@ const Servicos = () => {
     updateSummary(result);
   };
 
-    const totalValue = result.reduce((acc, curr) => acc + curr.valor, 0);
+  const updateSummary = (data) => {
+    const totalValue = data.reduce((acc, curr) => acc + curr.valor, 0);
     setReportSummary({
       totalCount: data.length,
       totalValue: totalValue,
@@ -168,7 +173,10 @@ const Servicos = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ startDate: "", endDate: "", mechanicId: "" });
+    setStartDate("");
+    setEndDate("");
+    setSelectedMechanicFilter("all");
+    setPeriodType("monthly");
   };
 
   return (
@@ -281,10 +289,8 @@ const Servicos = () => {
                 <input
                   type="date"
                   className="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                  value={filters.startDate}
-                  onChange={(e) =>
-                    setFilters({ ...filters, startDate: e.target.value })
-                  }
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
               <div>
@@ -294,10 +300,8 @@ const Servicos = () => {
                 <input
                   type="date"
                   className="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                  value={filters.endDate}
-                  onChange={(e) =>
-                    setFilters({ ...filters, endDate: e.target.value })
-                  }
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                 />
               </div>
               <div>
@@ -306,10 +310,8 @@ const Servicos = () => {
                 </label>
                 <select
                   className="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
-                  value={filters.mechanicId}
-                  onChange={(e) =>
-                    setFilters({ ...filters, mechanicId: e.target.value })
-                  }
+                  value={selectedMechanicFilter}
+                  onChange={(e) => setSelectedMechanicFilter(e.target.value)}
                 >
                   <option value="all">Todos</option>
                   {mechanics.map((m) => (
