@@ -479,15 +479,38 @@ ipcMain.handle("get-clients", async () => {
 
 ipcMain.handle("save-client", async (event, client) => {
   try {
+    if (client.documento) {
+      const existing = await knex("clientes")
+        .where("documento", client.documento)
+        .where("ativo", true)
+        .first();
+      
+      if (existing && existing.id !== client.id) {
+        return { success: false, error: "CPF/CNPJ já cadastrado para outro cliente." };
+      }
+    }
+
     if (client.id) {
       await knex("clientes").where("id", client.id).update(client);
-      return { success: true };
+      return { success: true, id: client.id };
     } else {
-      await knex("clientes").insert({ ...client, ativo: true });
-      return { success: true };
+      const [id] = await knex("clientes").insert({ ...client, ativo: true });
+      return { success: true, id };
     }
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("find-client-by-doc", async (event, documento) => {
+  try {
+    const client = await knex("clientes")
+      .where("documento", documento)
+      .where("ativo", true)
+      .first();
+    return { success: true, client };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
 

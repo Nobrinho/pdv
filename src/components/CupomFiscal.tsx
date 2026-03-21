@@ -62,6 +62,17 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
   const clienteObj = sale.cliente || null;
   const clienteNome = clienteObj?.nome || sale.cliente_nome || null;
   const listaPagamentos = sale.lista_pagamentos || sale.pagamentos || [];
+  // Formatter function inside CupomFiscal
+  const formatDocument = (v) => {
+    if (!v) return "";
+    let clean = v.replace(/\D/g, "");
+    if (clean.length === 11) {
+      return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    } else if (clean.length === 14) {
+      return clean.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+    return v; // in case it's something totally weird, just return string
+  };
 
   return (
     <div id="cupom-fiscal" style={styles.container}>
@@ -106,7 +117,7 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
             <p style={{ margin: "1px 0" }}>Tel: {clienteObj.telefone}</p>
           )}
           {clienteObj?.documento && (
-            <p style={{ margin: "1px 0" }}>Doc: {clienteObj.documento}</p>
+            <p style={{ margin: "1px 0" }}>Doc: {formatDocument(clienteObj.documento)}</p>
           )}
         </div>
       )}

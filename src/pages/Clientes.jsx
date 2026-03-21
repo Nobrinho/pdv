@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
+import { applyCpfCnpjMask, applyNameMask, applyPhoneMask, validarDocumento } from "../utils/validators";
 
 const Clientes = () => {
   const { showAlert, showConfirm } = useAlert();
@@ -39,18 +40,33 @@ const Clientes = () => {
     }
   };
 
-  const filteredClients = clients.filter(
-    (c) =>
-      c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.telefone && c.telefone.includes(searchTerm)) ||
-      (c.documento && c.documento.includes(searchTerm)),
-  );
+  const lowerSearch = searchTerm.toLowerCase();
+  const rawSearch = searchTerm.replace(/\D/g, "");
+
+  const filteredClients = clients.filter((c) => {
+    const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+    const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+
+    const matchName = c.nome.toLowerCase().includes(lowerSearch);
+    const matchDocExact = c.documento && c.documento.includes(searchTerm);
+    const matchDocRaw = rawSearch && docRaw && docRaw.includes(rawSearch);
+    const matchTelExact = c.telefone && c.telefone.includes(searchTerm);
+    const matchTelRaw = rawSearch && telRaw && telRaw.includes(rawSearch);
+
+    return matchName || matchDocExact || matchDocRaw || matchTelExact || matchTelRaw;
+  });
 
   // --- CRUD ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.nome.trim())
       return showAlert("Nome é obrigatório.", "Atenção", "warning");
+
+    if (formData.documento && !validarDocumento(formData.documento))
+      return showAlert("O CPF/CNPJ informado é inválido.", "Atenção", "error");
+      
+    if (formData.endereco && formData.endereco.trim().length > 0 && formData.endereco.trim().length < 4)
+      return showAlert("O endereço informado é muito curto.", "Atenção", "warning");
 
     // CORREÇÃO: Criar um objeto limpo apenas com os campos que existem no banco
     // Isso evita enviar 'saldo_devedor' ou outros lixos que quebram o update
@@ -305,29 +321,45 @@ const Clientes = () => {
                     className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
                     value={formData.telefone}
                     onChange={(e) =>
-                      setFormData({ ...formData, telefone: e.target.value })
+                      setFormData({ ...formData, telefone: applyPhoneMask(e.target.value) })
                     }
+                    maxLength="15"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                     CPF / Documento
+                    {formData.documento && !validarDocumento(formData.documento) && (
+                      <span className="text-red-500 ml-2 normal-case text-xs font-normal">Inválido</span>
+                    )}
                   </label>
                   <input
-                    className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className={`w-full border rounded-lg p-2.5 outline-none focus:ring-2 transition ${
+                      formData.documento && !validarDocumento(formData.documento)
+                        ? "border-red-500 focus:ring-red-500 bg-red-50"
+                        : "border-gray-300 focus:ring-blue-500"
+                    }`}
                     value={formData.documento}
                     onChange={(e) =>
-                      setFormData({ ...formData, documento: e.target.value })
+                      setFormData({ ...formData, documento: applyCpfCnpjMask(e.target.value) })
                     }
+                    maxLength="18"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                   Endereço
+                  {formData.endereco && formData.endereco.trim().length > 0 && formData.endereco.trim().length < 4 && (
+                      <span className="text-red-500 ml-2 normal-case text-xs font-normal">Muito curto</span>
+                  )}
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className={`w-full border rounded-lg p-2.5 outline-none focus:ring-2 transition ${
+                    formData.endereco && formData.endereco.trim().length > 0 && formData.endereco.trim().length < 4
+                      ? "border-red-500 focus:ring-red-500 bg-red-50"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
                   value={formData.endereco}
                   onChange={(e) =>
                     setFormData({ ...formData, endereco: e.target.value })
@@ -344,7 +376,18 @@ const Clientes = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold text-sm shadow-md"
+                  disabled={
+                    !formData.nome || formData.nome.trim().length < 3 || 
+                    (formData.documento && !validarDocumento(formData.documento)) ||
+                    (formData.endereco && formData.endereco.trim().length > 0 && formData.endereco.trim().length < 4)
+                  }
+                  className={`px-6 py-2.5 text-white rounded-lg transition font-bold text-sm shadow-md ${
+                    (!formData.nome || formData.nome.trim().length < 3 || 
+                    (formData.documento && !validarDocumento(formData.documento)) ||
+                    (formData.endereco && formData.endereco.trim().length > 0 && formData.endereco.trim().length < 4))
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
                 >
                   Salvar
                 </button>

@@ -78,6 +78,7 @@ contextBridge.exposeInMainWorld("api", {
   // --- CLIENTES & FIADO (NOVO) ---
   getClients: () => ipcRenderer.invoke("get-clients"),
   saveClient: (client) => ipcRenderer.invoke("save-client", client),
+  findClientByDoc: (doc) => ipcRenderer.invoke("find-client-by-doc", doc),
   deleteClient: (id) => ipcRenderer.invoke("delete-client", id),
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),

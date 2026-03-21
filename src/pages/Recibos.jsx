@@ -134,12 +134,18 @@ const Recibos = () => {
     if (!clientSearchTerm) return [];
     const lower = clientSearchTerm.toLowerCase();
     return clients
-      .filter(
-        (c) =>
+      .filter((c) => {
+        const rawSearch = clientSearchTerm.replace(/\D/g, "");
+        const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+        const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+        return (
           c.nome.toLowerCase().includes(lower) ||
           (c.documento && c.documento.includes(lower)) ||
-          (c.telefone && c.telefone.includes(lower)),
-      )
+          (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
+          (c.telefone && c.telefone.includes(lower)) ||
+          (rawSearch && telRaw && telRaw.includes(rawSearch))
+        );
+      })
       .slice(0, 10);
   }, [clientSearchTerm, clients]);
 
@@ -163,9 +169,11 @@ const Recibos = () => {
   // --- AÇÕES ---
   const handleViewReceipt = async (sale) => {
     const items = await window.api.getSaleItems(sale.id);
+    const clientObj = clients.find((c) => c.id === sale.cliente_id);
     const saleWithClientName = {
       ...sale,
       cliente_nome: getClientName(sale.cliente_id),
+      cliente: clientObj,
     };
     setSelectedSale(saleWithClientName);
     setSaleItems(items);
