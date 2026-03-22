@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAlert } from "../context/AlertSystem";
 import dayjs from "dayjs";
 import CupomFiscal from "../components/CupomFiscal";
+import { applyCpfCnpjMask, applyNameMask, applyPhoneMask, validarDocumento } from "../utils/validators";
 
 const Vendas = () => {
   const { showAlert } = useAlert();
@@ -41,6 +42,11 @@ const Vendas = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [lastSale, setLastSale] = useState(null);
+
+  // --- CPF RECIBO ---
+  const [optsCpfReceipt, setOptsCpfReceipt] = useState(false);
+  const [receiptCpf, setReceiptCpf] = useState("");
+  const [receiptName, setReceiptName] = useState("");
 
   // --- DADOS NOVO CLIENTE ---
   const [newClientData, setNewClientData] = useState({
@@ -127,13 +133,19 @@ const Vendas = () => {
   const filteredClients = useMemo(() => {
     if (!clientSearchTerm) return [];
     const lower = clientSearchTerm.toLowerCase();
+    const rawSearch = clientSearchTerm.replace(/\D/g, "");
     return clients
-      .filter(
-        (c) =>
+      .filter((c) => {
+        const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+        const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+        return (
           c.nome.toLowerCase().includes(lower) ||
           (c.documento && c.documento.includes(lower)) ||
-          (c.telefone && c.telefone.includes(lower)),
-      )
+          (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
+          (c.telefone && c.telefone.includes(lower)) ||
+          (rawSearch && telRaw && telRaw.includes(rawSearch))
+        );
+      })
       .slice(0, 10);
   }, [clientSearchTerm, clients]);
 
@@ -292,16 +304,15 @@ const Vendas = () => {
   // --- CADASTRO RÁPIDO ---
   const handleSaveNewClient = async (e) => {
     e.preventDefault();
-    if (
-      !newClientData.nome ||
-      !newClientData.documento ||
-      !newClientData.telefone
-    ) {
+    if (!newClientData.nome || !newClientData.telefone) {
       return showAlert(
-        "Nome, Documento e Telefone são obrigatórios!",
+        "Nome e Telefone são obrigatórios!",
         "Dados Incompletos",
         "warning",
       );
+    }
+    if (newClientData.documento && !validarDocumento(newClientData.documento)) {
+      return showAlert("CPF/CNPJ inválido. Verifique o documento.", "Atenção", "error");
     }
     try {
       const result = await window.api.saveClient(newClientData);
@@ -310,16 +321,11 @@ const Vendas = () => {
         const updatedClients = await window.api.getClients();
         setClients(updatedClients);
         const newClient = updatedClients.find(
-          (c) => c.documento === newClientData.documento,
+          (c) => c.id === result.id || (newClientData.documento && c.documento === newClientData.documento),
         );
         if (newClient) handleSelectClient(newClient);
         setShowClientModal(false);
-        setNewClientData({
-          nome: "",
-          documento: "",
-          telefone: "",
-          endereco: "",
-        });
+        setNewClientData({ nome: "", documento: "", telefone: "", endereco: "" });
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
       }
@@ -359,6 +365,50 @@ const Vendas = () => {
         "Cliente Necessário",
         "error",
       );
+    }
+
+    let finalClientId = selectedClient || null;
+    let finalClientObj = clients.find((c) => c.id == selectedClient);
+
+    // --- CPF NO RECIBO LOGIC ---
+    if (optsCpfReceipt) {
+      if (finalClientId && finalClientObj?.documento) {
+        // Já tem documento, segue normal
+      } else if (finalClientId && !finalClientObj?.documento) {
+        // Cliente selecionado não tem documento
+        if (!receiptCpf) return showAlert("Informe o CPF/CNPJ para o recibo.", "Aviso", "warning");
+        if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
+        const res = await window.api.saveClient({ id: finalClientId, ...finalClientObj, documento: receiptCpf });
+        if (res.success) {
+          finalClientObj = { ...finalClientObj, documento: receiptCpf };
+        } else {
+          return showAlert("Erro ao salvar documento do cliente.", "Erro", "error");
+        }
+      } else {
+        // Sem cliente selecionado (Consumidor Final)
+        if (!receiptCpf || !receiptName) {
+          return showAlert("Nome e CPF são obrigatórios para emissão com CPF.", "Aviso", "warning");
+        }
+        if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
+        try {
+          const searchRes = await window.api.findClientByDoc(receiptCpf);
+          if (searchRes.success && searchRes.client) {
+            // Cliente já existe, vincula silenciosamente
+            finalClientId = searchRes.client.id;
+            finalClientObj = searchRes.client;
+          } else {
+            const res = await window.api.saveClient({ nome: receiptName, documento: receiptCpf });
+            if (res.success && res.id) {
+              finalClientId = res.id;
+              finalClientObj = { id: res.id, nome: receiptName, documento: receiptCpf };
+            } else {
+              return showAlert("Erro ao salvar dados do cliente: " + res.error, "Erro", "error");
+            }
+          }
+        } catch (error) {
+          return showAlert("Erro na verificação de cliente: " + error.message, "Erro", "error");
+        }
+      }
     }
 
     const saleData = {
@@ -827,6 +877,28 @@ const Vendas = () => {
                 <span>{formatCurrency(totals.change)}</span>
               </div>
             )}
+            <div className="mt-4 border-t border-gray-200 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-700">
+                <input type="checkbox" className="w-4 h-4 text-blue-600" checked={optsCpfReceipt} onChange={e => setOptsCpfReceipt(e.target.checked)} />
+                Deseja CPF no Recibo?
+              </label>
+              {optsCpfReceipt && (
+                <div className="mt-2 space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  {selectedClient && clients.find(c => c.id == selectedClient)?.documento ? (
+                    <p className="text-xs text-blue-800 font-medium"><i className="fas fa-check-circle mr-1"></i> Cliente já possui CPF/CNPJ cadastrado.</p>
+                  ) : selectedClient ? (
+                    <div>
+                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="Digite o CPF/CNPJ" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
+                    </div>
+                  ) : (
+                    <>
+                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="Nome Completo *" value={receiptName} onChange={e => setReceiptName(applyNameMask(e.target.value))} />
+                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="CPF/CNPJ *" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={handleFinishSale}
               disabled={totals.remaining > 0.01}

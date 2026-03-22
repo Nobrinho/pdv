@@ -133,13 +133,19 @@ const Recibos = () => {
   const filteredClientsList = useMemo(() => {
     if (!clientSearchTerm) return [];
     const lower = clientSearchTerm.toLowerCase();
+    const rawSearch = clientSearchTerm.replace(/\D/g, "");
     return clients
-      .filter(
-        (c) =>
+      .filter((c) => {
+        const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+        const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+        return (
           c.nome.toLowerCase().includes(lower) ||
           (c.documento && c.documento.includes(lower)) ||
-          (c.telefone && c.telefone.includes(lower)),
-      )
+          (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
+          (c.telefone && c.telefone.includes(lower)) ||
+          (rawSearch && telRaw && telRaw.includes(rawSearch))
+        );
+      })
       .slice(0, 10);
   }, [clientSearchTerm, clients]);
 

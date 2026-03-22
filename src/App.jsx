@@ -182,15 +182,6 @@ function App() {
     return <Login onLoginSuccess={(userData) => setUser(userData)} />;
   }
 
-  // Componente de Rota Protegida
-  const ProtectedRoute = ({ children, path }) => {
-    if (hasAccess(path)) {
-      return children;
-    }
-    // Redireciona para Vendas se não tiver acesso (rota segura para Caixa)
-    return <Navigate to="/vendas" replace />;
-  };
-
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 font-sans text-gray-900">
       <aside className="w-64 bg-gray-800 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-10">
@@ -297,16 +288,16 @@ function App() {
 
       <main className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
         <Routes>
-          <Route path="/" element={<ProtectedRoute path="/"><Dashboard /></ProtectedRoute>} />
-          <Route path="/vendas" element={<ProtectedRoute path="/vendas"><Vendas /></ProtectedRoute>} />
-          <Route path="/servicos" element={<ProtectedRoute path="/servicos"><Servicos /></ProtectedRoute>} />
-          <Route path="/recibos" element={<ProtectedRoute path="/recibos"><Recibos /></ProtectedRoute>} />
-          <Route path="/historico" element={<ProtectedRoute path="/historico"><HistoricoPrecos /></ProtectedRoute>} />
-          <Route path="/produtos" element={<ProtectedRoute path="/produtos"><Produtos user={user} /></ProtectedRoute>} />
-          <Route path="/pessoas" element={<ProtectedRoute path="/pessoas"><Pessoas /></ProtectedRoute>} />
-          <Route path="/clientes" element={<ProtectedRoute path="/clientes"><Clientes /></ProtectedRoute>} />
-          <Route path="/relatorios" element={<ProtectedRoute path="/relatorios"><Relatorios /></ProtectedRoute>} />
-          <Route path="/config" element={<ProtectedRoute path="/config"><Config /></ProtectedRoute>} />
+          <Route path="/" element={hasAccess("/") ? <Dashboard /> : <Navigate to="/vendas" replace />} />
+          <Route path="/vendas" element={hasAccess("/vendas") ? <Vendas /> : <Navigate to="/vendas" replace />} />
+          <Route path="/servicos" element={hasAccess("/servicos") ? <Servicos /> : <Navigate to="/vendas" replace />} />
+          <Route path="/recibos" element={hasAccess("/recibos") ? <Recibos /> : <Navigate to="/vendas" replace />} />
+          <Route path="/historico" element={hasAccess("/historico") ? <HistoricoPrecos /> : <Navigate to="/vendas" replace />} />
+          <Route path="/produtos" element={hasAccess("/produtos") ? <Produtos user={user} /> : <Navigate to="/vendas" replace />} />
+          <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
+          <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
+          <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
+          <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

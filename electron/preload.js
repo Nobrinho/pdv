@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld("api", {
   getClients: () => ipcRenderer.invoke("get-clients"),
   saveClient: (client) => ipcRenderer.invoke("save-client", client),
   deleteClient: (id) => ipcRenderer.invoke("delete-client", id),
+  findClientByDoc: (doc) => ipcRenderer.invoke("find-client-by-doc", doc),
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
 });

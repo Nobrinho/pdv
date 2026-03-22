@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
+import { applyCpfCnpjMask, applyNameMask, applyPhoneMask, validarDocumento } from "../utils/validators";
 
 const Clientes = () => {
   const { showAlert, showConfirm } = useAlert();
@@ -39,12 +40,19 @@ const Clientes = () => {
     }
   };
 
-  const filteredClients = clients.filter(
-    (c) =>
-      c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.telefone && c.telefone.includes(searchTerm)) ||
-      (c.documento && c.documento.includes(searchTerm)),
-  );
+  const filteredClients = clients.filter((c) => {
+    const lower = searchTerm.toLowerCase();
+    const rawSearch = searchTerm.replace(/\D/g, "");
+    const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+    const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+    return (
+      c.nome.toLowerCase().includes(lower) ||
+      (c.documento && c.documento.toLowerCase().includes(lower)) ||
+      (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
+      (c.telefone && c.telefone.includes(lower)) ||
+      (rawSearch && telRaw && telRaw.includes(rawSearch))
+    );
+  });
 
   // --- CRUD ---
   const handleSubmit = async (e) => {
@@ -287,10 +295,14 @@ const Clientes = () => {
                   Nome Completo *
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className={`w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                    formData.nome.trim().length > 0 && formData.nome.trim().length < 2
+                      ? "border-red-400 bg-red-50"
+                      : "border-gray-300"
+                  }`}
                   value={formData.nome}
                   onChange={(e) =>
-                    setFormData({ ...formData, nome: e.target.value })
+                    setFormData({ ...formData, nome: applyNameMask(e.target.value) })
                   }
                   required
                   autoFocus
@@ -303,10 +315,11 @@ const Clientes = () => {
                   </label>
                   <input
                     className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    value={formData.telefone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, telefone: e.target.value })
-                    }
+                  placeholder="(XX) XXXXX-XXXX"
+                  value={formData.telefone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, telefone: applyPhoneMask(e.target.value) })
+                  }
                   />
                 </div>
                 <div>
@@ -314,12 +327,21 @@ const Clientes = () => {
                     CPF / Documento
                   </label>
                   <input
-                    className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    value={formData.documento}
-                    onChange={(e) =>
-                      setFormData({ ...formData, documento: e.target.value })
-                    }
-                  />
+                    className={`w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                    formData.documento && !validarDocumento(formData.documento)
+                      ? "border-red-400 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="Opcional — CPF ou CNPJ"
+                  maxLength={18}
+                  value={formData.documento}
+                  onChange={(e) =>
+                    setFormData({ ...formData, documento: applyCpfCnpjMask(e.target.value) })
+                  }
+                />
+                {formData.documento && !validarDocumento(formData.documento) && (
+                  <p className="text-xs text-red-500 mt-1">CPF/CNPJ inválido</p>
+                )}
                 </div>
               </div>
               <div>
@@ -327,12 +349,20 @@ const Clientes = () => {
                   Endereço
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  value={formData.endereco}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endereco: e.target.value })
-                  }
-                />
+                  className={`w-full border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                  formData.endereco && formData.endereco.trim().length < 4
+                    ? "border-orange-400 bg-orange-50"
+                    : "border-gray-300"
+                }`}
+                placeholder="Opcional — mínimo 4 caracteres"
+                value={formData.endereco}
+                onChange={(e) =>
+                  setFormData({ ...formData, endereco: e.target.value })
+                }
+              />
+              {formData.endereco && formData.endereco.trim().length < 4 && (
+                <p className="text-xs text-orange-500 mt-1">Endereço muito curto (mín. 4 caracteres)</p>
+              )}
               </div>
               <div className="flex justify-end gap-3 mt-6 pt-2 border-t">
                 <button
@@ -344,7 +374,18 @@ const Clientes = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold text-sm shadow-md"
+                className={`px-6 py-2.5 rounded-lg transition font-bold text-sm shadow-md ${
+                  !formData.nome.trim() ||
+                  (formData.documento && !validarDocumento(formData.documento)) ||
+                  (formData.endereco && formData.endereco.trim().length < 4)
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+                disabled={
+                  !formData.nome.trim() ||
+                  (formData.documento && !validarDocumento(formData.documento)) ||
+                  (formData.endereco && formData.endereco.trim().length < 4)
+                }
                 >
                   Salvar
                 </button>

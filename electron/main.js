@@ -479,15 +479,53 @@ ipcMain.handle("get-clients", async () => {
 
 ipcMain.handle("save-client", async (event, client) => {
   try {
+    // Proteção contra CPF/CNPJ duplicado
+    if (client.documento) {
+      if (client.id) {
+        // Edição: garante que nenhum OUTRO cliente tenha o mesmo CPF
+        const existing = await knex("clientes")
+          .where("documento", client.documento)
+          .where("ativo", true)
+          .whereNot("id", client.id)
+          .first();
+        if (existing) {
+          return { success: false, error: "CPF/CNPJ já cadastrado para outro cliente." };
+        }
+      } else {
+        // Inserção: garante que ninguém já tenha esse CPF
+        const existing = await knex("clientes")
+          .where("documento", client.documento)
+          .where("ativo", true)
+          .first();
+        if (existing) {
+          return { success: false, error: "CPF/CNPJ já cadastrado para outro cliente." };
+        }
+      }
+    }
+
     if (client.id) {
       await knex("clientes").where("id", client.id).update(client);
       return { success: true };
     } else {
-      await knex("clientes").insert({ ...client, ativo: true });
-      return { success: true };
+      const [id] = await knex("clientes").insert({ ...client, ativo: true });
+      return { success: true, id };
     }
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle("find-client-by-doc", async (event, documento) => {
+  try {
+    const clean = documento ? documento.replace(/\D/g, "") : "";
+    if (!clean) return { success: false, client: null };
+    const clientes = await knex("clientes").where("ativo", true).select("*");
+    const found = clientes.find(
+      (c) => c.documento && c.documento.replace(/\D/g, "") === clean
+    );
+    return { success: true, client: found || null };
+  } catch (error) {
+    return { success: false, client: null };
   }
 });
 
