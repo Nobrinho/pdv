@@ -414,7 +414,7 @@ const Vendas = () => {
     const saleData = {
       vendedor_id: selectedSeller,
       trocador_id: selectedMechanicState || null,
-      cliente_id: selectedClient || null,
+      cliente_id: finalClientId || null,
       subtotal: totals.subtotal,
       acrescimo_valor: totals.surchargeAmount,
       desconto_valor: totals.discountAmount,
@@ -433,7 +433,9 @@ const Vendas = () => {
         const mechanicName = mechanics.find(
           (m) => m.id == selectedMechanicState,
         )?.nome;
-        const clientName = clients.find((c) => c.id == selectedClient)?.nome;
+        const clientName =
+          finalClientObj?.nome ||
+          clients.find((c) => c.id == finalClientId)?.nome;
 
         setLastSale({
           ...saleData,
@@ -442,6 +444,7 @@ const Vendas = () => {
           vendedor_nome: sellerName,
           trocador_nome: mechanicName,
           cliente_nome: clientName,
+          cliente: finalClientObj || null,
         });
 
         setShowReceipt(true);
@@ -540,7 +543,10 @@ const Vendas = () => {
                     <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
                       <div
                         className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-600 italic border-b"
-                        onClick={() => handleSelectClient(null)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSelectClient(null);
+                        }}
                       >
                         <i className="fas fa-user-tag mr-2"></i> Consumidor
                         Final
@@ -548,7 +554,10 @@ const Vendas = () => {
                       {filteredClients.map((c) => (
                         <div
                           key={c.id}
-                          onClick={() => handleSelectClient(c)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectClient(c);
+                          }}
                           className="p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm"
                         >
                           <div className="font-bold text-gray-800">
