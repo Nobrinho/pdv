@@ -1,23 +1,24 @@
 // @ts-nocheck
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br"; // Importante para datas em PT-BR
 import { useAlert } from "../context/AlertSystem";
+import { api } from "../services/api";
+import { formatCurrency } from "../utils/format";
 import CupomFiscal from "../components/CupomFiscal";
-
-// Configura locale
-dayjs.locale("pt-br");
+import DataTable from "../components/ui/DataTable";
+import FormField from "../components/ui/FormField";
+import Modal from "../components/ui/Modal";
+import StatusBadge from "../components/ui/StatusBadge";
 
 const Recibos = () => {
   const { showAlert } = useAlert();
 
   const [sales, setSales] = useState([]);
-  const [filteredSales, setFilteredSales] = useState([]);
   const [sellers, setSellers] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Filtros de Data e Período (Padrão: Semana Atual)
+  // Filtros de Data e Período
   const [periodType, setPeriodType] = useState("weekly");
   const [filters, setFilters] = useState({
     startDate: dayjs().startOf("week").format("YYYY-MM-DD"),
@@ -36,29 +37,14 @@ const Recibos = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [saleToCancel, setSaleToCancel] = useState(null);
-  const [cancelData, setCancelData] = useState({
+  
+  const [cancelForm, setCancelForm] = useState({
     adminUser: "",
     adminPass: "",
     reason: "",
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Recarregar do backend quando datas mudam
-  useEffect(() => {
-    if (filters.startDate && filters.endDate) {
-      loadData();
-    }
-  }, [filters.startDate, filters.endDate]);
-
-  // Filtrar localmente somente por vendedor/cliente (dados já vêm filtrados por data)
-  useEffect(() => {
-    applyFilters();
-  }, [filters.sellerId, filters.clientId, sales]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const startTimestamp = filters.startDate 
@@ -68,28 +54,30 @@ const Recibos = () => {
         ? dayjs(filters.endDate).endOf("day").valueOf() 
         : undefined;
 
-      const salesData = await window.api.getSales({
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      const peopleData = await window.api.getPeople();
-      const clientsData = await window.api.getClients();
+      const [salesData, peopleData, clientsData] = await Promise.all([
+        api.sales.list({ startDate: startTimestamp, endDate: endTimestamp }),
+        api.people.list(),
+        api.clients.list()
+      ]);
 
       setSales(salesData.sort((a, b) => b.data_venda - a.data_venda));
       setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
       setClients(clientsData || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+      showAlert("Erro ao conectar com o banco de dados.", "Erro", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.startDate, filters.endDate, showAlert]);
 
-  // --- FILTROS RÁPIDOS ---
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const handlePeriodChange = (type) => {
     setPeriodType(type);
     const now = dayjs();
-
     let newStart = filters.startDate;
     let newEnd = filters.endDate;
 
@@ -107,46 +95,21 @@ const Recibos = () => {
     setFilters((prev) => ({ ...prev, startDate: newStart, endDate: newEnd }));
   };
 
-  const applyFilters = () => {
+  const filteredSales = useMemo(() => {
     let result = sales;
-
-    // Data já filtrada no backend - filtrar localmente só vendedor/cliente
-
-    // Filtro Vendedor
     if (filters.sellerId && filters.sellerId !== "all") {
-      result = result.filter(
-        (s) => s.vendedor_id === parseInt(filters.sellerId),
-      );
+      result = result.filter((s) => s.vendedor_id === parseInt(filters.sellerId));
     }
-
-    // Filtro Cliente
     if (filters.clientId && filters.clientId !== "all") {
-      result = result.filter(
-        (s) => s.cliente_id === parseInt(filters.clientId),
-      );
+      result = result.filter((s) => s.cliente_id === parseInt(filters.clientId));
     }
+    return result;
+  }, [sales, filters.sellerId, filters.clientId]);
 
-    setFilteredSales(result);
-  };
-
-  // --- BUSCA DE CLIENTE ---
   const filteredClientsList = useMemo(() => {
     if (!clientSearchTerm) return [];
     const lower = clientSearchTerm.toLowerCase();
-    const rawSearch = clientSearchTerm.replace(/\D/g, "");
-    return clients
-      .filter((c) => {
-        const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
-        const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
-        return (
-          c.nome.toLowerCase().includes(lower) ||
-          (c.documento && c.documento.includes(lower)) ||
-          (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
-          (c.telefone && c.telefone.includes(lower)) ||
-          (rawSearch && telRaw && telRaw.includes(rawSearch))
-        );
-      })
-      .slice(0, 10);
+    return clients.filter((c) => c.nome.toLowerCase().includes(lower)).slice(0, 10);
   }, [clientSearchTerm, clients]);
 
   const handleSelectClient = (client) => {
@@ -160,91 +123,64 @@ const Recibos = () => {
     setShowClientResults(false);
   };
 
-  const getClientName = (id) => {
-    if (!id) return "Consumidor Final";
-    const client = clients.find((c) => c.id === id);
-    return client ? client.nome : "Desconhecido";
-  };
-
-  // --- AÇÕES ---
   const handleViewReceipt = async (sale) => {
-    const items = await window.api.getSaleItems(sale.id);
-    const saleWithClientName = {
-      ...sale,
-      cliente_nome: getClientName(sale.cliente_id),
-    };
-    setSelectedSale(saleWithClientName);
-    setSaleItems(items);
-    setShowReceiptModal(true);
+    try {
+      const items = await api.sales.items(sale.id);
+      setSelectedSale(sale);
+      setSaleItems(items);
+      setShowReceiptModal(true);
+    } catch (error) {
+      showAlert("Erro ao carregar itens da venda.", "Erro", "error");
+    }
   };
 
   const handleSilentPrint = async () => {
-    const receiptElement = document.getElementById("cupom-fiscal");
-    if (!receiptElement) {
-      return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
-    }
-    // Pega o HTML externo, incluindo o ID wrapper se o componente não tiver
-    const receiptContent = receiptElement.innerHTML; // ou outerHTML dependendo de como o CupomFiscal renderiza
-    const printerName = await window.api.getConfig("impressora_padrao");
-    const result = await window.api.printSilent(
-      receiptElement.outerHTML,
-      printerName,
-    );
-
-    if (result.success) {
-      showAlert("Enviado para impressão.", "Sucesso", "success");
-    } else {
-      showAlert("Erro na impressão: " + result.error, "Erro", "error");
+    const receiptElement = document.getElementById("cupom-fiscal-wrapper");
+    if (!receiptElement) return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
+    
+    try {
+      const printerName = await api.config.get("impressora_padrao");
+      const result = await api.print.silent(receiptElement.outerHTML, printerName);
+      if (result.success) showAlert("Enviado para impressão.", "Sucesso", "success");
+      else showAlert("Erro na impressão: " + result.error, "Erro", "error");
+    } catch (error) {
+      showAlert("Erro ao tentar imprimir.", "Erro", "error");
     }
   };
 
   const initiateCancel = (sale) => {
     if (sale.cancelada) return;
     setSaleToCancel(sale);
-    setCancelData({ adminUser: "", adminPass: "", reason: "" });
+    setCancelForm({ adminUser: "", adminPass: "", reason: "" });
     setShowCancelModal(true);
-    setShowReceiptModal(false);
   };
 
-  const submitCancel = async (e) => {
-    e.preventDefault();
-
-    if (cancelData.reason.trim().length < 10) {
-      return showAlert(
-        "O motivo deve ter no mínimo 10 caracteres.",
-        "Motivo Inválido",
-        "warning",
-      );
+  const handleSubmitCancel = async (e) => {
+    if (e) e.preventDefault();
+    if (cancelForm.reason.trim().length < 10) {
+      return showAlert("O motivo deve ter no mínimo 10 caracteres.", "Atenção", "warning");
     }
-    if (!cancelData.adminUser || !cancelData.adminPass) {
-      return showAlert(
-        "Preencha as credenciais do administrador.",
-        "Autenticação",
-        "warning",
-      );
+    if (!cancelForm.adminUser || !cancelForm.adminPass) {
+      return showAlert("Preencha as credenciais do administrador.", "Autenticação", "warning");
     }
 
     try {
-      const authResult = await window.api.loginAttempt({
-        username: cancelData.adminUser,
-        password: cancelData.adminPass,
+      const authResult = await api.auth.login({
+        username: cancelForm.adminUser,
+        password: cancelForm.adminPass,
       });
 
       if (!authResult.success || authResult.user.cargo !== "admin") {
-        return showAlert(
-          "Apenas administradores podem cancelar vendas.",
-          "Acesso Negado",
-          "error",
-        );
+        return showAlert("Apenas administradores podem cancelar vendas.", "Acesso Negado", "error");
       }
 
-      const result = await window.api.cancelSale({
+      const result = await api.sales.cancel({
         vendaId: saleToCancel.id,
-        motivo: `${cancelData.reason} (Autorizado por: ${authResult.user.nome})`,
+        motivo: `${cancelForm.reason} (Por: ${authResult.user.nome})`,
       });
 
       if (result.success) {
-        showAlert("Venda cancelada e estoque estornado.", "Sucesso", "success");
+        showAlert("Venda cancelada com sucesso!", "Sucesso", "success");
         loadData();
         setShowCancelModal(false);
         setSaleToCancel(null);
@@ -252,391 +188,248 @@ const Recibos = () => {
         showAlert("Erro ao cancelar: " + result.error, "Erro", "error");
       }
     } catch (err) {
-      console.error(err);
-      showAlert("Erro técnico ao validar.", "Erro", "error");
+      showAlert("Erro técnico ao processar cancelamento.", "Erro", "error");
     }
   };
 
-  const clearFilters = () => {
-    setPeriodType("custom");
-    setFilters({
-      startDate: "",
-      endDate: "",
-      sellerId: "",
-      clientId: "",
-    });
-    setClientSearchTerm("");
-  };
-
-  const formatCurrency = (val) => `R$ ${val.toFixed(2).replace(".", ",")}`;
+  const columns = [
+    { key: "id", label: "ID", format: (v) => <span className="font-mono text-gray-400">#{v}</span> },
+    { key: "data_venda", label: "Data/Hora", format: (v) => dayjs(v).format("DD/MM/YYYY HH:mm") },
+    { key: "cliente_nome", label: "Cliente", format: (v) => v || "Consumidor Final", bold: true },
+    { key: "vendedor_nome", label: "Vendedor" },
+    { 
+      key: "lista_pagamentos", 
+      label: "Pagamento",
+      format: (val, row) => (
+        <div className="flex flex-col gap-1">
+          {val && val.length > 0 ? val.map((p, i) => (
+            <span key={i} className="text-[10px] bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded border border-gray-100 w-fit whitespace-nowrap uppercase font-bold">
+              {p.metodo}: {formatCurrency(p.valor)}
+            </span>
+          )) : <span className="text-xs">{row.forma_pagamento}</span>}
+        </div>
+      )
+    },
+    { 
+      key: "total_final", 
+      label: "Total", 
+      align: "right",
+      format: (val, row) => (
+        <span className={`font-black ${row.cancelada ? "text-red-300 line-through" : "text-gray-800"}`}>
+          {formatCurrency(val)}
+        </span>
+      )
+    },
+    { 
+      key: "cancelada", 
+      label: "Status", 
+      align: "center",
+      format: (val, row) => (
+        <StatusBadge 
+          type={val ? "danger" : "success"} 
+          label={val ? "CANCELADA" : "CONCLUÍDA"}
+          tooltip={val ? row.motivo_cancelamento : null}
+        />
+      )
+    },
+    {
+      key: "actions",
+      label: "Ações",
+      align: "center",
+      format: (_, row) => (
+        <div className="flex justify-center gap-2">
+          <button
+            onClick={() => handleViewReceipt(row)}
+            className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition active:scale-90"
+            title="Ver Recibo"
+          >
+            <i className="fas fa-eye"></i>
+          </button>
+          {!row.cancelada && (
+            <button
+              onClick={() => initiateCancel(row)}
+              className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition active:scale-90"
+              title="Cancelar Venda"
+            >
+              <i className="fas fa-ban"></i>
+            </button>
+          )}
+        </div>
+      )
+    }
+  ];
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Histórico de Vendas
-      </h1>
+    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50 overflow-hidden">
+      <div className="mb-6">
+        <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Histórico de Vendas</h1>
+        <p className="text-xs text-gray-500 mt-1">Consulte notas antigas, imprima segundas vias ou realize cancelamentos.</p>
+      </div>
 
-      {/* --- FILTROS --- */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
-        {/* Botões Rápidos */}
-        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
-          <button
-            onClick={() => handlePeriodChange("weekly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Esta Semana
-          </button>
-          <button
-            onClick={() => handlePeriodChange("monthly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Este Mês
-          </button>
-          <button
-            onClick={() => handlePeriodChange("yearly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Este Ano
-          </button>
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-4 flex flex-col gap-4">
+        <div className="flex gap-2 pb-2 overflow-x-auto custom-scrollbar">
+          {['weekly', 'monthly', 'yearly'].map(period => (
+            <button
+              key={period}
+              onClick={() => handlePeriodChange(period)}
+              className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${periodType === period ? "bg-blue-600 text-white shadow-md shadow-blue-100" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
+            >
+              {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
+            </button>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <FormField label="Início" type="date" value={filters.startDate} onChange={(v) => { setFilters({ ...filters, startDate: v }); setPeriodType("custom"); }} />
+          <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); }} />
+          
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">
-              Data Início
-            </label>
-            <input
-              type="date"
-              className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              value={filters.startDate}
-              onChange={(e) => {
-                setFilters({ ...filters, startDate: e.target.value });
-                setPeriodType("custom");
-              }}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">
-              Data Fim
-            </label>
-            <input
-              type="date"
-              className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              value={filters.endDate}
-              onChange={(e) => {
-                setFilters({ ...filters, endDate: e.target.value });
-                setPeriodType("custom");
-              }}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">
-              Vendedor
-            </label>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Vendedor</label>
             <select
-              className="w-full border border-gray-300 rounded p-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border border-gray-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-100 outline-none bg-white transition-all"
               value={filters.sellerId}
-              onChange={(e) =>
-                setFilters({ ...filters, sellerId: e.target.value })
-              }
+              onChange={(e) => setFilters({ ...filters, sellerId: e.target.value })}
             >
-              <option value="all">Todos</option>
-              {sellers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
-              ))}
+              <option value="all">Todos os Vendedores</option>
+              {sellers.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
             </select>
           </div>
 
-          {/* Campo de Cliente */}
           <div className="relative">
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">
-              Cliente
-            </label>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Cliente</label>
             <div className="relative">
               <input
-                className={`w-full border rounded p-2 text-sm pl-8 outline-none focus:ring-2 focus:ring-blue-500 ${filters.clientId ? "border-green-500 bg-green-50 text-green-800 font-bold" : "border-gray-300 bg-white"}`}
-                placeholder={filters.clientId ? "" : "Buscar..."}
+                className={`w-full border rounded-xl p-2.5 pl-9 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all ${filters.clientId ? "border-green-500 bg-green-50 text-green-800 font-bold" : "border-gray-300 bg-white"}`}
+                placeholder={filters.clientId ? "" : "Buscar por nome..."}
                 value={clientSearchTerm}
                 onChange={(e) => {
                   setClientSearchTerm(e.target.value);
-                  if (filters.clientId)
-                    setFilters({ ...filters, clientId: "" });
+                  if (filters.clientId) setFilters({ ...filters, clientId: "" });
                   setShowClientResults(true);
                 }}
                 onFocus={() => setShowClientResults(true)}
-                onBlur={() =>
-                  setTimeout(() => setShowClientResults(false), 200)
-                }
+                onBlur={() => setTimeout(() => setShowClientResults(false), 200)}
               />
-              <i
-                className={`fas ${filters.clientId ? "fa-user-check text-green-600" : "fa-search text-gray-400"} absolute left-2.5 top-2.5 text-xs`}
-              ></i>
+              <i className={`fas ${filters.clientId ? "fa-user-check text-green-600" : "fa-search text-gray-400"} absolute left-3.5 top-3.5 text-xs`}></i>
               {filters.clientId && (
-                <button
-                  onClick={() => handleSelectClient(null)}
-                  className="absolute right-2 top-2 text-gray-400 hover:text-red-500"
-                >
+                <button onClick={() => handleSelectClient(null)} className="absolute right-3 top-3.5 text-gray-400 hover:text-red-500">
                   <i className="fas fa-times text-xs"></i>
                 </button>
               )}
             </div>
-            {/* Resultados Cliente */}
-            {showClientResults &&
-              (clientSearchTerm.length > 0 || clients.length > 0) && (
-                <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
-                  <div
-                    className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-600 italic border-b"
-                    onClick={() => handleSelectClient(null)}
-                  >
-                    Todos / Limpar Filtro
-                  </div>
-                  {filteredClientsList.map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => handleSelectClient(c)}
-                      className="p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm"
-                    >
-                      <div className="font-bold text-gray-800">{c.nome}</div>
-                    </div>
-                  ))}
-                  {filteredClientsList.length === 0 &&
-                    clientSearchTerm.length > 0 && (
-                      <div className="p-3 text-center text-xs text-gray-400">
-                        Nenhum cliente encontrado
-                      </div>
-                    )}
+            {showClientResults && (clientSearchTerm.length > 0 || clients.length > 0) && (
+              <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto z-[60] p-1">
+                <div className="p-2 hover:bg-gray-100 cursor-pointer text-[10px] font-black uppercase text-gray-400 border-b tracking-widest" onClick={() => handleSelectClient(null)}>
+                  TODOS / LIMPAR FILTRO
                 </div>
-              )}
-          </div>
-
-          <div className="pb-0.5">
-            <button
-              onClick={clearFilters}
-              className="text-sm text-blue-600 hover:underline px-4 py-2 w-full md:w-auto text-center"
-            >
-              Limpar
-            </button>
+                {filteredClientsList.map((c) => (
+                  <div key={c.id} onClick={() => handleSelectClient(c)} className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 text-sm font-bold text-gray-700 rounded-lg">
+                    {c.nome}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Tabela */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-y-auto flex-1">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Data
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Cliente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Vendedor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Pagamento
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Total
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Ação
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan="8" className="text-center py-10">
-                    <i className="fas fa-spinner fa-spin text-blue-500 text-2xl"></i>
-                    <p className="text-gray-400 mt-2 text-sm">Carregando...</p>
-                  </td>
-                </tr>
-              ) : filteredSales.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="text-center py-10 text-gray-400">
-                    Nenhuma venda encontrada.
-                  </td>
-                </tr>
-              ) : (filteredSales.map((sale) => (
-                <tr
-                  key={sale.id}
-                  className={`hover:bg-blue-50 ${sale.cancelada ? "bg-red-50" : ""}`}
-                >
-                  <td
-                    className={`px-6 py-4 whitespace-nowrap text-sm font-mono ${sale.cancelada ? "text-red-400 line-through" : "text-gray-500"}`}
-                  >
-                    #{sale.id}
-                  </td>
-                  <td
-                    className={`px-6 py-4 whitespace-nowrap text-sm ${sale.cancelada ? "text-red-400" : "text-gray-900"}`}
-                  >
-                    {dayjs(sale.data_venda).format("DD/MM/YYYY HH:mm")}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                    {getClientName(sale.cliente_id)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {sale.vendedor_nome}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {sale.lista_pagamentos && sale.lista_pagamentos.length > 0 ? (
-                      <div className="flex flex-col gap-1">
-                        {sale.lista_pagamentos.map((p, i) => (
-                          <span key={i} className="text-xs bg-gray-100 px-2 py-0.5 rounded border border-gray-200 w-fit whitespace-nowrap">
-                            {p.metodo}: {formatCurrency(p.valor)}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span>{sale.forma_pagamento}</span>
-                    )}
-                  </td>
-                  <td
-                    className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${sale.cancelada ? "text-red-400 line-through" : "text-gray-900"}`}
-                  >
-                    {formatCurrency(sale.total_final)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    {sale.cancelada ? (
-                      <span
-                        className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 cursor-help"
-                        title={sale.motivo_cancelamento}
-                      >
-                        CANCELADA
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        OK
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={() => handleViewReceipt(sale)}
-                        className="text-blue-600 hover:text-blue-900 bg-blue-100 px-3 py-1 rounded-full text-xs font-semibold transition"
-                      >
-                        Visualizar
-                      </button>
-                      {!sale.cancelada && (
-                        <button
-                          onClick={() => initiateCancel(sale)}
-                          className="text-red-600 hover:text-red-900 bg-red-100 px-3 py-1 rounded-full text-xs font-semibold transition"
-                          title="Cancelar Venda"
-                        >
-                          <i className="fas fa-ban"></i>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )))
-              }
-            </tbody>
-          </table>
-        </div>
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <DataTable 
+          columns={columns} 
+          data={filteredSales} 
+          loading={loading}
+          emptyMessage="Nenhuma venda encontrada para o filtro selecionado."
+        />
       </div>
 
       {/* Modal de Recibo */}
-      {showReceiptModal && selectedSale && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="overflow-y-auto pr-1">
-              {/* Aqui usamos o componente importado e adicionamos o ID necessário para a impressão silenciosa.
-                    O CupomFiscal deve receber sale e items.
-                */}
-              <div id="cupom-fiscal">
-                <CupomFiscal sale={selectedSale} items={saleItems} />
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-2 sticky bottom-0 bg-gray-200 pt-2">
-              <button
-                onClick={handleSilentPrint}
-                className="flex-1 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700 shadow"
-              >
-                <i className="fas fa-print mr-2"></i> Imprimir
-              </button>
-              <button
-                onClick={() => setShowReceiptModal(false)}
-                className="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400"
-              >
-                Fechar
-              </button>
-            </div>
+      <Modal
+        isOpen={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        title="Visualizar Cupom"
+        icon="fa-receipt"
+        size="sm"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={() => setShowReceiptModal(false)}
+              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200"
+            >
+              Fechar
+            </button>
+            <button
+              onClick={handleSilentPrint}
+              className="flex-[2] px-4 py-2.5 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 shadow-md active:scale-95"
+            >
+              <i className="fas fa-print mr-2"></i> Imprimir Segovia
+            </button>
           </div>
+        }
+      >
+        <div className="flex justify-center bg-gray-100 p-4 rounded-xl">
+           <div id="cupom-fiscal-wrapper" className="bg-white p-2 shadow-sm rounded">
+              <CupomFiscal sale={selectedSale} items={saleItems} />
+           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Modal Cancelamento */}
-      {showCancelModal && saleToCancel && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 border-2 border-red-100">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              Autorização Necessária
-            </h2>
-            <form onSubmit={submitCancel} className="space-y-4">
-              <textarea
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                rows="3"
-                placeholder="Motivo (min. 10 chars)..."
-                value={cancelData.reason}
-                onChange={(e) =>
-                  setCancelData({ ...cancelData, reason: e.target.value })
-                }
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        title="Cancelar Venda"
+        icon="fa-ban"
+        size="md"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={() => setShowCancelModal(false)}
+              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm"
+            >
+              Voltar
+            </button>
+            <button
+              onClick={handleSubmitCancel}
+              className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 shadow-md active:scale-95"
+            >
+              CONFIRMAR CANCELAMENTO
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-6">
+          <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+             <div className="text-[10px] font-black text-red-400 uppercase mb-2">Atenção</div>
+             <p className="text-sm text-red-800 font-medium">Você está prestes a cancelar a venda <span className="font-bold">#{saleToCancel?.id}</span>. Esta ação retornará os itens ao estoque.</p>
+          </div>
+
+          <div className="space-y-4">
+             <FormField
+                label="Motivo do Cancelamento *"
+                placeholder="Explique o porquê do estorno..."
+                value={cancelForm.reason}
+                onChange={(v) => setCancelForm({ ...cancelForm, reason: v })}
                 required
-              ></textarea>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <input
-                  className="w-full border border-gray-300 rounded p-2 text-sm mb-2"
-                  placeholder="Usuário Admin"
-                  value={cancelData.adminUser}
-                  onChange={(e) =>
-                    setCancelData({ ...cancelData, adminUser: e.target.value })
-                  }
-                  required
+             />
+             
+             <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <FormField
+                   label="Usuário Admin"
+                   value={cancelForm.adminUser}
+                   onChange={(v) => setCancelForm({ ...cancelForm, adminUser: v })}
+                   required
                 />
-                <input
-                  type="password"
-                  className="w-full border border-gray-300 rounded p-2 text-sm"
-                  placeholder="Senha"
-                  value={cancelData.adminPass}
-                  onChange={(e) =>
-                    setCancelData({ ...cancelData, adminPass: e.target.value })
-                  }
-                  required
+                <FormField
+                   label="Senha"
+                   type="password"
+                   value={cancelForm.adminPass}
+                   onChange={(v) => setCancelForm({ ...cancelForm, adminPass: v })}
+                   required
                 />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCancelModal(false)}
-                  className="flex-1 bg-gray-100 py-2 rounded-lg font-medium"
-                >
-                  Voltar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold"
-                >
-                  CONFIRMAR
-                </button>
-              </div>
-            </form>
+             </div>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

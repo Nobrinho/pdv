@@ -4,6 +4,8 @@ import React, {
   useState,
   useRef,
   useEffect,
+  useMemo,
+  useCallback,
 } from "react";
 
 const AlertContext = createContext();
@@ -31,7 +33,7 @@ export const AlertProvider = ({ children }) => {
   }, [alertState.isOpen]);
 
   // Função para substituir o alert()
-  const showAlert = (message, title = "Aviso", type = "info") => {
+  const showAlert = useCallback((message, title = "Aviso", type = "info") => {
     return new Promise((resolve) => {
       setAlertState({
         isOpen: true,
@@ -44,11 +46,11 @@ export const AlertProvider = ({ children }) => {
         },
       });
     });
-  };
+  }, []);
 
   // Função para substituir o confirm()
   // Uso: const aceitou = await showConfirm('Tem certeza?'); if (aceitou) { ... }
-  const showConfirm = (message, title = "Confirmação") => {
+  const showConfirm = useCallback((message, title = "Confirmação") => {
     return new Promise((resolve) => {
       setAlertState({
         isOpen: true,
@@ -65,7 +67,7 @@ export const AlertProvider = ({ children }) => {
         },
       });
     });
-  };
+  }, []);
 
   const closeAlert = () => {
     setAlertState((prev) => ({ ...prev, isOpen: false }));
@@ -107,8 +109,10 @@ export const AlertProvider = ({ children }) => {
 
   const styles = getTypeStyles();
 
+  const value = useMemo(() => ({ showAlert, showConfirm }), [showAlert, showConfirm]);
+
   return (
-    <AlertContext.Provider value={{ showAlert, showConfirm }}>
+    <AlertContext.Provider value={value}>
       {children}
 
       {/* O Modal Global */}

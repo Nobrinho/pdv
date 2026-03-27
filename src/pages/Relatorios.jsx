@@ -1,312 +1,39 @@
 // @ts-nocheck
-import React, { useState, useEffect, useMemo } from "react";
+import React from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAlert } from "../context/AlertSystem";
+import { formatCurrency } from "../utils/format";
+import useReportData, { standardizeMethod } from "../hooks/useReportData";
+import StatCard from "../components/ui/StatCard";
 
 dayjs.locale("pt-br");
 
 const Relatorios = () => {
   const { showAlert } = useAlert();
 
-  const [allSales, setAllSales] = useState([]);
-  const [allServices, setAllServices] = useState([]);
-  const [allPeople, setAllPeople] = useState([]);
-  const [defaultCommission, setDefaultCommission] = useState(0.3);
-
-  // --- FILTROS ---
-  const [periodType, setPeriodType] = useState("weekly");
-  const [startDate, setStartDate] = useState(
-    dayjs().startOf("week").format("YYYY-MM-DD"),
-  );
-  const [endDate, setEndDate] = useState(
-    dayjs().endOf("week").format("YYYY-MM-DD"),
-  );
-  const [selectedSeller, setSelectedSeller] = useState("all");
-  const [selectedPayment, setSelectedPayment] = useState("all");
-
-  const standardizeMethod = (method) => {
-    if (!method) return "Outros";
-    const upper = method.toUpperCase().trim();
-    if (upper === "PIX") return "Pix";
-    if (upper === "DINHEIRO") return "Dinheiro";
-    if (upper.includes("CRÉDITO") || upper.includes("CREDITO"))
-      return "Crédito";
-    if (upper.includes("DÉBITO") || upper.includes("DEBITO")) return "Débito";
-    if (upper.includes("FIADO")) return "Fiado";
-    if (upper.includes("MÚLTIPLOS") || upper.includes("MULTIPLOS"))
-      return "Múltiplos";
-    return method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
-  };
-
-  const paymentMethods = useMemo(() => {
-    const methods = new Set();
-    allSales.forEach((s) => {
-      if (s.lista_pagamentos && s.lista_pagamentos.length > 0) {
-        s.lista_pagamentos.forEach((p) => methods.add(standardizeMethod(p.metodo)));
-      } else {
-        methods.add(standardizeMethod(s.forma_pagamento));
-      }
-    });
-    return Array.from(methods).sort();
-  }, [allSales]);
-
-  // --- MÉTRICAS ---
-  const [metrics, setMetrics] = useState({
-    faturamento: 0,
-    custo: 0,
-    maoDeObra: 0,
-    acrescimos: 0,
-    descontos: 0,
-    comissoes: 0,
-    lucro: 0,
-  });
-
-  const [filteredSales, setFilteredSales] = useState([]);
-  const [laborSummary, setLaborSummary] = useState([]);
-  const [paymentSummary, setPaymentSummary] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Recarregar do backend quando datas mudam
-  useEffect(() => {
-    if (startDate && endDate) {
-      loadData();
-    }
-  }, [startDate, endDate]);
-
-  // Processar localmente quando filtros de vendedor/pagamento mudam
-  useEffect(() => {
-    processData();
-  }, [
-    allSales,
-    allServices,
+  const {
+    allPeople,
+    metrics,
+    filteredSales,
+    laborSummary,
+    paymentSummary,
+    paymentMethods,
+    loading,
+    periodType,
+    startDate,
+    endDate,
     selectedSeller,
     selectedPayment,
-    defaultCommission,
-  ]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      // Filtros server-side por data
-      const startTimestamp = startDate
-        ? dayjs(startDate).startOf("day").valueOf()
-        : undefined;
-      const endTimestamp = endDate
-        ? dayjs(endDate).endOf("day").valueOf()
-        : undefined;
-
-      const sales = await window.api.getSales({
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      const services = await window.api.getServices({
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      const people = await window.api.getPeople();
-      const configComissao = await window.api.getConfig("comissao_padrao");
-
-      setAllSales(sales.sort((a, b) => b.data_venda - a.data_venda));
-      setAllServices(services.sort((a, b) => b.data_servico - a.data_servico));
-      setAllPeople(people);
-
-      if (configComissao) setDefaultCommission(parseFloat(configComissao));
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-      showAlert("Erro ao carregar dados do banco.", "Erro", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePeriodChange = (type) => {
-    setPeriodType(type);
-    const now = dayjs();
-
-    if (type === "weekly") {
-      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
-    } else if (type === "monthly") {
-      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
-    } else if (type === "yearly") {
-      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
-    }
-  };
-
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(val || 0);
-  };
-
-  const processData = () => {
-    // 1. Filtragem de Vendas (dados já vêm filtrados por data do backend)
-    let vendasFiltradas = allSales.filter((s) => {
-      const isSeller =
-        selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
-      const metodoNormalizado = standardizeMethod(s.forma_pagamento);
-      let isPayment =
-        selectedPayment === "all" || metodoNormalizado === selectedPayment;
-
-      if (!isPayment && s.lista_pagamentos && s.lista_pagamentos.length > 0) {
-        isPayment = s.lista_pagamentos.some((p) => standardizeMethod(p.metodo) === selectedPayment);
-      }
-
-      return isSeller && isPayment;
-    });
-
-    // 2. Serviços (já filtrados por data do backend)
-    let servicosFiltrados = allServices;
-
-    let totalFaturamentoPecas = 0;
-    let totalCustoPecas = 0;
-    let totalDespesaMO = 0;
-    let totalAcrescimos = 0;
-    let totalDescontos = 0;
-    let totalComissoes = 0;
-
-    const mapPagamentos = {};
-
-    const addPaymentToMap = (metodoRaw, valor) => {
-      const metodo = standardizeMethod(metodoRaw);
-      if (!metodo) return;
-      if (!mapPagamentos[metodo]) mapPagamentos[metodo] = 0;
-      mapPagamentos[metodo] += valor;
-    };
-
-    const vendasProcessadas = vendasFiltradas.map((venda) => {
-      const vendedor = allPeople.find((p) => p.id === venda.vendedor_id);
-      const subtotalProdutos = venda.subtotal;
-
-      let desconto = 0;
-      if (venda.desconto_valor) {
-        desconto =
-          venda.desconto_tipo === "fixed"
-            ? venda.desconto_valor
-            : (subtotalProdutos * venda.desconto_valor) / 100;
-      }
-
-      const acrescimo = venda.acrescimo || 0;
-      const valorFinalProdutos = subtotalProdutos - desconto;
-      const custoReal = venda.custo_total_real || 0;
-
-      const receitaLoja = valorFinalProdutos + acrescimo;
-
-      // --- CORREÇÃO DA COMISSÃO ---
-      let comissao = 0;
-
-      // 1. Tenta usar o valor calculado pelo Backend (Preciso)
-      if (venda.comissao_real !== undefined && venda.comissao_real !== null) {
-        comissao = venda.comissao_real;
-      }
-      // 2. Fallback: Se o backend não mandou (versão antiga ou venda sem itens), calcula estimativa no Front
-      else {
-        const taxa = vendedor?.comissao_fixa
-          ? vendedor.comissao_fixa / 100
-          : defaultCommission;
-        if (valorFinalProdutos > 0) {
-          comissao = valorFinalProdutos * taxa;
-        }
-      }
-
-      const moVenda = venda.mao_de_obra || 0;
-
-      if (!venda.cancelada) {
-        let valorConsiderado = 0;
-
-        if (selectedPayment === "all") {
-          valorConsiderado = receitaLoja;
-          // Decomposição total para visualização geral
-          if (venda.lista_pagamentos && venda.lista_pagamentos.length > 0) {
-            venda.lista_pagamentos.forEach((p) => {
-              addPaymentToMap(p.metodo, p.valor);
-            });
-          } else {
-            addPaymentToMap(venda.forma_pagamento, receitaLoja);
-          }
-        } else {
-          // Filtro Específico: Soma apenas a parte correspondente ao método selecionado
-          if (venda.lista_pagamentos && venda.lista_pagamentos.length > 0) {
-            const pagamentosFiltrados = venda.lista_pagamentos.filter((p) => standardizeMethod(p.metodo) === selectedPayment);
-            valorConsiderado = pagamentosFiltrados.reduce((acc, p) => acc + p.valor, 0);
-          } else {
-            valorConsiderado = receitaLoja;
-          }
-          addPaymentToMap(selectedPayment, valorConsiderado);
-        }
-
-        // Rateio proporcional para métricas (se estiver filtrando, ajusta custos/comissões)
-        const ratio = (receitaLoja > 0 && selectedPayment !== "all") ? (valorConsiderado / receitaLoja) : 1;
-
-        totalFaturamentoPecas += valorConsiderado;
-        totalCustoPecas += (custoReal * ratio);
-        totalDespesaMO += (moVenda * ratio);
-        totalAcrescimos += (acrescimo * ratio);
-        totalDescontos += (desconto * ratio);
-        totalComissoes += (comissao * ratio);
-      }
-
-      return { ...venda, comissao_calculada: comissao };
-    });
-
-    servicosFiltrados.forEach((serv) => {
-      totalDespesaMO += serv.valor;
-    });
-
-    const arrayPagamentos = Object.entries(mapPagamentos)
-      .map(([metodo, valor]) => ({ metodo, valor }))
-      .sort((a, b) => b.valor - a.valor);
-
-    const mapMO = {};
-    vendasFiltradas.forEach((v) => {
-      if (!v.cancelada && v.mao_de_obra > 0 && v.trocador_id) {
-        if (!mapMO[v.trocador_id])
-          mapMO[v.trocador_id] = { nome: v.trocador_nome, total: 0, qtd: 0 };
-        mapMO[v.trocador_id].total += v.mao_de_obra;
-        mapMO[v.trocador_id].qtd += 1;
-      }
-    });
-    servicosFiltrados.forEach((s) => {
-      if (s.trocador_id) {
-        let nomeTrocador =
-          s.trocador_nome ||
-          allPeople.find((p) => p.id === s.trocador_id)?.nome ||
-          "Desconhecido";
-        if (!mapMO[s.trocador_id])
-          mapMO[s.trocador_id] = { nome: nomeTrocador, total: 0, qtd: 0 };
-        mapMO[s.trocador_id].total += s.valor;
-        mapMO[s.trocador_id].qtd += 1;
-      }
-    });
-
-    setLaborSummary(Object.values(mapMO));
-    setFilteredSales(vendasProcessadas);
-    setPaymentSummary(arrayPagamentos);
-
-    const lucroLiquido =
-      totalFaturamentoPecas -
-      (totalCustoPecas + totalComissoes + totalDespesaMO);
-
-    setMetrics({
-      faturamento: totalFaturamentoPecas,
-      custo: totalCustoPecas,
-      maoDeObra: totalDespesaMO,
-      acrescimos: totalAcrescimos,
-      descontos: totalDescontos,
-      comissoes: totalComissoes,
-      lucro: lucroLiquido,
-    });
-  };
+    setStartDate,
+    setEndDate,
+    setSelectedSeller,
+    setSelectedPayment,
+    setPeriodType,
+    handlePeriodChange,
+  } = useReportData();
 
   const exportPDF = () => {
     try {
@@ -429,29 +156,13 @@ const Relatorios = () => {
     }
   };
 
-  const StatCard = ({ title, value, color, tooltip, icon }) => (
-    <div
-      className={`bg-white p-4 rounded-xl shadow-sm border-l-4 border-${color}-500 relative group cursor-help transition-transform hover:scale-[1.02] flex items-center justify-between`}
-    >
-      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-gray-800 text-white text-xs rounded p-2 z-50 text-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-        {tooltip}
-        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
-      <div>
-        <p className="text-xs text-gray-500 font-bold uppercase mb-1 w-fit">
-          {title}
-        </p>
-        <p
-          className={`text-xl font-bold text-${color === "blue" || color === "gray" ? "gray-800" : color + "-600"}`}
-        >
-          {formatCurrency(value)}
-        </p>
-      </div>
-      {icon && (
-        <i className={`fas ${icon} text-2xl text-${color}-200 opacity-50`}></i>
-      )}
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-gray-50">

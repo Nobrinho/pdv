@@ -1,16 +1,21 @@
 // @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br"; // Importante para datas em PT-BR
+import "dayjs/locale/pt-br";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatCurrency } from "../utils/format";
+import { api } from "../services/api";
+import DataTable from "../components/ui/DataTable";
+import StatusBadge from "../components/ui/StatusBadge";
+import FormField from "../components/ui/FormField";
 
 // Configura locale
 dayjs.locale("pt-br");
 
 const HistoricoPrecos = () => {
   const [history, setHistory] = useState([]);
-  const [filteredHistory, setFilteredHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Paginação server-side
   const [page, setPage] = useState(1);
@@ -19,33 +24,29 @@ const HistoricoPrecos = () => {
   const LIMIT = 100;
 
   // Filtros
-  const [periodType, setPeriodType] = useState("custom"); // weekly, monthly, yearly, custom
-  const [startDate, setStartDate] = useState(
-    dayjs().subtract(30, "day").format("YYYY-MM-DD"),
-  );
+  const [periodType, setPeriodType] = useState("custom");
+  const [startDate, setStartDate] = useState(dayjs().subtract(30, "day").format("YYYY-MM-DD"));
   const [endDate, setEndDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadData();
-  }, [page]);
-
-  useEffect(() => {
-    filterData();
-  }, [history, searchTerm]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const result = await window.api.getProductHistory({ page, limit: LIMIT });
+      setLoading(true);
+      const result = await api.products.getHistory({ page, limit: LIMIT });
       setHistory(result.data || []);
       setTotalPages(result.totalPages || 0);
       setTotalRecords(result.total || 0);
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [page]);
 
-  // --- CONTROLE DE PERÍODOS RÁPIDOS ---
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const handlePeriodChange = (type) => {
     setPeriodType(type);
     const now = dayjs();
@@ -60,43 +61,25 @@ const HistoricoPrecos = () => {
       setStartDate(now.startOf("year").format("YYYY-MM-DD"));
       setEndDate(now.endOf("year").format("YYYY-MM-DD"));
     }
-    // Se for 'custom', não muda as datas automaticamente
   };
 
-  const filterData = () => {
+  const filteredHistory = useMemo(() => {
     let result = history;
-
-    // Filtro Texto (local)
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
       result = result.filter(
-        (h) =>
-          h.descricao.toLowerCase().includes(lower) ||
-          h.codigo.toLowerCase().includes(lower),
+        (h) => h.descricao.toLowerCase().includes(lower) || h.codigo.toLowerCase().includes(lower)
       );
     }
+    return result;
+  }, [history, searchTerm]);
 
-    setFilteredHistory(result);
-  };
-
-  // Helper para formatar moeda com fallback para 0 se undefined
-  const formatCurrency = (val) => {
-    const valor = val === undefined || val === null ? 0 : val;
-    return `R$ ${valor.toFixed(2).replace(".", ",")}`;
-  };
-
-  // --- RELATÓRIO COMPLETO (Técnico/Auditoria) ---
   const exportFullPDF = () => {
     const doc = new jsPDF();
-
     doc.setFontSize(18);
     doc.text("Relatório de Auditoria de Estoque/Preço", 14, 20);
     doc.setFontSize(10);
-    doc.text(
-      `Período: ${dayjs(startDate).format("DD/MM/YYYY")} a ${dayjs(endDate).format("DD/MM/YYYY")}`,
-      14,
-      28,
-    );
+    doc.text(`Período: ${dayjs(startDate).format("DD/MM/YYYY")} a ${dayjs(endDate).format("DD/MM/YYYY")}`, 14, 28);
     doc.text(`Gerado em: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 14, 33);
 
     const tableRows = filteredHistory.map((item) => {
@@ -107,350 +90,187 @@ const HistoricoPrecos = () => {
       let textoPreco = "";
       let textoEstoque = "";
 
-      // Lógica de Exibição Baseada no Tipo
       if (item.tipo_alteracao === "cadastro_inicial") {
         obs = "Novo Cadastro";
         textoPreco = `Inicial: ${formatCurrency(item.preco_novo)}`;
         textoEstoque = `Inicial: ${item.estoque_novo}`;
       } else {
-        // Alteração normal
-        if (diffPreco !== 0)
-          obs += `Preço: ${diffPreco > 0 ? "+" : ""}${formatCurrency(diffPreco)} `;
-        if (diffEstoque !== 0)
-          obs += `Estoque: ${diffEstoque > 0 ? "+" : ""}${diffEstoque}`;
-
+        if (diffPreco !== 0) obs += `Preço: ${diffPreco > 0 ? "+" : ""}${formatCurrency(diffPreco)} `;
+        if (diffEstoque !== 0) obs += `Estoque: ${diffEstoque > 0 ? "+" : ""}${diffEstoque}`;
         textoPreco = `${formatCurrency(item.preco_antigo || 0)} -> ${formatCurrency(item.preco_novo)}`;
         textoEstoque = `${item.estoque_antigo || 0} -> ${item.estoque_novo}`;
       }
 
-      return [
-        dayjs(item.data_alteracao).format("DD/MM/YY HH:mm"),
-        item.codigo,
-        item.descricao,
-        textoPreco,
-        textoEstoque,
-        obs,
-      ];
+      return [dayjs(item.data_alteracao).format("DD/MM/YY HH:mm"), item.codigo, item.descricao, textoPreco, textoEstoque, obs];
     });
 
     autoTable(doc, {
       startY: 40,
-      head: [
-        [
-          "Data",
-          "Cód",
-          "Produto",
-          "Alteração Preço",
-          "Alteração Estoque",
-          "Detalhes",
-        ],
-      ],
+      head: [["Data", "Cód", "Produto", "Alteração Preço", "Alteração Estoque", "Detalhes"]],
       body: tableRows,
       theme: "grid",
       styles: { fontSize: 8 },
-      headStyles: { fillColor: [52, 73, 94] },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 20 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 25 },
-      },
+      headStyles: { fillColor: [44, 62, 80] },
     });
 
-    doc.save(`auditoria_completa_${dayjs().format("DD-MM-YYYY")}.pdf`);
+    doc.save(`auditoria_${dayjs().format("DD-MM-YYYY")}.pdf`);
   };
 
-  // --- RELATÓRIO SIMPLIFICADO (Tabela de Preços/Vendas) ---
-  const exportSimplePDF = () => {
-    const doc = new jsPDF();
-
-    doc.setFontSize(18);
-    doc.setTextColor(40);
-    doc.text("Tabela de Atualização de Preços", 14, 20);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(
-      `Referência: Atualizações de ${dayjs(startDate).format("DD/MM/YYYY")} a ${dayjs(endDate).format("DD/MM/YYYY")}`,
-      14,
-      28,
-    );
-    doc.text(`Data de Emissão: ${dayjs().format("DD/MM/YYYY")}`, 14, 33);
-
-    // --- LÓGICA DE UNICIDADE ---
-    const uniqueProducts = [];
-    const processedIds = new Set();
-
-    filteredHistory.forEach((item) => {
-      if (!processedIds.has(item.produto_id)) {
-        processedIds.add(item.produto_id);
-        uniqueProducts.push(item);
+  const columns = [
+    { 
+      key: "data_alteracao", 
+      label: "Data/Hora", 
+      format: (v) => <span className="text-gray-500 font-medium">{dayjs(v).format("DD/MM/YY HH:mm")}</span> 
+    },
+    { 
+      key: "produto", 
+      label: "Produto", 
+      format: (_, row) => (
+        <div>
+          <div className="font-black text-gray-800 uppercase text-[11px] leading-tight">{row.descricao}</div>
+          <div className="text-[10px] text-gray-400 font-mono tracking-tighter">{row.codigo}</div>
+        </div>
+      )
+    },
+    {
+      key: "preco",
+      label: "Preço (Ant > Novo)",
+      align: "center",
+      format: (_, row) => {
+        const isNovo = row.tipo_alteracao === "cadastro_inicial";
+        if (isNovo) return <span className="font-black text-gray-800">{formatCurrency(row.preco_novo)}</span>;
+        const subiu = row.preco_novo > (row.preco_antigo || 0);
+        return (
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-gray-300 line-through text-[10px]">{formatCurrency(row.preco_antigo)}</span>
+            <i className={`fas fa-caret-right text-xs ${subiu ? 'text-red-500' : 'text-green-500'}`}></i>
+            <span className={`font-black ${subiu ? 'text-red-600' : 'text-gray-900'}`}>{formatCurrency(row.preco_novo)}</span>
+          </div>
+        );
       }
-    });
-
-    uniqueProducts.sort((a, b) => a.descricao.localeCompare(b.descricao));
-
-    const tableRows = uniqueProducts.map((item) => [
-      item.descricao,
-      item.codigo,
-      formatCurrency(item.preco_novo),
-      `${item.estoque_novo} un`,
-      dayjs(item.data_alteracao).format("DD/MM/YYYY"),
-    ]);
-
-    autoTable(doc, {
-      startY: 40,
-      head: [["Produto", "Cód.", "Preço Atual", "Estoque", "Data Alteração"]],
-      body: tableRows,
-      theme: "striped",
-      headStyles: { fillColor: [41, 128, 185] },
-      styles: { fontSize: 10, cellPadding: 3 },
-      columnStyles: {
-        0: { cellWidth: "auto" },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 30, halign: "right", fontStyle: "bold" },
-        3: { cellWidth: 25, halign: "center" },
-        4: { cellWidth: 30, halign: "center" },
-      },
-    });
-
-    doc.save(`tabela_precos_${dayjs().format("DD-MM-YYYY")}.pdf`);
-  };
+    },
+    {
+      key: "estoque",
+      label: "Estoque (Ant > Novo)",
+      align: "center",
+      format: (_, row) => {
+        const isNovo = row.tipo_alteracao === "cadastro_inicial";
+        if (isNovo) return <span className="font-black text-gray-800">{row.estoque_novo}</span>;
+        const subiu = row.estoque_novo > (row.estoque_antigo || 0);
+        return (
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-gray-300 text-[10px]">{row.estoque_antigo}</span>
+            <i className={`fas fa-long-arrow-alt-right text-xs ${subiu ? 'text-green-500' : 'text-red-400'}`}></i>
+            <span className="font-black text-gray-900">{row.estoque_novo}</span>
+          </div>
+        );
+      }
+    },
+    {
+      key: "tipo_alteracao",
+      label: "Evento",
+      align: "center",
+      format: (v) => {
+        const map = {
+          cadastro_inicial: { type: "info", label: "NOVO" },
+          reposicao_estoque: { type: "success", label: "ESTOQUE" },
+          alteracao_preco: { type: "warning", label: "PREÇO" },
+          venda: { type: "secondary", label: "VENDA" }
+        };
+        const cfg = map[v] || { type: "secondary", label: "OUTRO" };
+        return <StatusBadge type={cfg.type} label={cfg.label} />;
+      }
+    }
+  ];
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Histórico de Alterações
-        </h1>
+    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50 overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Histórico de Auditoria</h1>
+          <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold opacity-70">Monitoramento de preços e estoque</p>
+        </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={exportSimplePDF}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow-md flex items-center gap-2 transition"
-            title="Gera uma lista limpa com preço e estoque atual (apenas 1 linha por produto)"
-          >
-            <i className="fas fa-file-invoice"></i> Tabela Simplificada
-          </button>
+        <div className="flex gap-2 w-full md:w-auto">
           <button
             onClick={exportFullPDF}
-            className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 shadow-md flex items-center gap-2 transition"
-            title="Gera relatório técnico completo com todas as mudanças (Auditoria)"
+            className="flex-1 md:flex-none bg-gray-800 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition shadow-lg active:scale-95 flex items-center justify-center gap-2"
           >
-            <i className="fas fa-file-contract"></i> Auditoria Completa
+            <i className="fas fa-file-pdf"></i> Exportar Auditoria
           </button>
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
-        {/* Filtros Rápidos */}
-        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
-          <button
-            onClick={() => handlePeriodChange("weekly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Esta Semana
-          </button>
-          <button
-            onClick={() => handlePeriodChange("monthly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Este Mês
-          </button>
-          <button
-            onClick={() => handlePeriodChange("yearly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-blue-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-          >
-            Este Ano
-          </button>
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 space-y-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+          {["weekly", "monthly", "yearly", "custom"].map((t) => (
+            <button
+              key={t}
+              onClick={() => handlePeriodChange(t)}
+              className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full transition whitespace-nowrap ${
+                periodType === t ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+              }`}
+            >
+              {t === "weekly" ? "Semana" : t === "monthly" ? "Mês" : t === "yearly" ? "Ano" : "Manual"}
+            </button>
+          ))}
         </div>
 
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Início
-            </label>
-            <input
-              type="date"
-              className="border rounded p-2 text-sm"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setPeriodType("custom");
-              }}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Fim
-            </label>
-            <input
-              type="date"
-              className="border rounded p-2 text-sm"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPeriodType("custom");
-              }}
-            />
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-              Buscar Produto
-            </label>
-            <input
-              type="text"
-              className="w-full border rounded p-2 text-sm"
-              placeholder="Nome ou Código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Tabela de Visualização */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden flex-1 flex flex-col border border-gray-200">
-        <div className="overflow-y-auto flex-1">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Data
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Produto
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Preço (Ant / Novo)
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Estoque (Ant / Novo)
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Tipo
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredHistory.map((item) => {
-                const precoSubiu = item.preco_novo > (item.preco_antigo || 0);
-                const estoqueSubiu =
-                  item.estoque_novo > (item.estoque_antigo || 0);
-                const isNovo = item.tipo_alteracao === "cadastro_inicial";
-
-                return (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {dayjs(item.data_alteracao).format("DD/MM/YY HH:mm")}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div className="font-medium">{item.descricao}</div>
-                      <div className="text-xs text-gray-400">{item.codigo}</div>
-                    </td>
-
-                    {/* COLUNA PREÇO */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                      {isNovo ? (
-                        <span className="font-bold text-gray-800">
-                          {formatCurrency(item.preco_novo)}
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-gray-400 mr-2">
-                            {formatCurrency(item.preco_antigo)}
-                          </span>
-                          <i
-                            className={`fas fa-arrow-right text-xs mx-1 ${precoSubiu ? "text-red-400" : item.preco_novo < item.preco_antigo ? "text-green-500" : "text-gray-300"}`}
-                          ></i>
-                          <span
-                            className={`font-bold ${precoSubiu ? "text-red-600" : "text-gray-800"}`}
-                          >
-                            {formatCurrency(item.preco_novo)}
-                          </span>
-                        </>
-                      )}
-                    </td>
-
-                    {/* COLUNA ESTOQUE */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                      {isNovo ? (
-                        <span className="font-bold text-gray-800">
-                          {item.estoque_novo}
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-gray-400 mr-2">
-                            {item.estoque_antigo}
-                          </span>
-                          <i
-                            className={`fas fa-arrow-right text-xs mx-1 ${estoqueSubiu ? "text-green-500" : "text-red-400"}`}
-                          ></i>
-                          <span className="font-bold text-gray-800">
-                            {item.estoque_novo}
-                          </span>
-                        </>
-                      )}
-                    </td>
-
-                    {/* COLUNA TIPO */}
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          item.tipo_alteracao === "cadastro_inicial"
-                            ? "bg-blue-100 text-blue-800"
-                            : item.tipo_alteracao === "reposicao_estoque"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {item.tipo_alteracao === "alteracao_preco"
-                          ? "Preço"
-                          : item.tipo_alteracao === "reposicao_estoque"
-                            ? "Estoque"
-                            : "Novo"}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredHistory.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="text-center py-10 text-gray-400">
-                    Nenhum histórico encontrado.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Paginação */}
-      {totalPages > 1 && (
-        <div className="flex justify-between items-center mt-4 bg-white p-3 rounded-xl shadow-sm border border-gray-200">
-          <span className="text-sm text-gray-500">
-            {totalRecords} registros — Página {page} de {totalPages}
-          </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
           <div className="flex gap-2">
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page <= 1}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${page <= 1 ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
-            >
-              <i className="fas fa-chevron-left mr-1"></i> Anterior
-            </button>
-            <button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page >= totalPages}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${page >= totalPages ? "bg-gray-100 text-gray-300 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
-            >
-              Próximo <i className="fas fa-chevron-right ml-1"></i>
-            </button>
+             <div className="flex-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block ml-1">De</label>
+                <input type="date" className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPeriodType("custom"); }} />
+             </div>
+             <div className="flex-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block ml-1">Até</label>
+                <input type="date" className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPeriodType("custom"); }} />
+             </div>
+          </div>
+          <div className="lg:col-span-2">
+             <FormField
+                label="Filtrar na Lista"
+                placeholder="Busque por descrição ou código do produto..."
+                value={searchTerm}
+                onChange={setSearchTerm}
+                icon="fa-search"
+             />
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="flex-1 overflow-hidden bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+        <DataTable
+          columns={columns}
+          data={filteredHistory}
+          loading={loading}
+          emptyMessage="Nenhuma alteração encontrada neste período."
+        />
+        
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-gray-50 bg-gray-50/30 flex justify-between items-center shrink-0">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              Pag {page} de {totalPages} • {totalRecords} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-100 disabled:opacity-30"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-100 disabled:opacity-30"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

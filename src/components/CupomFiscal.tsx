@@ -61,6 +61,8 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
   const data = sale.data_venda || new Date();
   const clienteObj = sale.cliente || null;
   const clienteNome = clienteObj?.nome || sale.cliente_nome || null;
+  const clienteDocumento = clienteObj?.documento || sale.cliente_documento || null;
+  const clienteTelefone = clienteObj?.telefone || sale.cliente_telefone || null;
   const listaPagamentos = sale.lista_pagamentos || sale.pagamentos || [];
 
   return (
@@ -95,18 +97,18 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
       </div>
 
       {/* Cliente */}
-      {(clienteNome || (clienteObj && (clienteObj.telefone || clienteObj.documento))) && (
+      {(clienteNome || clienteDocumento || clienteTelefone) && (
         <div style={styles.borderBottom}>
           {clienteNome && (
             <p style={{ margin: "1px 0" }}>
               Cliente: <b>{clienteNome}</b>
             </p>
           )}
-          {clienteObj?.telefone && (
-            <p style={{ margin: "1px 0" }}>Tel: {clienteObj.telefone}</p>
+          {clienteTelefone && (
+            <p style={{ margin: "1px 0" }}>Tel: {clienteTelefone}</p>
           )}
-          {clienteObj?.documento && (
-            <p style={{ margin: "1px 0" }}>Doc: {clienteObj.documento}</p>
+          {clienteDocumento && (
+            <p style={{ margin: "1px 0" }}>Doc: {clienteDocumento}</p>
           )}
         </div>
       )}

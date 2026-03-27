@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAlert } from "../context/AlertSystem";
+import { api } from "../services/api";
+
 import bg1 from "../assets/bgs/bg1.png";
 import bg2 from "../assets/bgs/bg2.png";
 import bg3 from "../assets/bgs/bg3.png";
@@ -11,12 +13,25 @@ import bg8 from "../assets/bgs/bg8.png";
 import bg9 from "../assets/bgs/bg9.png";
 import bg10 from "../assets/bgs/bg10.png";
 
+const BACKGROUNDS = [
+  { src: bg1, position: "left top" },
+  { src: bg2, position: "right top" },
+  { src: bg3, position: "left top" },
+  { src: bg4, position: "left top" },
+  { src: bg5, position: "left top" },
+  { src: bg6, position: "left top" },
+  { src: bg7, position: "right top" },
+  { src: bg8, position: "right top" },
+  { src: bg9, position: "left top" },
+  { src: bg10, position: "right top" },
+];
+
 const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const { showAlert } = useAlert();
   const [appVersion, setAppVersion] = useState("");
-  const [background, setBackground] = useState("");
+  const [bgConfig, setBgConfig] = useState(null);
 
   // Login State
   const [username, setUsername] = useState("");
@@ -30,115 +45,58 @@ const Login = ({ onLoginSuccess }) => {
     confirmPassword: "",
   });
 
-  const BACKGROUNDS = [
-    {
-      src: bg1,
-      position: "left top", // logo canto superior esquerdo
-    },
-    {
-      src: bg2,
-      position: "right top", // logo canto superior direito
-    },
-    {
-      src: bg3,
-      position: "left top", // sem logo ou central
-    },
-    {
-      src: bg4,
-      position: "left top", // logo meio esquerdo
-    },
-    {
-      src: bg5,
-      position: "left top", // logo meio direito
-    },
-    {
-      src: bg6,
-      position: "left top", // logo canto inferior esquerdo
-    },
-    {
-      src: bg7,
-      position: "right top", // logo canto inferior direito
-    },
-    {
-      src: bg8,
-      position: "right top", // logo central
-    },
-    {
-      src: bg9,
-      position: "left top", // logo meio esquerdo
-    },
-    {
-      src: bg10,
-      position: "right top", // logo meio direito
-    },
-  ];
-
-  const [bgConfig, setBgConfig] = useState(null);
-
   useEffect(() => {
     const random = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)];
     setBgConfig(random);
   }, []);
 
-  useEffect(() => {
-    checkSystemStatus();
-  }, []);
-
-  useEffect(() => {
-    const fetchVersion = async () => {
-      try {
-        const ver = await window.api.getAppVersion();
-        setAppVersion(ver);
-      } catch (error) {
-        console.error("Erro ao obter versão", error);
-        setAppVersion("Dev");
-      }
-    };
-    fetchVersion();
-  }, []);
-
-  const checkSystemStatus = async () => {
+  const checkStatus = useCallback(async () => {
     try {
-      // Tenta conectar ao backend
-      const hasUsers = await window.api.checkUsersExist();
+      setLoading(true);
+      const [hasUsers, ver] = await Promise.all([
+        api.auth.checkExist(),
+        api.config.getVersion()
+      ]);
       setIsSetupMode(!hasUsers);
+      setAppVersion(ver || "1.0.0");
     } catch (error) {
-      console.error("Erro de conexão:", error);
-      showAlert("Erro ao conectar com o banco de dados. Reinicie o sistema.");
+      console.error("Erro ao iniciar login:", error);
+      showAlert("Falha na conexão com o banco de dados. Verifique o servidor.", "Erro Crítico", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [showAlert]);
+
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    if (!username || !password) return showAlert("Preencha todos os campos.");
+    if (e) e.preventDefault();
+    if (!username || !password) return showAlert("Informe usuário e senha.", "Atenção", "warning");
 
     try {
-      const result = await window.api.loginAttempt({ username, password });
-
+      const result = await api.auth.login(username, password);
       if (result.success) {
         onLoginSuccess(result.user);
       } else {
-        showAlert(result.error || "Erro desconhecido no login.");
+        showAlert(result.error || "Credenciais inválidas.", "Acesso Negado", "error");
       }
     } catch (error) {
       console.error(error);
-      showAlert(
-        "Erro técnico ao tentar logar. Verifique se o Backend foi reiniciado.",
-      );
+      showAlert("Falha técnica no processo de login.", "Erro", "error");
     }
   };
 
   const handleSetup = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (setupData.password !== setupData.confirmPassword)
-      return showAlert("As senhas não coincidem.");
+      return showAlert("As senhas digitadas não coincidem.", "Divergência", "warning");
     if (setupData.password.length < 4)
-      return showAlert("A senha deve ter pelo menos 4 caracteres.");
+      return showAlert("A senha deve possuir ao menos 4 dígitos.", "Senha Curta", "warning");
 
     try {
-      const result = await window.api.registerUser({
+      const result = await api.auth.register({
         nome: setupData.nome,
         username: setupData.username,
         password: setupData.password,
@@ -146,29 +104,34 @@ const Login = ({ onLoginSuccess }) => {
       });
 
       if (result.success) {
-        showAlert("Administrador criado com sucesso! Faça login.");
+        showAlert("Administrador criado com sucesso! Use suas credenciais para acessar.", "Bem-vindo", "success");
         setIsSetupMode(false);
         setUsername(setupData.username);
         setPassword("");
       } else {
-        showAlert("Erro: " + result.error);
+        showAlert("Erro no cadastro: " + result.error, "Falha", "error");
       }
     } catch (error) {
-      showAlert("Erro ao criar usuário. Tente novamente.");
+      showAlert("Erro ao realizar configuração inicial.", "Erro", "error");
     }
   };
 
   if (loading)
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-        <p>Carregando sistema...</p>
+      <div className="h-screen flex flex-col items-center justify-center bg-gray-950 text-white">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+             <i className="fas fa-cubes text-blue-500 text-xl"></i>
+          </div>
+        </div>
+        <p className="mt-6 text-xs font-black uppercase tracking-widest text-gray-500 animate-pulse">Iniciando Terminal...</p>
       </div>
     );
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative"
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans select-none"
       style={{
         backgroundImage: `url(${bgConfig?.src})`,
         backgroundSize: "cover",
@@ -176,160 +139,143 @@ const Login = ({ onLoginSuccess }) => {
         backgroundPosition: bgConfig?.position || "center",
       }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md flex flex-col">
-        {/* Cabeçalho */}
-        <div className="bg-blue-600 p-8 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-white p-3 rounded-full text-blue-600">
-              <i className="fas fa-cubes text-3xl"></i>
+      {/* Overlay de Vidro (Glassmorphism) para o Card */}
+      <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden w-full max-w-[420px] flex flex-col border border-white/40">
+        
+        {/* Banner de Topo com Glass Effect */}
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 py-10 px-8 text-center relative overflow-hidden">
+          <div className="absolute top-[-20%] right-[-10%] w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-[-20%] left-[-10%] w-32 h-32 bg-indigo-400/20 rounded-full blur-2xl"></div>
+          
+          <div className="relative z-10">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl mb-4 shadow-xl border border-white/30 transform rotate-12">
+               <i className="fas fa-cubes text-white text-4xl -rotate-12"></i>
+            </div>
+            <h1 className="text-4xl font-black text-white tracking-tighter mb-1">SysControl</h1>
+            <div className="flex items-center justify-center gap-2">
+               <div className="h-px bg-white/30 w-8"></div>
+               <p className="text-[10px] font-black uppercase tracking-widest text-blue-100/70">
+                 {isSetupMode ? "Setup Inicial" : "Terminal de Vendas"}
+               </p>
+               <div className="h-px bg-white/30 w-8"></div>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">SysControl</h1>
-          <p className="text-blue-100 opacity-80 font-medium">
-            {isSetupMode ? "Configuração Inicial" : "Acesso Restrito"}
-          </p>
         </div>
 
-        {/* Formulário */}
-        <div className="p-8">
+        <div className="p-10">
           {isSetupMode ? (
-            // --- FORMULÁRIO DE SETUP (PRIMEIRO ACESSO) ---
-            <form onSubmit={handleSetup} className="space-y-4">
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded-r">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <i className="fas fa-exclamation-triangle text-yellow-400"></i>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-yellow-700">
-                      Bem-vindo! Crie a conta do <strong>Administrador</strong>{" "}
-                      para começar.
-                    </p>
-                  </div>
-                </div>
+            <form onSubmit={handleSetup} className="space-y-5 animate-slide-up">
+              <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 mb-6 flex gap-4">
+                 <i className="fas fa-magic text-blue-600 mt-1"></i>
+                 <p className="text-[11px] leading-relaxed text-blue-700 font-bold">
+                   Este é o primeiro acesso. Defina as credenciais do <strong>Administrador Geral</strong> para desbloquear o sistema.
+                 </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Nome Completo
-                </label>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nome Completo</label>
                 <input
-                  className="w-full border border-gray-300 p-2 rounded mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
                   value={setupData.nome}
-                  onChange={(e) =>
-                    setSetupData({ ...setupData, nome: e.target.value })
-                  }
+                  onChange={(e) => setSetupData({ ...setupData, nome: e.target.value })}
                   required
-                  placeholder="Ex: João Silva"
+                  placeholder="Seu nome"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Usuário (Login)
-                </label>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Usuário / Login</label>
                 <input
-                  className="w-full border border-gray-300 p-2 rounded mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
                   value={setupData.username}
-                  onChange={(e) =>
-                    setSetupData({ ...setupData, username: e.target.value })
-                  }
+                  onChange={(e) => setSetupData({ ...setupData, username: e.target.value })}
                   required
                   placeholder="Ex: admin"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Senha
-                </label>
-                <input
-                  type="password"
-                  className="w-full border border-gray-300 p-2 rounded mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                  value={setupData.password}
-                  onChange={(e) =>
-                    setSetupData({ ...setupData, password: e.target.value })
-                  }
-                  required
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Senha</label>
+                  <input
+                    type="password"
+                    className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                    value={setupData.password}
+                    onChange={(e) => setSetupData({ ...setupData, password: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirmação</label>
+                  <input
+                    type="password"
+                    className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                    value={setupData.confirmPassword}
+                    onChange={(e) => setSetupData({ ...setupData, confirmPassword: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Confirmar Senha
-                </label>
-                <input
-                  type="password"
-                  className="w-full border border-gray-300 p-2 rounded mt-1 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                  value={setupData.confirmPassword}
-                  onChange={(e) =>
-                    setSetupData({
-                      ...setupData,
-                      confirmPassword: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </div>
+
               <button
                 type="submit"
-                className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition shadow-lg mt-2"
+                className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-xl shadow-gray-200 mt-4 active:scale-95"
               >
-                CRIAR ACESSO
+                Ativar Sistema
               </button>
             </form>
           ) : (
-            // --- FORMULÁRIO DE LOGIN PADRÃO ---
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-1">
-                  Usuário
-                </label>
+            <form onSubmit={handleLogin} className="space-y-6 animate-fade-in">
+              <div className="space-y-1 group">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 group-focus-within:text-blue-600 transition">Usuário</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                    <i className="fas fa-user"></i>
-                  </span>
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-blue-500 transition">
+                    <i className="fas fa-user-circle text-lg"></i>
+                  </div>
                   <input
-                    className="w-full border border-gray-300 pl-10 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    placeholder="Digite seu usuário"
+                    className="w-full bg-gray-50 border border-gray-100 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white outline-none transition"
+                    placeholder="ID do usuário"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     autoFocus
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-1">
-                  Senha
-                </label>
+
+              <div className="space-y-1 group">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 group-focus-within:text-blue-600 transition">Senha</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                    <i className="fas fa-lock"></i>
-                  </span>
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-blue-500 transition">
+                    <i className="fas fa-shield-alt text-lg"></i>
+                  </div>
                   <input
                     type="password"
-                    className="w-full border border-gray-300 pl-10 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    placeholder="Digite sua senha"
+                    className="w-full bg-gray-50 border border-gray-100 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white outline-none transition"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
               </div>
+
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg transform active:scale-95 flex justify-center items-center"
+                className="w-full bg-blue-600 text-white py-4.5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-700 transition shadow-2xl shadow-blue-500/30 transform active:scale-[0.98] flex justify-center items-center gap-3"
               >
-                ENTRAR NO SISTEMA
+                ENTRAR <i className="fas fa-arrow-right text-[10px]"></i>
               </button>
             </form>
           )}
         </div>
-        <div className="bg-gray-50 p-4 text-center text-xs text-gray-400 border-t">
-          SysControl v{appVersion} &copy; 2025 - Desenvolvido por{" "}
-          <a
-            href="https://www.instagram.com/eminobre/"
-            className="text-blue-400 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            @eminobre
-          </a>
+
+        {/* Footer */}
+        <div className="bg-gray-100/50 p-6 text-center border-t border-gray-100">
+           <div className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">
+             v{appVersion} • build production
+           </div>
+           <div className="text-[10px] text-gray-500 font-bold">
+             &copy; 2025 SysControl. <a href="https://www.instagram.com/eminobre/" className="text-blue-500 hover:text-blue-700" target="_blank" rel="noopener noreferrer">@eminobre</a>
+           </div>
         </div>
       </div>
     </div>

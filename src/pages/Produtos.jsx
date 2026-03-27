@@ -1,10 +1,19 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from "react";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
+import { api } from "../services/api";
+import { formatCurrency } from "../utils/format";
+import DataTable from "../components/ui/DataTable";
+import FormField from "../components/ui/FormField";
+import Modal from "../components/ui/Modal";
+import StatusBadge from "../components/ui/StatusBadge";
 
-const Produtos = ({ user }) => {
+const Produtos = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { withPermission } = useAuth();
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Modais
   const [showProductModal, setShowProductModal] = useState(false);
@@ -21,7 +30,7 @@ const Produtos = ({ user }) => {
     custo: "",
     preco_venda: "",
     estoque_atual: "",
-    tipo: "novo", // <--- NOVO CAMPO: Padrão é novo
+    tipo: "novo",
   });
 
   const [stockData, setStockData] = useState({
@@ -33,56 +42,23 @@ const Produtos = ({ user }) => {
 
   const [editingId, setEditingId] = useState(null);
 
-  // --- SEGURANÇA (Modal Supervisor) ---
-  const [showSecurityModal, setShowSecurityModal] = useState(false);
-  const [securityData, setSecurityData] = useState({ user: "", pass: "" });
-  const [pendingAction, setPendingAction] = useState(null);
-
-  const withPermission = (action) => {
-    if (user?.cargo === "admin") {
-      action();
-    } else {
-      setPendingAction(() => action);
-      setSecurityData({ user: "", pass: "" });
-      setShowSecurityModal(true);
-    }
-  };
-
-  const handleSecurityAuth = async (e) => {
-    e.preventDefault();
-    try {
-      const result = await window.api.loginAttempt({
-        username: securityData.user,
-        password: securityData.pass,
-      });
-
-      if (result.success && result.user.cargo === "admin") {
-        setShowSecurityModal(false);
-        if (pendingAction) pendingAction();
-        setPendingAction(null);
-      } else {
-        showAlert("Credenciais inválidas ou sem permissão de admin.", "Acesso Negado", "error");
-      }
-    } catch (error) {
-      showAlert("Erro ao validar permissão.", "Erro", "error");
-    }
-  };
-
   useEffect(() => {
     loadProducts();
   }, []);
 
   const loadProducts = async () => {
     try {
-      const data = await window.api.getProducts();
+      setLoading(true);
+      const data = await api.products.list();
       setProducts(data || []);
     } catch (error) {
       console.error(error);
       showAlert("Erro ao carregar produtos", "Erro", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- LÓGICA DE FILTRO E ORDENAÇÃO ---
   const filteredAndSortedProducts = useMemo(() => {
     let result = products.filter(
       (p) =>
@@ -99,9 +75,9 @@ const Produtos = ({ user }) => {
         case "estoque_desc":
           return b.estoque_atual - a.estoque_atual;
         case "preco_asc":
-          return a.preco_venda - b.preco_venda;
+          return (a.preco_venda || 0) - (b.preco_venda || 0);
         case "preco_desc":
-          return b.preco_venda - a.preco_venda;
+          return (b.preco_venda || 0) - (a.preco_venda || 0);
         default:
           return 0;
       }
@@ -110,41 +86,37 @@ const Produtos = ({ user }) => {
     return result;
   }, [products, searchTerm, sortBy]);
 
-  // --- CRUD PRODUTO ---
   const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!formData.codigo.trim()) {
-      // Se vazio, deixamos o backend gerar AUTO, ou forçamos aqui se preferir
-      // return showAlert("O campo Código é obrigatório.", "Erro", "error");
-    }
+    if (e) e.preventDefault();
 
     const productToSave = {
       ...formData,
-      custo: parseFloat(formData.custo),
-      preco_venda: parseFloat(formData.preco_venda),
-      estoque_atual: parseInt(formData.estoque_atual),
-      tipo: formData.tipo, // Garante que o tipo vai pro backend
+      custo: parseFloat(formData.custo || 0),
+      preco_venda: parseFloat(formData.preco_venda || 0),
+      estoque_atual: parseInt(formData.estoque_atual || 0),
     };
 
     if (editingId) productToSave.id = editingId;
 
-    const result = await window.api.saveProduct(productToSave);
+    try {
+      const result = await api.products.save(productToSave);
 
-    if (result.success) {
-      setShowProductModal(false);
-      resetForm();
-      loadProducts();
-      showAlert("Produto salvo!", "Sucesso", "success");
-    } else {
-      showAlert(result.error, "Erro", "error");
+      if (result.success) {
+        setShowProductModal(false);
+        resetForm();
+        loadProducts();
+        showAlert(editingId ? "Produto atualizado!" : "Produto cadastrado!", "Sucesso", "success");
+      } else {
+        showAlert(result.error, "Erro", "error");
+      }
+    } catch (error) {
+      showAlert("Erro técnico ao salvar produto.", "Erro", "error");
     }
   };
 
   const handleEdit = (product) => {
     setFormData({
       ...product,
-      // Garante que produtos antigos sem 'tipo' sejam tratados como 'novo'
       tipo: product.tipo || "novo",
     });
     setEditingId(product.id);
@@ -158,12 +130,11 @@ const Produtos = ({ user }) => {
       custo: "",
       preco_venda: "",
       estoque_atual: "",
-      tipo: "novo", // Reset para novo
+      tipo: "novo",
     });
     setEditingId(null);
   };
 
-  // --- REPOSIÇÃO DE ESTOQUE ---
   const openStockModal = (product) => {
     setStockData({
       id: product.id,
@@ -175,71 +146,132 @@ const Produtos = ({ user }) => {
   };
 
   const handleStockSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const qtdAdicionar = parseInt(stockData.quantidade_adicionar);
 
     if (isNaN(qtdAdicionar) || qtdAdicionar <= 0) {
       return showAlert("Digite uma quantidade válida.", "Erro", "error");
     }
 
-    const product = products.find((p) => p.id === stockData.id);
-    const updatedProduct = {
-      ...product,
-      estoque_atual: product.estoque_atual + qtdAdicionar,
-    };
+    try {
+      const product = products.find((p) => p.id === stockData.id);
+      const updatedProduct = {
+        ...product,
+        estoque_atual: product.estoque_atual + qtdAdicionar,
+      };
 
-    await window.api.saveProduct(updatedProduct);
-    setShowStockModal(false);
-    loadProducts();
-    showAlert("Estoque atualizado!", "Sucesso", "success");
+      await api.products.save(updatedProduct);
+      setShowStockModal(false);
+      loadProducts();
+      showAlert("Estoque atualizado!", "Sucesso", "success");
+    } catch (error) {
+      showAlert("Erro ao atualizar estoque.", "Erro", "error");
+    }
   };
 
   const handleDelete = async (id) => {
-    const confirmou = await showConfirm(
-      "Tem a certeza que deseja excluir este produto?",
-    );
+    const confirmou = await showConfirm("Tem a certeza que deseja excluir este produto?");
     if (confirmou) {
-      const result = await window.api.deleteProduct(id);
-      if (result.success) {
-        loadProducts();
-        showAlert("Produto excluído.", "Sucesso", "success");
-      } else {
-        showAlert(result.error, "Não foi possível excluir", "error");
+      try {
+        const result = await api.products.delete(id);
+        if (result.success) {
+          loadProducts();
+          showAlert("Produto excluído.", "Sucesso", "success");
+        } else {
+          showAlert(result.error, "Não foi possível excluir", "error");
+        }
+      } catch (error) {
+        showAlert("Erro técnico ao excluir.", "Erro", "error");
       }
     }
   };
 
+  const columns = [
+    { key: "codigo", label: "Cód.", bold: true },
+    { key: "descricao", label: "Descrição", bold: true },
+    { 
+      key: "tipo", 
+      label: "Tipo", 
+      align: "center",
+      format: (val) => (
+        <StatusBadge 
+          type={val === "usado" ? "usado" : "novo"} 
+          label={val === "usado" ? "USADO" : "NOVO"} 
+        />
+      )
+    },
+    { key: "custo", label: "Custo", align: "right", format: formatCurrency },
+    { key: "preco_venda", label: "Venda", align: "right", format: formatCurrency },
+    {
+      key: "estoque_atual",
+      label: "Saldo",
+      align: "center",
+      format: (val) => (
+        <span className={`px-2.5 py-1 text-xs font-black rounded-full shadow-sm ${
+          val > 5 ? "bg-green-100 text-green-700" : val > 0 ? "bg-yellow-100 text-yellow-700 font-bold" : "bg-red-100 text-red-600"
+        }`}>
+          {val}
+        </span>
+      )
+    },
+    {
+      key: "id",
+      label: "Ações",
+      align: "center",
+      format: (_, row) => (
+        <div className="flex justify-center items-center gap-2">
+          <button
+            onClick={() => withPermission(() => openStockModal(row))}
+            className="text-white bg-green-600 hover:bg-green-700 p-2 rounded-lg transition shadow-sm active:scale-90"
+            title="Entrada de Estoque"
+          >
+            <i className="fas fa-plus text-xs"></i>
+          </button>
+          <button
+            onClick={() => withPermission(() => handleEdit(row))}
+            className="text-white bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition shadow-sm active:scale-90"
+            title="Editar Produto"
+          >
+            <i className="fas fa-edit text-xs"></i>
+          </button>
+          <button
+            onClick={() => withPermission(() => handleDelete(row.id))}
+            className="text-white bg-red-500 hover:bg-red-600 p-2 rounded-lg transition shadow-sm active:scale-90"
+            title="Excluir"
+          >
+            <i className="fas fa-trash text-xs"></i>
+          </button>
+        </div>
+      )
+    }
+  ];
+
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col w-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-          Gerenciar Estoque
-        </h1>
+    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50 overflow-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Gerenciar Estoque</h1>
+          <p className="text-xs text-gray-500 mt-1">Controle de peças, preços e níveis de estoque.</p>
+        </div>
         <button
-          onClick={() => withPermission(() => {
-            resetForm();
-            setShowProductModal(true);
-          })}
-          className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center shadow-md text-sm md:text-base whitespace-nowrap"
+          onClick={() => withPermission(() => { resetForm(); setShowProductModal(true); })}
+          className="w-full sm:w-auto bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center shadow-md font-bold text-sm gap-2"
         >
-          <i className="fas fa-box-open mr-2"></i> Novo Produto
+          <i className="fas fa-box-open"></i> Novo Produto
         </button>
       </div>
 
-      <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 mb-4 flex flex-col md:flex-row gap-3">
-        <div className="flex-1 relative">
-          <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-          <input
-            type="text"
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            placeholder="Buscar por nome ou código..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="w-full md:w-48">
+      <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 mb-4 flex flex-col md:flex-row gap-4 items-center">
+        <FormField
+          icon="fa-search"
+          placeholder="Buscar por nome ou código..."
+          value={searchTerm}
+          onChange={setSearchTerm}
+          className="flex-1"
+        />
+        <div className="w-full md:w-56">
           <select
-            className="w-full border border-gray-300 rounded-lg py-2 px-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+            className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 text-sm bg-white transition-all"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
@@ -252,371 +284,178 @@ const Produtos = ({ user }) => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md flex-1 overflow-hidden border border-gray-100 flex flex-col">
-        <div className="overflow-auto flex-1 custom-scrollbar">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20">
-                  Cód.
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[150px]">
-                  Descrição
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Tipo
-                </th>
-                <th className="hidden md:table-cell px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Custo
-                </th>
-                <th className="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Venda
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                  Saldo
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-28">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAndSortedProducts.map((p) => (
-                <tr
-                  key={p.id}
-                  className={`hover:bg-gray-50 transition-colors ${p.estoque_atual === 0 ? "bg-red-50" : ""}`}
-                >
-                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
-                    {p.codigo}
-                  </td>
-                  <td className="px-3 py-3 text-xs md:text-sm text-gray-700 break-words whitespace-normal font-medium">
-                    {p.descricao}
-                  </td>
-
-                  {/* Coluna Tipo (NOVA) */}
-                  <td className="px-3 py-3 whitespace-nowrap text-center">
-                    <span
-                      className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${
-                        p.tipo === "usado"
-                          ? "bg-orange-50 text-orange-700 border-orange-200"
-                          : "bg-blue-50 text-blue-700 border-blue-200"
-                      }`}
-                    >
-                      {p.tipo === "usado" ? "USADO" : "NOVO"}
-                    </span>
-                  </td>
-
-                  <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right text-gray-500">
-                    R$ {p.custo.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-xs md:text-sm text-right font-medium text-gray-900">
-                    R$ {p.preco_venda.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-center">
-                    <span
-                      className={`px-2 py-1 inline-flex text-xs leading-4 font-bold rounded-full ${p.estoque_atual > 5 ? "bg-green-100 text-green-800" : p.estoque_atual > 0 ? "bg-yellow-100 text-yellow-800" : "bg-red-200 text-red-900"}`}
-                    >
-                      {p.estoque_atual}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-center text-sm font-medium">
-                    <div className="flex justify-center items-center gap-1 md:gap-2">
-                      <button
-                        onClick={() => withPermission(() => openStockModal(p))}
-                        className="text-white bg-green-500 hover:bg-green-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
-                      >
-                        <i className="fas fa-plus text-xs"></i>
-                      </button>
-                      <button
-                        onClick={() => withPermission(() => handleEdit(p))}
-                        className="text-white bg-blue-500 hover:bg-blue-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
-                      >
-                        <i className="fas fa-edit text-xs"></i>
-                      </button>
-                      <button
-                        onClick={() => withPermission(() => handleDelete(p.id))}
-                        className="text-white bg-red-500 hover:bg-red-600 w-7 h-7 md:w-8 md:h-8 rounded transition shadow-sm flex items-center justify-center"
-                      >
-                        <i className="fas fa-trash text-xs"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {products.length === 0 && (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="px-6 py-12 text-center text-gray-500 flex flex-col items-center justify-center"
-                  >
-                    <i className="fas fa-box-open text-3xl mb-2 opacity-30"></i>
-                    <span className="text-sm">Nenhum produto encontrado.</span>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="flex-1 overflow-hidden">
+        <DataTable 
+          columns={columns} 
+          data={filteredAndSortedProducts} 
+          loading={loading}
+          emptyMessage="Nenhum produto em estoque."
+        />
       </div>
 
       {/* --- MODAL DE PRODUTO --- */}
-      {showProductModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 flex items-center justify-between">
-              <span>{editingId ? "Editar Produto" : "Cadastrar Produto"}</span>
-              <button
-                onClick={() => setShowProductModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* SELETOR DE TIPO (NOVO) */}
-              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Tipo de Produto
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tipo"
-                      value="novo"
-                      checked={formData.tipo === "novo"}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tipo: e.target.value })
-                      }
-                      className="mr-2 w-4 h-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Novo (Peça)
-                    </span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tipo"
-                      value="usado"
-                      checked={formData.tipo === "usado"}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tipo: e.target.value })
-                      }
-                      className="mr-2 w-4 h-4 text-orange-600 focus:ring-orange-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Usado (Desmonte)
-                    </span>
-                  </label>
-                </div>
-              </div>
+      <Modal
+        isOpen={showProductModal}
+        onClose={() => setShowProductModal(false)}
+        title={editingId ? "Editar Produto" : "Cadastrar Produto"}
+        icon="fa-tags"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <button
+              onClick={() => setShowProductModal(false)}
+              className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition font-medium text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold text-sm shadow-md active:scale-95"
+            >
+              <i className="fas fa-save mr-2"></i>
+              {editingId ? "Atualizar" : "Salvar"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+              Tipo de Produto
+            </label>
+            <div className="flex gap-6">
+              <label className="flex items-center cursor-pointer group">
+                <input
+                  type="radio"
+                  name="tipo"
+                  value="novo"
+                  checked={formData.tipo === "novo"}
+                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                  className="mr-3 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className={`text-sm font-bold ${formData.tipo === "novo" ? "text-blue-700" : "text-gray-500 group-hover:text-gray-700"}`}>
+                  Novo (Peça)
+                </span>
+              </label>
+              <label className="flex items-center cursor-pointer group">
+                <input
+                  type="radio"
+                  name="tipo"
+                  value="usado"
+                  checked={formData.tipo === "usado"}
+                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                  className="mr-3 w-5 h-5 text-orange-600 border-gray-300 focus:ring-orange-500"
+                />
+                <span className={`text-sm font-bold ${formData.tipo === "usado" ? "text-orange-700" : "text-gray-500 group-hover:text-gray-700"}`}>
+                  Usado (Desmonte)
+                </span>
+              </label>
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Código
-                </label>
-                <input
-                  className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                  value={formData.codigo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, codigo: e.target.value })
-                  }
-                  placeholder="Ex: 12345"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Descrição
-                </label>
-                <input
-                  className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                  value={formData.descricao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descricao: e.target.value })
-                  }
-                  placeholder="Ex: Óleo de Motor 1L"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                    Preço Custo
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    value={formData.custo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, custo: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                    Preço Venda
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    value={formData.preco_venda}
-                    onChange={(e) =>
-                      setFormData({ ...formData, preco_venda: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  {editingId ? "Ajustar Estoque Total" : "Estoque Inicial"}
-                </label>
-                <input
-                  type="number"
-                  className="block w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none transition"
-                  value={formData.estoque_atual}
-                  onChange={(e) =>
-                    setFormData({ ...formData, estoque_atual: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button
-                  type="button"
-                  onClick={() => setShowProductModal(false)}
-                  className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium text-sm"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold text-sm shadow-md"
-                >
-                  Salvar
-                </button>
-              </div>
-            </form>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              label="Código"
+              value={formData.codigo}
+              onChange={(val) => setFormData({ ...formData, codigo: val })}
+              placeholder="Ex: 12345"
+              autoFocus
+            />
+            <FormField
+              label="Descrição *"
+              value={formData.descricao}
+              onChange={(val) => setFormData({ ...formData, descricao: val })}
+              placeholder="Ex: Óleo de Motor 1L"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FormField
+              label="Preço Custo"
+              type="number"
+              value={formData.custo}
+              onChange={(val) => setFormData({ ...formData, custo: val })}
+              icon="fa-dollar-sign"
+              required
+            />
+            <FormField
+              label="Preço Venda"
+              type="number"
+              value={formData.preco_venda}
+              onChange={(val) => setFormData({ ...formData, preco_venda: val })}
+              icon="fa-tag"
+              required
+            />
+            <FormField
+              label={editingId ? "Saldo Total" : "Estoque Inicial"}
+              type="number"
+              value={formData.estoque_atual}
+              onChange={(val) => setFormData({ ...formData, estoque_atual: val })}
+              icon="fa-warehouse"
+              required
+            />
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* --- MODAL DE REPOSIÇÃO DE ESTOQUE --- */}
-      {showStockModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100">
-            <h2 className="text-lg font-bold mb-1 text-green-700 flex items-center">
-              <i className="fas fa-plus-circle mr-2"></i> Entrada de Estoque
-            </h2>
-            <p className="text-sm text-gray-500 mb-4 border-b pb-2 truncate">
-              Produto: <strong>{stockData.nome}</strong>
-            </p>
-            <form onSubmit={handleStockSubmit}>
-              <div className="mb-4">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Atual</span>
-                  <span>Novo Total</span>
-                </div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="bg-gray-100 px-3 py-1 rounded font-bold text-gray-600">
-                    {stockData.quantidade_atual}
-                  </span>
-                  <i className="fas fa-arrow-right text-gray-400 text-xs"></i>
-                  <span className="bg-green-50 px-3 py-1 rounded font-bold text-green-700">
-                    {stockData.quantidade_atual +
-                      (parseInt(stockData.quantidade_adicionar) || 0)}
-                  </span>
-                </div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Quantidade a Adicionar
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  className="block w-full border-2 border-green-100 rounded-lg p-3 text-xl font-bold text-center text-green-700 focus:border-green-500 focus:ring-0 outline-none transition"
-                  value={stockData.quantidade_adicionar}
-                  onChange={(e) =>
-                    setStockData({
-                      ...stockData,
-                      quantidade_adicionar: e.target.value,
-                    })
-                  }
-                  autoFocus
-                  placeholder="0"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowStockModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm shadow-md"
-                >
-                  Confirmar
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showStockModal}
+        onClose={() => setShowStockModal(false)}
+        title="Entrada de Estoque"
+        icon="fa-plus-circle"
+        size="md"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setShowStockModal(false)}
+              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleStockSubmit}
+              className="flex-[2] px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-black text-sm shadow-md active:scale-95 transition-all"
+            >
+              Confirmar Entrada
+            </button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <div className="space-y-6">
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+             <div className="text-xs font-bold text-gray-400 uppercase mb-2">Produto Selecionado</div>
+             <div className="text-lg font-black text-gray-800">{stockData.nome}</div>
+          </div>
 
-      {/* --- MODAL DE SEGURANÇA (SUPERVISOR) --- */}
-      {showSecurityModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-96 border-2 border-red-100">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center flex flex-col items-center">
-              <i className="fas fa-user-lock text-red-500 text-3xl mb-2"></i>
-              Autorização Necessária
-            </h2>
-            <p className="text-sm text-gray-500 text-center mb-4">
-              Esta ação requer permissão de um administrador.
-            </p>
-            <form onSubmit={handleSecurityAuth} className="space-y-4">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <input
-                  className="w-full border border-gray-300 rounded p-2 text-sm mb-2 outline-none focus:border-red-500"
-                  placeholder="Usuário Admin"
-                  value={securityData.user}
-                  onChange={(e) => setSecurityData({ ...securityData, user: e.target.value })}
-                  autoFocus
-                />
-                <input
-                  type="password"
-                  className="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-red-500"
-                  placeholder="Senha"
-                  value={securityData.pass}
-                  onChange={(e) => setSecurityData({ ...securityData, pass: e.target.value })}
-                />
+          <div className="flex items-center justify-center gap-8 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+            <div className="text-center">
+              <div className="text-[10px] font-black text-blue-400 uppercase mb-1">Atual</div>
+              <div className="text-3xl font-black text-gray-400">{stockData.quantidade_atual}</div>
+            </div>
+            <i className="fas fa-arrow-right text-blue-200"></i>
+            <div className="text-center">
+              <div className="text-[10px] font-black text-green-500 uppercase mb-1">Novo</div>
+              <div className="text-3xl font-black text-green-600">
+                {stockData.quantidade_atual + (parseInt(stockData.quantidade_adicionar) || 0)}
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSecurityModal(false)}
-                  className="flex-1 bg-gray-100 py-2 rounded-lg font-medium hover:bg-gray-200 transition"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition shadow"
-                >
-                  AUTORIZAR
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
+
+          <FormField
+            label="Quantidade a Adicionar"
+            type="number"
+            min="1"
+            value={stockData.quantidade_adicionar}
+            onChange={(val) => setStockData({ ...stockData, quantidade_adicionar: val })}
+            placeholder="0"
+            className="text-center"
+            autoFocus
+          />
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

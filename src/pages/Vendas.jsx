@@ -1,9 +1,15 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
 import dayjs from "dayjs";
 import CupomFiscal from "../components/CupomFiscal";
 import { applyCpfCnpjMask, applyNameMask, applyPhoneMask, validarDocumento } from "../utils/validators";
+import { formatCurrency } from "../utils/format";
+import useCart from "../hooks/useCart";
+import usePayments from "../hooks/usePayments";
+import useProductSearch from "../hooks/useProductSearch";
+import useClientSearch from "../hooks/useClientSearch";
+import { api } from "../services/api";
 
 const Vendas = () => {
   const { showAlert } = useAlert();
@@ -14,16 +20,9 @@ const Vendas = () => {
   const [mechanics, setMechanics] = useState([]);
   const [clients, setClients] = useState([]);
 
-  // --- CARRINHO & SELEÇÃO ---
-  const [cart, setCart] = useState([]);
+  // --- SELEÇÃO ---
   const [selectedSeller, setSelectedSeller] = useState("");
-  const [selectedClient, setSelectedClient] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-
-  // --- CLIENTE INTELIGENTE ---
-  const [clientSearchTerm, setClientSearchTerm] = useState("");
-  const [showClientResults, setShowClientResults] = useState(false);
+  const [selectedMechanic, setSelectedMechanic] = useState("");
 
   // --- VALORES GERAIS ---
   const [discountValue, setDiscountValue] = useState("");
@@ -31,12 +30,6 @@ const Vendas = () => {
   const [surchargeValue, setSurchargeValue] = useState("");
   const [surchargeType, setSurchargeType] = useState("fixed");
   const [laborInput, setLaborInput] = useState(0);
-
-  // --- PAGAMENTO MULTIPLO ---
-  const [payments, setPayments] = useState([]);
-  const [currentPaymentMethod, setCurrentPaymentMethod] = useState("Dinheiro");
-  const [currentPaymentValue, setCurrentPaymentValue] = useState("");
-  const [installments, setInstallments] = useState(1);
 
   // --- MODAIS ---
   const [showReceipt, setShowReceipt] = useState(false);
@@ -56,20 +49,45 @@ const Vendas = () => {
     endereco: "",
   });
 
-  const searchInputRef = useRef(null);
   const paymentInputRef = useRef(null);
-  const searchTimerRef = useRef(null);
 
+  // ===== HOOKS CUSTOMIZADOS =====
+  const { cart, addToCart, removeFromCart, handleQuantityChange, clearCart, subtotal } = useCart(products);
+
+  const {
+    payments, totals, currentPaymentMethod, setCurrentPaymentMethod,
+    currentPaymentValue, setCurrentPaymentValue, installments, setInstallments,
+    addPayment, removePayment, autoFillRemaining, clearPayments,
+  } = usePayments({
+    subtotal,
+    discountValue, discountType,
+    surchargeValue, surchargeType,
+    laborInput,
+  });
+
+  const {
+    searchTerm, setSearchTerm, searchResults, searchInputRef,
+    handleSearchKeyDown, selectProduct, focusSearch,
+  } = useProductSearch(products, addToCart);
+
+  const {
+    clientSearchTerm, setClientSearchTerm,
+    showClientResults, setShowClientResults,
+    selectedClient, setSelectedClient,
+    filteredClients, handleSelectClient,
+  } = useClientSearch(clients);
+
+  // ===== LOAD DATA =====
   useEffect(() => {
     loadData();
-    if (searchInputRef.current) searchInputRef.current.focus();
+    focusSearch();
   }, []);
 
   const loadData = async () => {
     try {
-      const prods = await window.api.getProducts();
-      const people = await window.api.getPeople();
-      const clientsData = await window.api.getClients();
+      const prods = await api.products.list();
+      const people = await api.people.list();
+      const clientsData = await api.clients.list();
 
       setProducts(prods || []);
       setSellers(people.filter((p) => p.cargo_nome === "Vendedor"));
@@ -77,227 +95,6 @@ const Vendas = () => {
       setClients(clientsData || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-    }
-  };
-
-  // --- CÁLCULOS TOTAIS ---
-  const totals = useMemo(() => {
-    const subtotal = cart.reduce(
-      (acc, item) => acc + item.preco_venda * item.qty,
-      0,
-    );
-
-    const distVal = parseFloat(discountValue) || 0;
-    let discountAmount = 0;
-    if (distVal > 0)
-      discountAmount =
-        discountType === "fixed" ? distVal : (subtotal * distVal) / 100;
-
-    const surVal = parseFloat(surchargeValue) || 0;
-    let surchargeAmount = 0;
-    if (surVal > 0)
-      surchargeAmount =
-        surchargeType === "fixed" ? surVal : (subtotal * surVal) / 100;
-
-    const laborValue = parseFloat(laborInput || 0);
-    const total = Math.max(
-      0,
-      subtotal + laborValue + surchargeAmount - discountAmount,
-    );
-
-    const totalPaid = payments.reduce((acc, p) => acc + p.valor, 0);
-    const remaining = total - totalPaid;
-    const change = totalPaid > total ? totalPaid - total : 0;
-
-    return {
-      subtotal,
-      discountAmount,
-      surchargeAmount,
-      total,
-      totalPaid,
-      remaining,
-      change,
-      laborValue,
-    };
-  }, [
-    cart,
-    discountValue,
-    discountType,
-    surchargeValue,
-    surchargeType,
-    payments,
-    laborInput,
-  ]);
-
-  // --- Busca de Cliente ---
-  const filteredClients = useMemo(() => {
-    if (!clientSearchTerm) return [];
-    const lower = clientSearchTerm.toLowerCase();
-    const rawSearch = clientSearchTerm.replace(/\D/g, "");
-    return clients
-      .filter((c) => {
-        const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
-        const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
-        return (
-          c.nome.toLowerCase().includes(lower) ||
-          (c.documento && c.documento.includes(lower)) ||
-          (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
-          (c.telefone && c.telefone.includes(lower)) ||
-          (rawSearch && telRaw && telRaw.includes(rawSearch))
-        );
-      })
-      .slice(0, 10);
-  }, [clientSearchTerm, clients]);
-
-  const handleSelectClient = (client) => {
-    if (client) {
-      setSelectedClient(client.id);
-      setClientSearchTerm(client.nome);
-    } else {
-      setSelectedClient("");
-      setClientSearchTerm("");
-    }
-    setShowClientResults(false);
-  };
-
-  // --- BUSCA DE PRODUTOS (Server-side com debounce) ---
-  useEffect(() => {
-    if (searchTerm.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    // Match exato por código (instantâneo, sem debounce)
-    const exactMatch = products.find(
-      (p) => p.codigo.trim() === searchTerm.trim(),
-    );
-    if (exactMatch) {
-      setSearchResults([exactMatch]);
-      return;
-    }
-
-    // Debounce 300ms para busca por texto
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const results = await window.api.searchProducts({ term: searchTerm, limit: 15 });
-        setSearchResults(results.filter((p) => p.estoque_atual > 0));
-      } catch (err) {
-        console.error("Erro na busca:", err);
-        setSearchResults([]);
-      }
-    }, 300);
-
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [searchTerm]);
-
-  const handleSearchKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (!searchTerm) return;
-      const exactMatch = products.find(
-        (p) => p.codigo.trim() === searchTerm.trim(),
-      );
-      if (exactMatch) {
-        addToCart(exactMatch);
-        return;
-      }
-      if (searchResults.length === 1) {
-        addToCart(searchResults[0]);
-      }
-    }
-  };
-
-  const addToCart = (product) => {
-    if (product.estoque_atual <= 0)
-      return showAlert(
-        `Produto sem estoque: ${product.descricao}`,
-        "Erro",
-        "error",
-      );
-    const existing = cart.find((item) => item.id === product.id);
-    if (existing) {
-      if (existing.qty < product.estoque_atual) {
-        setCart(
-          cart.map((item) =>
-            item.id === product.id ? { ...item, qty: item.qty + 1 } : item,
-          ),
-        );
-      } else {
-        showAlert("Estoque máximo atingido.", "Aviso", "warning");
-      }
-    } else {
-      setCart([...cart, { ...product, qty: 1 }]);
-    }
-    setSearchTerm("");
-    setSearchResults([]);
-    setTimeout(() => searchInputRef.current?.focus(), 10);
-  };
-
-  const handleQuantityChange = (id, newQtyStr) => {
-    const newQty = parseInt(newQtyStr);
-    if (isNaN(newQty) || newQty < 1) return;
-    const originalProduct = products.find((p) => p.id === id);
-    if (newQty > originalProduct.estoque_atual) {
-      showAlert(
-        `Estoque insuficiente. Máximo: ${originalProduct.estoque_atual}`,
-        "Aviso",
-        "warning",
-      );
-      setCart(
-        cart.map((item) =>
-          item.id === id
-            ? { ...item, qty: originalProduct.estoque_atual }
-            : item,
-        ),
-      );
-    } else {
-      setCart(
-        cart.map((item) => (item.id === id ? { ...item, qty: newQty } : item)),
-      );
-    }
-  };
-
-  const removeFromCart = (id) => setCart(cart.filter((item) => item.id !== id));
-
-  // --- PAGAMENTOS ---
-  const addPayment = () => {
-    const valor = parseFloat(currentPaymentValue);
-    if (!valor || valor <= 0) return showAlert("Digite um valor válido.");
-
-    const currentTotalPaid = payments.reduce((acc, p) => acc + p.valor, 0);
-    const currentRemaining = totals.total - currentTotalPaid;
-
-    if (
-      valor > currentRemaining + 0.01 &&
-      currentPaymentMethod !== "Dinheiro"
-    ) {
-      return showAlert(
-        "Valor maior que o restante. Para troco, use 'Dinheiro'.",
-        "Aviso",
-        "warning",
-      );
-    }
-
-    let detalhes = "";
-    if (currentPaymentMethod.includes("Crédito")) detalhes = `${installments}x`;
-
-    setPayments([
-      ...payments,
-      { metodo: currentPaymentMethod, valor, detalhes },
-    ]);
-    setCurrentPaymentValue("");
-  };
-
-  const removePayment = (index) => {
-    const newPayments = [...payments];
-    newPayments.splice(index, 1);
-    setPayments(newPayments);
-  };
-
-  const autoFillRemaining = () => {
-    if (totals.remaining > 0) {
-      setCurrentPaymentValue(totals.remaining.toFixed(2));
     }
   };
 
@@ -315,10 +112,10 @@ const Vendas = () => {
       return showAlert("CPF/CNPJ inválido. Verifique o documento.", "Atenção", "error");
     }
     try {
-      const result = await window.api.saveClient(newClientData);
+      const result = await api.clients.save(newClientData);
       if (result.success) {
         showAlert("Cliente cadastrado com sucesso!", "Sucesso", "success");
-        const updatedClients = await window.api.getClients();
+        const updatedClients = await api.clients.list();
         setClients(updatedClients);
         const newClient = updatedClients.find(
           (c) => c.id === result.id || (newClientData.documento && c.documento === newClientData.documento),
@@ -348,10 +145,8 @@ const Vendas = () => {
       );
 
     const labor = parseFloat(laborInput) || 0;
-    const selectedMechanicState =
-      document.getElementById("mechanic-select")?.value;
 
-    if (labor > 0 && !selectedMechanicState)
+    if (labor > 0 && !selectedMechanic)
       return showAlert(
         "Selecione o responsável pela mão de obra!",
         "Aviso",
@@ -375,29 +170,26 @@ const Vendas = () => {
       if (finalClientId && finalClientObj?.documento) {
         // Já tem documento, segue normal
       } else if (finalClientId && !finalClientObj?.documento) {
-        // Cliente selecionado não tem documento
         if (!receiptCpf) return showAlert("Informe o CPF/CNPJ para o recibo.", "Aviso", "warning");
         if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
-        const res = await window.api.saveClient({ id: finalClientId, ...finalClientObj, documento: receiptCpf });
+        const res = await api.clients.save({ id: finalClientId, ...finalClientObj, documento: receiptCpf });
         if (res.success) {
           finalClientObj = { ...finalClientObj, documento: receiptCpf };
         } else {
           return showAlert("Erro ao salvar documento do cliente.", "Erro", "error");
         }
       } else {
-        // Sem cliente selecionado (Consumidor Final)
         if (!receiptCpf || !receiptName) {
           return showAlert("Nome e CPF são obrigatórios para emissão com CPF.", "Aviso", "warning");
         }
         if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
         try {
-          const searchRes = await window.api.findClientByDoc(receiptCpf);
+          const searchRes = await api.clients.findByDoc(receiptCpf);
           if (searchRes.success && searchRes.client) {
-            // Cliente já existe, vincula silenciosamente
             finalClientId = searchRes.client.id;
             finalClientObj = searchRes.client;
           } else {
-            const res = await window.api.saveClient({ nome: receiptName, documento: receiptCpf });
+            const res = await api.clients.save({ nome: receiptName, documento: receiptCpf });
             if (res.success && res.id) {
               finalClientId = res.id;
               finalClientObj = { id: res.id, nome: receiptName, documento: receiptCpf };
@@ -413,7 +205,7 @@ const Vendas = () => {
 
     const saleData = {
       vendedor_id: selectedSeller,
-      trocador_id: selectedMechanicState || null,
+      trocador_id: selectedMechanic || null,
       cliente_id: selectedClient || null,
       subtotal: totals.subtotal,
       acrescimo_valor: totals.surchargeAmount,
@@ -426,13 +218,11 @@ const Vendas = () => {
     };
 
     try {
-      const result = await window.api.createSale(saleData);
+      const result = await api.sales.create(saleData);
 
       if (result.success) {
         const sellerName = sellers.find((s) => s.id == selectedSeller)?.nome;
-        const mechanicName = mechanics.find(
-          (m) => m.id == selectedMechanicState,
-        )?.nome;
+        const mechanicName = mechanics.find((m) => m.id == selectedMechanic)?.nome;
         const clientName = clients.find((c) => c.id == selectedClient)?.nome;
 
         setLastSale({
@@ -442,18 +232,22 @@ const Vendas = () => {
           vendedor_nome: sellerName,
           trocador_nome: mechanicName,
           cliente_nome: clientName,
+          cliente_documento: finalClientObj?.documento,
+          cliente_telefone: finalClientObj?.telefone,
         });
 
         setShowReceipt(true);
         showAlert("Venda realizada com sucesso!", "Sucesso", "success");
 
-        setCart([]);
-        setPayments([]);
+        // Reset via hooks
+        clearCart();
+        clearPayments();
         setDiscountValue("");
         setSurchargeValue("");
         setLaborInput(0);
         setSearchTerm("");
         handleSelectClient(null);
+        setSelectedMechanic("");
         loadData();
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
@@ -467,16 +261,14 @@ const Vendas = () => {
     const receiptElement = document.getElementById("cupom-fiscal");
     if (!receiptElement)
       return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
-    const result = await window.api.printSilent(
+    const result = await api.print.silent(
       receiptElement.outerHTML,
-      await window.api.getConfig("impressora_padrao"),
+      await api.config.get("impressora_padrao"),
     );
     if (result.success)
       showAlert("Enviado para impressão.", "Sucesso", "success");
     else showAlert("Erro na impressão: " + result.error, "Erro", "error");
   };
-
-  const formatCurrency = (val) => `R$ ${val.toFixed(2).replace(".", ",")}`;
 
   return (
     <div className="flex h-full gap-4 p-4 bg-gray-100">
@@ -587,7 +379,7 @@ const Vendas = () => {
                 {searchResults.map((p) => (
                   <div
                     key={p.id}
-                    onClick={() => addToCart(p)}
+                    onClick={() => selectProduct(p)}
                     className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 flex justify-between items-center group"
                   >
                     <div>
@@ -708,6 +500,8 @@ const Vendas = () => {
               <select
                 id="mechanic-select"
                 className="w-1/2 border border-gray-300 rounded p-1.5 text-xs bg-white"
+                value={selectedMechanic}
+                onChange={(e) => setSelectedMechanic(e.target.value)}
               >
                 <option value="">Técnico...</option>
                 {mechanics.map((m) => (

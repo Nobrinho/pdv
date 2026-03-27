@@ -19,16 +19,7 @@ import HistoricoPrecos from "./pages/HistoricoPrecos";
 import Updater from "./components/Updater";
 import Relatorios from "./pages/Relatorios";
 import Clientes from "./pages/Clientes";
-import { useAlert } from "./context/AlertSystem";
-
-// Definição de permissões por cargo
-const PERMISSOES_CAIXA = [
-  "/vendas",
-  "/servicos",
-  "/recibos",
-  "/historico",
-  "/produtos",
-];
+import { useAuth } from "./context/AuthContext";
 
 // Configuração do Menu (Estática)
 const MENU_ITEMS = [
@@ -95,16 +86,9 @@ const MENU_ITEMS = [
 ];
 
 function App() {
-  const [user, setUser] = useState(null);
+  const { user, login, logout, hasAccess, requestRouteAccess, unlockedRoutes } =
+    useAuth();
   const [appVersion, setAppVersion] = useState("");
-  const [showSupervisorModal, setShowSupervisorModal] = useState(false);
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [pendingRoute, setPendingRoute] = useState(null);
-  const [unlockedRoutes, setUnlockedRoutes] = useState([]);
-  const { showAlert } = useAlert();
-
-  const [adminUser, setAdminUser] = useState("");
-  const [adminPass, setAdminPass] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -123,63 +107,12 @@ function App() {
     fetchVersion();
   }, []);
 
-  const hasAccess = (path) => {
-    if (!user) return false;
-    if (user?.cargo === "admin") return true;
-    if (PERMISSOES_CAIXA.includes(path)) return true;
-    if (unlockedRoutes.includes(path)) return true;
-    return false;
-  };
-
   const handleMenuClick = (path) => {
-    if (hasAccess(path)) {
-      navigate(path);
-    } else {
-      setPendingRoute(path);
-      setAdminUser("");
-      setAdminPass("");
-      setShowSupervisorModal(true);
-    }
-  };
-
-  const closeSupervisorModal = () => {
-    setShowSupervisorModal(false);
-    setAdminUser("");
-    setAdminPass("");
-  };
-
-  const handleSupervisorAuth = async (e) => {
-    e.preventDefault();
-    if (!adminUser || !adminPass)
-      return showAlert("Preencha os dados do administrador.");
-
-    setIsAuthLoading(true);
-
-    try {
-      const result = await window.api.loginAttempt({
-        username: adminUser,
-        password: adminPass,
-      });
-
-      if (result.success && result.user.cargo === "admin") {
-        setUnlockedRoutes((prev) => [...prev, pendingRoute]);
-        closeSupervisorModal();
-        navigate(pendingRoute);
-      } else if (result.success) {
-        showAlert("Este usuário não tem permissão de Administrador.");
-      } else {
-        showAlert("Senha ou usuário incorretos.");
-      }
-    } catch (error) {
-      console.error(error);
-      showAlert("Erro ao validar permissão.");
-    } finally {
-      setIsAuthLoading(false);
-    }
+    requestRouteAccess(path, navigate);
   };
 
   if (!user) {
-    return <Login onLoginSuccess={(userData) => setUser(userData)} />;
+    return <Login onLoginSuccess={(userData) => login(userData)} />;
   }
 
   return (
@@ -221,10 +154,7 @@ function App() {
             </div>
           </div>
           <button
-            onClick={() => {
-              setUser(null);
-              setUnlockedRoutes([]);
-            }}
+            onClick={logout}
             className="text-gray-500 hover:text-red-400 transition"
             title="Sair do Sistema"
           >
@@ -293,7 +223,7 @@ function App() {
           <Route path="/servicos" element={hasAccess("/servicos") ? <Servicos /> : <Navigate to="/vendas" replace />} />
           <Route path="/recibos" element={hasAccess("/recibos") ? <Recibos /> : <Navigate to="/vendas" replace />} />
           <Route path="/historico" element={hasAccess("/historico") ? <HistoricoPrecos /> : <Navigate to="/vendas" replace />} />
-          <Route path="/produtos" element={hasAccess("/produtos") ? <Produtos user={user} /> : <Navigate to="/vendas" replace />} />
+          <Route path="/produtos" element={hasAccess("/produtos") ? <Produtos /> : <Navigate to="/vendas" replace />} />
           <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
           <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
           <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
@@ -302,71 +232,6 @@ function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
-
-      {/* Modal Supervisor */}
-      {showSupervisorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] animate-fade-in backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-96 max-w-[90%] transform transition-all scale-100 border border-gray-200">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <i className="fas fa-user-shield text-3xl text-red-600"></i>
-              </div>
-              <h2 className="text-xl font-bold text-gray-800">
-                Acesso Restrito
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                É necessária autorização de administrador.
-              </p>
-            </div>
-
-            <form onSubmit={handleSupervisorAuth} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Usuário Admin
-                </label>
-                <input
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Admin"
-                  value={adminUser}
-                  onChange={(e) => setAdminUser(e.target.value)}
-                  disabled={isAuthLoading}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                  Senha
-                </label>
-                <input
-                  type="password"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="••••••"
-                  value={adminPass}
-                  onChange={(e) => setAdminPass(e.target.value)}
-                  disabled={isAuthLoading}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isAuthLoading}
-                className={`w-full py-3 rounded-lg font-bold transition shadow-lg flex justify-center items-center ${
-                  isAuthLoading ? "bg-red-400 cursor-not-allowed text-white" : "bg-red-600 hover:bg-red-700 text-white"
-                }`}
-              >
-                {isAuthLoading ? <i className="fas fa-circle-notch fa-spin"></i> : "LIBERAR ACESSO"}
-              </button>
-              <button
-                type="button"
-                onClick={closeSupervisorModal}
-                disabled={isAuthLoading}
-                className="w-full bg-gray-100 text-gray-600 py-3 rounded-lg font-medium hover:bg-gray-200 transition"
-              >
-                Cancelar
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Auto Updater Component */}
       <Updater />

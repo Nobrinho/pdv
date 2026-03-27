@@ -1,5 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
+import { formatCurrency } from "../utils/format";
+import { api } from "../services/api";
+import StatCard from "../components/ui/StatCard";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -21,6 +24,7 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     faturamento: 0,
     lucro: 0,
@@ -44,39 +48,38 @@ const Dashboard = () => {
   }, []);
 
   const loadDashboardData = async () => {
-    // 1. Dados do Dia
-    const statsData = await window.api.getDashboardStats();
-    setStats(statsData);
+    try {
+      setLoading(true);
+      
+      // Executar chamadas em paralelo para melhor performance
+      const [statsData, weeklyData, stockData, invStats] = await Promise.all([
+        api.dashboard.stats(),
+        api.dashboard.weekly(),
+        api.dashboard.lowStock(),
+        api.dashboard.inventoryStats()
+      ]);
 
-    // 2. Gráfico Semanal
-    const weeklyData = await window.api.getWeeklySales();
-    setChartData({
-      labels: weeklyData.labels,
-      datasets: [
-        {
-          label: "Faturamento (R$)",
-          data: weeklyData.data,
-          backgroundColor: "rgba(59, 130, 246, 0.6)",
-          borderRadius: 4,
-        },
-      ],
-    });
+      setStats(statsData);
+      setLowStock(stockData);
+      setInventoryStats(invStats);
 
-    // 3. Estoque Baixo (Lista)
-    const stockData = await window.api.getLowStock();
-    setLowStock(stockData);
-
-    // 4. Inteligência de Estoque (Novo)
-    const invStats = await window.api.getInventoryStats();
-    setInventoryStats(invStats);
-  };
-
-  // --- FORMATAÇÃO BANCÁRIA (R$ 1.234,56) ---
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(val || 0);
+      setChartData({
+        labels: weeklyData.labels,
+        datasets: [
+          {
+            label: "Faturamento (R$)",
+            data: weeklyData.data,
+            backgroundColor: "rgba(59, 130, 246, 0.7)",
+            borderRadius: 6,
+            hoverBackgroundColor: "rgba(37, 99, 235, 0.8)",
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("Erro ao carregar dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const chartOptions = {
@@ -84,163 +87,143 @@ const Dashboard = () => {
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
-      title: { display: false },
+      tooltip: {
+        backgroundColor: "#1f2937",
+        padding: 12,
+        titleFont: { size: 14, weight: "bold" },
+        bodyFont: { size: 13 },
+        callbacks: {
+          label: (context) => `Receita: ${formatCurrency(context.raw)}`
+        }
+      }
     },
-    scales: { y: { beginAtZero: true } },
+    scales: { 
+      y: { 
+        beginAtZero: true,
+        ticks: { callback: (value) => formatCurrency(value) }
+      } 
+    },
   };
 
+  if (loading && !stats.faturamento) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 h-full flex flex-col overflow-y-auto">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-gray-50 custom-scrollbar">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Painel de Controle</h1>
+        <div>
+          <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Painel de Controle</h1>
+          <p className="text-xs text-gray-500 mt-1">Resumo operacional e saúde financeira do seu negócio.</p>
+        </div>
         <button
           onClick={loadDashboardData}
-          className="text-blue-600 hover:text-blue-800 transition"
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition font-bold text-sm bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"
         >
-          <i className="fas fa-sync-alt mr-1"></i> Atualizar
+          <i className={`fas fa-sync-alt ${loading ? "animate-spin" : ""}`}></i> 
+          Atualizar
         </button>
       </div>
 
-      {/* --- SECÇÃO 1: MOVIMENTO DO DIA --- */}
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
+      {/* --- MOVIMENTO DO DIA --- */}
+      <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">
         Movimento de Hoje
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
-                Faturamento
-              </p>
-              <p className="text-xl font-bold text-gray-800">
-                {formatCurrency(stats.faturamento)}
-              </p>
-            </div>
-            <i className="fas fa-dollar-sign text-blue-200 text-2xl"></i>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
-                Lucro Líquido
-              </p>
-              <p className="text-xl font-bold text-green-600">
-                {formatCurrency(stats.lucro)}
-              </p>
-            </div>
-            <i className="fas fa-chart-line text-green-200 text-2xl"></i>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
-                Vendas (Qtd)
-              </p>
-              <p className="text-xl font-bold text-yellow-600">
-                {stats.vendasCount}
-              </p>
-            </div>
-            <i className="fas fa-shopping-cart text-yellow-200 text-2xl"></i>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-orange-500">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
-                Mão de Obra
-              </p>
-              <p className="text-xl font-bold text-orange-600">
-                {formatCurrency(stats.maoDeObra)}
-              </p>
-            </div>
-            <i className="fas fa-wrench text-orange-200 text-2xl"></i>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-bold uppercase">
-                Comissões
-              </p>
-              <p className="text-xl font-bold text-purple-600">
-                {formatCurrency(stats.comissoes)}
-              </p>
-            </div>
-            <i className="fas fa-users text-purple-200 text-2xl"></i>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
+        <StatCard
+          title="Faturamento"
+          value={stats.faturamento}
+          color="blue"
+          icon="fa-dollar-sign"
+          tooltip="Total bruto vendido hoje."
+        />
+        <StatCard
+          title="Lucro Líquido"
+          value={stats.lucro}
+          color="green"
+          icon="fa-chart-line"
+          tooltip="Resultando após descontar custos, comissões e mão de obra."
+        />
+        <StatCard
+          title="Vendas"
+          value={stats.vendasCount}
+          color="indigo"
+          icon="fa-shopping-cart"
+          tooltip="Quantidade de cupons emitidos hoje."
+          format={(v) => `${v} unid`}
+        />
+        <StatCard
+          title="Mão de Obra"
+          value={stats.maoDeObra}
+          color="orange"
+          icon="fa-wrench"
+          tooltip="Total gerado em serviços de mecânica."
+        />
+        <StatCard
+          title="Comissões"
+          value={stats.comissoes}
+          color="purple"
+          icon="fa-user-tag"
+          tooltip="Total a pagar em comissões para vendedores."
+        />
       </div>
 
-      {/* --- SECÇÃO 2: INTELIGÊNCIA DE ESTOQUE (PATRIMÔNIO) --- */}
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center">
-        <i className="fas fa-boxes mr-2"></i> Valorização de Estoque
-        (Patrimônio)
+      {/* --- PATRIMÔNIO --- */}
+      <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">
+        Valorização de Estoque (Patrimônio)
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-gray-800 to-gray-700 p-4 rounded-xl shadow-md text-white">
-          <p className="text-xs text-gray-300 font-bold uppercase mb-1">
-            Custo Total (Investido)
-          </p>
-          <p className="text-2xl font-bold tracking-tight">
-            {formatCurrency(inventoryStats.custoTotal)}
-          </p>
-          <p className="text-xs text-gray-400 mt-2">
-            Dinheiro parado em mercadoria
-          </p>
+        <div className="bg-gradient-to-br from-gray-900 to-gray-700 p-5 rounded-2xl shadow-lg border border-gray-800 text-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+             <i className="fas fa-vault text-6xl"></i>
+          </div>
+          <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Custo Total (Investido)</p>
+          <p className="text-3xl font-black tracking-tighter">{formatCurrency(inventoryStats.custoTotal)}</p>
+          <p className="text-[10px] text-gray-400 mt-2 font-medium italic">Capital imobilizado em mercadoria</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-500 font-bold uppercase mb-1">
-            Venda Potencial
-          </p>
-          <p className="text-2xl font-bold text-blue-600 tracking-tight">
-            {formatCurrency(inventoryStats.vendaPotencial)}
-          </p>
-          <p className="text-xs text-gray-400 mt-2">
-            Se vender todo o estoque hoje
-          </p>
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1 text-blue-500">Venda Potencial</p>
+            <p className="text-2xl font-black text-gray-800 tracking-tight">{formatCurrency(inventoryStats.vendaPotencial)}</p>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-3 border-t pt-2 font-medium">Ticket total em prateleira</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-500 font-bold uppercase mb-1">
-            Lucro Projetado
-          </p>
-          <p className="text-2xl font-bold text-green-600 tracking-tight">
-            {formatCurrency(inventoryStats.lucroProjetado)}
-          </p>
-          <p className="text-xs text-gray-400 mt-2">Margem bruta acumulada</p>
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1 text-green-600">Lucro Projetado</p>
+            <p className="text-2xl font-black text-gray-800 tracking-tight">{formatCurrency(inventoryStats.lucroProjetado)}</p>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-3 border-t pt-2 font-medium">Margem bruta acumulada</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500 flex flex-col justify-center">
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-red-500 flex flex-col justify-between">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-bold text-gray-600">
-              Produtos Zerados
-            </span>
-            <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">
-              {inventoryStats.qtdZerados}
-            </span>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Produtos Zerados</span>
+            <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black">{inventoryStats.qtdZerados}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm font-bold text-gray-600">
-              Baixo Estoque
-            </span>
-            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">
-              {inventoryStats.qtdBaixoEstoque}
-            </span>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Baixo Estoque</span>
+            <span className="bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-[10px] font-black">{inventoryStats.qtdBaixoEstoque}</span>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-right">
-            Total Itens Físicos: {inventoryStats.totalItensFisicos}
-          </p>
+          <p className="text-[10px] text-gray-400 mt-3 border-t pt-2 text-right">Total Itens: <span className="font-bold text-gray-700">{inventoryStats.totalItensFisicos}</span></p>
         </div>
       </div>
 
-      {/* --- SECÇÃO 3: GRÁFICOS E LISTAS --- */}
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[300px]">
+      {/* --- GRÁFICOS E LISTAS --- */}
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[400px]">
         {/* Gráfico */}
-        <div className="flex-[2] bg-white p-6 rounded-xl shadow-md flex flex-col">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">
-            Desempenho Semanal (Vendas + Serviços)
-          </h2>
-          <div className="flex-1 relative w-full h-full min-h-[250px]">
+        <div className="flex-[2] bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-black text-gray-800 tracking-tight">Desempenho Semanal</h2>
+            <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded-md uppercase border border-blue-100">Faturamento Real</span>
+          </div>
+          <div className="flex-1 relative w-full h-full min-h-[300px]">
             {chartData.datasets.length > 0 && (
               <Bar options={chartOptions} data={chartData} />
             )}
@@ -248,40 +231,42 @@ const Dashboard = () => {
         </div>
 
         {/* Alerta Estoque */}
-        <div className="flex-1 bg-white p-6 rounded-xl shadow-md flex flex-col">
-          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-            <i className="fas fa-exclamation-triangle text-red-500 mr-2"></i>{" "}
-            Reposição Urgente
+        <div className="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+          <h2 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+            <i className="fas fa-shipping-fast text-red-500"></i> Reposição Urgente
           </h2>
-          <div className="overflow-y-auto flex-1 custom-scrollbar">
-            <ul className="space-y-3">
+          <div className="overflow-y-auto flex-1 custom-scrollbar pr-2">
+            <ul className="space-y-4">
               {lowStock.map((p) => (
                 <li
                   key={p.id}
-                  className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100"
+                  className="flex justify-between items-center p-3.5 bg-gray-50 rounded-xl border border-gray-100 hover:border-red-200 transition-colors group"
                 >
-                  <div>
-                    <p
-                      className="font-medium text-gray-800 text-sm truncate w-32"
-                      title={p.descricao}
-                    >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-800 text-sm truncate pr-2 group-hover:text-red-700 transition-colors">
                       {p.descricao}
                     </p>
-                    <p className="text-xs text-gray-500 font-mono">
-                      {p.codigo}
+                    <p className="text-[10px] text-gray-400 font-mono tracking-tighter uppercase">
+                      Cod: {p.codigo}
                     </p>
                   </div>
-                  <span
-                    className={`text-xs font-bold px-2 py-1 rounded ${p.estoque_atual === 0 ? "bg-red-600 text-white" : "bg-yellow-200 text-yellow-800"}`}
-                  >
-                    {p.estoque_atual} un
-                  </span>
+                  <div className={`
+                    text-[10px] font-black px-2.5 py-1 rounded-lg border shadow-sm
+                    ${p.estoque_atual === 0 
+                      ? "bg-red-600 text-white border-red-700" 
+                      : "bg-yellow-100 text-yellow-800 border-yellow-200"}
+                  `}>
+                    {p.estoque_atual} UN
+                  </div>
                 </li>
               ))}
               {lowStock.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                  <i className="fas fa-check-circle text-4xl mb-2 text-green-100"></i>
-                  <p className="text-sm">Estoque saudável.</p>
+                <div className="h-full flex flex-col items-center justify-center text-gray-300 py-10">
+                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-3">
+                    <i className="fas fa-check text-2xl text-green-400"></i>
+                  </div>
+                  <p className="text-sm font-bold">Estoque saudável</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-medium">Tudo sob controle</p>
                 </div>
               )}
             </ul>
