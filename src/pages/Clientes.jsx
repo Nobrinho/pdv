@@ -2,7 +2,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
-import { applyCpfCnpjMask, applyNameMask, applyPhoneMask, validarDocumento } from "../utils/validators";
+import {
+  applyCpfCnpjMask,
+  applyNameMask,
+  applyPhoneMask,
+  validarDocumento,
+} from "../utils/validators";
 import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
@@ -55,7 +60,7 @@ const Clientes = () => {
     if (!searchTerm) return clients;
     const lower = searchTerm.toLowerCase();
     const rawSearch = searchTerm.replace(/\D/g, "");
-    
+
     return clients.filter((c) => {
       const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
       const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
@@ -174,7 +179,7 @@ const Clientes = () => {
         const updatedDebts = await api.clients.debts(selectedClient.id);
         setDebts(updatedDebts);
         setPaymentValue("");
-        loadData(); 
+        loadData();
       } else {
         showAlert("Erro: " + result.error, "Erro", "error");
       }
@@ -191,30 +196,37 @@ const Clientes = () => {
       format: (val, row) => (
         <div>
           <div className="font-bold text-gray-900">{val}</div>
-          {row.documento && <div className="text-[10px] text-gray-400 font-normal">{row.documento}</div>}
+          {row.documento && (
+            <div className="text-[10px] text-gray-400 font-normal">
+              {row.documento}
+            </div>
+          )}
         </div>
-      )
+      ),
     },
     {
       key: "telefone",
       label: "Contato",
-      format: (val) => val ? (
-        <span className="flex items-center gap-1.5">
-          <i className="fas fa-phone-alt text-[10px] text-gray-400"></i>
-          {val}
-        </span>
-      ) : "-"
+      format: (val) =>
+        val ? (
+          <span className="flex items-center gap-1.5">
+            <i className="fas fa-phone-alt text-[10px] text-gray-400"></i>
+            {val}
+          </span>
+        ) : (
+          "-"
+        ),
     },
     {
       key: "saldo_devedor",
       label: "Saldo Devedor",
       align: "center",
       format: (val) => (
-        <StatusBadge 
-          type={val > 0.01 ? "cancelada" : "usado"} 
-          label={val > 0.01 ? formatCurrency(val) : "EM DIA"} 
+        <StatusBadge
+          type={val > 0.01 ? "cancelada" : "usado"}
+          label={val > 0.01 ? formatCurrency(val) : "EM DIA"}
         />
-      )
+      ),
     },
     {
       key: "id",
@@ -244,16 +256,21 @@ const Clientes = () => {
             <i className="fas fa-trash text-xs"></i>
           </button>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
     <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Clientes & Fiado</h1>
-          <p className="text-xs text-gray-500 mt-1">Gerencie seu cadastro de clientes e controle de pendências financeiras.</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+            Clientes & Fiado
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Gerencie seu cadastro de clientes e controle de pendências
+            financeiras.
+          </p>
         </div>
         <button
           onClick={() => {
@@ -280,9 +297,9 @@ const Clientes = () => {
 
         {/* Lista */}
         <div className="flex-1 overflow-hidden">
-          <DataTable 
-            columns={columns} 
-            data={filteredClients} 
+          <DataTable
+            columns={columns}
+            data={filteredClients}
             loading={loading}
             emptyMessage="Nenhum cliente encontrado."
           />
@@ -329,28 +346,42 @@ const Clientes = () => {
           <FormField
             label="Nome Completo *"
             value={formData.nome}
-            onChange={(val) => setFormData({ ...formData, nome: applyNameMask(val) })}
+            onChange={(val) =>
+              setFormData({ ...formData, nome: applyNameMask(val) })
+            }
             placeholder="Ex: João da Silva"
-            error={formData.nome.trim().length > 0 && formData.nome.trim().length < 2 ? "Nome muito curto" : null}
+            error={
+              formData.nome.trim().length > 0 && formData.nome.trim().length < 2
+                ? "Nome muito curto"
+                : null
+            }
             autoFocus
           />
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               label="Telefone"
               value={formData.telefone}
-              onChange={(val) => setFormData({ ...formData, telefone: applyPhoneMask(val) })}
+              onChange={(val) =>
+                setFormData({ ...formData, telefone: applyPhoneMask(val) })
+              }
               placeholder="(XX) XXXXX-XXXX"
               icon="fa-phone"
             />
             <FormField
               label="CPF / Documento"
               value={formData.documento}
-              onChange={(val) => setFormData({ ...formData, documento: applyCpfCnpjMask(val) })}
+              onChange={(val) =>
+                setFormData({ ...formData, documento: applyCpfCnpjMask(val) })
+              }
               placeholder="Opcional"
               icon="fa-id-card"
               maxLength={18}
-              error={formData.documento && !validarDocumento(formData.documento) ? "Documento inválido" : null}
+              error={
+                formData.documento && !validarDocumento(formData.documento)
+                  ? "Documento inválido"
+                  : null
+              }
             />
           </div>
 
@@ -360,7 +391,11 @@ const Clientes = () => {
             onChange={(val) => setFormData({ ...formData, endereco: val })}
             placeholder="Opcional"
             icon="fa-map-marker-alt"
-            error={formData.endereco && formData.endereco.trim().length < 4 ? "Endereço muito curto" : null}
+            error={
+              formData.endereco && formData.endereco.trim().length < 4
+                ? "Endereço muito curto"
+                : null
+            }
           />
         </div>
       </Modal>
@@ -376,8 +411,12 @@ const Clientes = () => {
         <div className="flex flex-col h-[60vh]">
           {selectedClient && (
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center mb-4">
-              <div className="text-sm font-medium text-blue-800 uppercase tracking-wider">Saldo Devedor Total</div>
-              <div className="text-2xl font-black text-red-600">{formatCurrency(selectedClient.saldo_devedor)}</div>
+              <div className="text-sm font-medium text-blue-800 uppercase tracking-wider">
+                Saldo Devedor Total
+              </div>
+              <div className="text-2xl font-black text-red-600">
+                {formatCurrency(selectedClient.saldo_devedor)}
+              </div>
             </div>
           )}
 
@@ -385,23 +424,39 @@ const Clientes = () => {
             <DataTable
               loading={debtLoading}
               columns={[
-                { key: "data_lancamento", label: "Data", format: (val) => dayjs(val).format("DD/MM/YY") },
+                {
+                  key: "data_lancamento",
+                  label: "Data",
+                  format: (val) => dayjs(val).format("DD/MM/YY"),
+                },
                 { key: "descricao", label: "Descrição", bold: true },
-                { key: "valor_total", label: "Original", align: "right", format: formatCurrency },
-                { key: "valor_pago", label: "Pago", align: "right", format: formatCurrency },
-                { 
-                  key: "restante", 
-                  label: "Restante", 
-                  align: "right", 
+                {
+                  key: "valor_total",
+                  label: "Original",
+                  align: "right",
+                  format: formatCurrency,
+                },
+                {
+                  key: "valor_pago",
+                  label: "Pago",
+                  align: "right",
+                  format: formatCurrency,
+                },
+                {
+                  key: "restante",
+                  label: "Restante",
+                  align: "right",
                   format: (_, row) => {
                     const restante = row.valor_total - row.valor_pago;
                     const isQuitado = restante <= 0.01;
                     return (
-                      <span className={`font-bold ${isQuitado ? "text-green-600" : "text-red-600"}`}>
+                      <span
+                        className={`font-bold ${isQuitado ? "text-green-600" : "text-red-600"}`}
+                      >
                         {isQuitado ? "QUITADO" : formatCurrency(restante)}
                       </span>
                     );
-                  } 
+                  },
                 },
                 {
                   key: "acoes",
@@ -409,7 +464,10 @@ const Clientes = () => {
                   align: "right",
                   format: (_, row) => {
                     const restante = row.valor_total - row.valor_pago;
-                    if (restante <= 0.01) return <i className="fas fa-check-circle text-green-500 text-lg"></i>;
+                    if (restante <= 0.01)
+                      return (
+                        <i className="fas fa-check-circle text-green-500 text-lg"></i>
+                      );
                     return (
                       <div className="flex items-center gap-2 justify-end">
                         <input
@@ -419,7 +477,8 @@ const Clientes = () => {
                           value={paymentValue}
                           onChange={(e) => setPaymentValue(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") handlePayDebt(row.id, restante);
+                            if (e.key === "Enter")
+                              handlePayDebt(row.id, restante);
                           }}
                         />
                         <button
@@ -431,8 +490,8 @@ const Clientes = () => {
                         </button>
                       </div>
                     );
-                  }
-                }
+                  },
+                },
               ]}
               data={debts}
               emptyMessage="Cliente sem débitos registrados."
