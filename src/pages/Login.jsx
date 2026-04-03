@@ -1,37 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
-
-import bg1 from "../assets/bgs/bg1.png";
-import bg2 from "../assets/bgs/bg2.png";
-import bg3 from "../assets/bgs/bg3.png";
-import bg4 from "../assets/bgs/bg4.png";
-import bg5 from "../assets/bgs/bg5.png";
-import bg6 from "../assets/bgs/bg6.png";
-import bg7 from "../assets/bgs/bg7.png";
-import bg8 from "../assets/bgs/bg8.png";
-import bg9 from "../assets/bgs/bg9.png";
-import bg10 from "../assets/bgs/bg10.png";
-
-const BACKGROUNDS = [
-  { src: bg1, position: "left top" },
-  { src: bg2, position: "right top" },
-  { src: bg3, position: "left top" },
-  { src: bg4, position: "left top" },
-  { src: bg5, position: "left top" },
-  { src: bg6, position: "left top" },
-  { src: bg7, position: "right top" },
-  { src: bg8, position: "right top" },
-  { src: bg9, position: "left top" },
-  { src: bg10, position: "right top" },
-];
+import { useTenant } from "../context/TenantContext";
 
 const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const { showAlert } = useAlert();
+  const { tenant } = useTenant();
   const [appVersion, setAppVersion] = useState("");
-  const [bgConfig, setBgConfig] = useState(null);
 
   // Login State
   const [username, setUsername] = useState("");
@@ -44,11 +21,6 @@ const Login = ({ onLoginSuccess }) => {
     password: "",
     confirmPassword: "",
   });
-
-  useEffect(() => {
-    const random = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)];
-    setBgConfig(random);
-  }, []);
 
   const checkStatus = useCallback(async () => {
     try {
@@ -120,42 +92,61 @@ const Login = ({ onLoginSuccess }) => {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-gray-950 text-white">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="w-16 h-16 border-4 rounded-full animate-spin" style={{ borderColor: `${tenant.corPrimaria}33`, borderTopColor: tenant.corPrimaria }}></div>
           <div className="absolute inset-0 flex items-center justify-center">
-             <i className="fas fa-cubes text-blue-500 text-xl"></i>
+             <i className="fas fa-store text-xl" style={{ color: tenant.corPrimaria }}></i>
           </div>
         </div>
         <p className="mt-6 text-xs font-black uppercase tracking-widest text-gray-500 animate-pulse">Iniciando Terminal...</p>
       </div>
     );
 
-  return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans select-none"
-      style={{
-        backgroundImage: `url(${bgConfig?.src})`,
+  // Background: usa imagem customizada ou gradiente bonito como fallback
+  const bgStyle = tenant.bgBase64
+    ? {
+        backgroundImage: `url(${tenant.bgBase64})`,
         backgroundSize: "cover",
         backgroundRepeat: "no-repeat",
-        backgroundPosition: bgConfig?.position || "center",
-      }}
+        backgroundPosition: "center",
+      }
+    : {};
+
+  return (
+    <div
+      className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans select-none ${
+        !tenant.bgBase64 ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-950" : ""
+      }`}
+      style={bgStyle}
     >
-      {/* Overlay de Vidro (Glassmorphism) para o Card */}
-      <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden w-full max-w-[420px] flex flex-col border border-white/40">
+      {/* Decoração de fundo quando não tem imagem customizada */}
+      {!tenant.bgBase64 && (
+        <>
+          <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-15 blur-3xl" style={{ backgroundColor: tenant.corPrimaria }}></div>
+          <div className="absolute bottom-[-15%] right-[-10%] w-[400px] h-[400px] rounded-full opacity-10 blur-3xl" style={{ backgroundColor: tenant.corSecundaria }}></div>
+          <div className="absolute top-[40%] left-[50%] w-[200px] h-[200px] rounded-full opacity-5 blur-2xl" style={{ backgroundColor: tenant.corPrimaria }}></div>
+        </>
+      )}
+
+      {/* Card de Login com Glass Effect */}
+      <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden w-full max-w-[420px] flex flex-col border border-white/40 relative z-10">
         
-        {/* Banner de Topo com Glass Effect */}
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 py-10 px-8 text-center relative overflow-hidden">
+        {/* Banner de Topo com cores dinâmicas */}
+        <div
+          className="py-10 px-8 text-center relative overflow-hidden"
+          style={{ background: `linear-gradient(135deg, ${tenant.corPrimaria}, ${tenant.corSecundaria})` }}
+        >
           <div className="absolute top-[-20%] right-[-10%] w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-20%] left-[-10%] w-32 h-32 bg-indigo-400/20 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-[-20%] left-[-10%] w-32 h-32 rounded-full blur-2xl" style={{ backgroundColor: `${tenant.corSecundaria}33` }}></div>
           
           <div className="relative z-10">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl mb-4 shadow-xl border border-white/30 transform rotate-12">
-               <i className="fas fa-cubes text-white text-4xl -rotate-12"></i>
+               <i className="fas fa-store text-white text-4xl -rotate-12"></i>
             </div>
-            <h1 className="text-4xl font-black text-white tracking-tighter mb-1">SysControl</h1>
+            <h1 className="text-4xl font-black text-white tracking-tighter mb-1">{tenant.nome}</h1>
             <div className="flex items-center justify-center gap-2">
                <div className="h-px bg-white/30 w-8"></div>
-               <p className="text-[10px] font-black uppercase tracking-widest text-blue-100/70">
-                 {isSetupMode ? "Setup Inicial" : "Terminal de Vendas"}
+               <p className="text-[10px] font-black uppercase tracking-widest text-white/70">
+                 {isSetupMode ? "Setup Inicial" : tenant.subtitulo}
                </p>
                <div className="h-px bg-white/30 w-8"></div>
             </div>
@@ -165,9 +156,9 @@ const Login = ({ onLoginSuccess }) => {
         <div className="p-10">
           {isSetupMode ? (
             <form onSubmit={handleSetup} className="space-y-5 animate-slide-up">
-              <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 mb-6 flex gap-4">
-                 <i className="fas fa-magic text-blue-600 mt-1"></i>
-                 <p className="text-[11px] leading-relaxed text-blue-700 font-bold">
+              <div className="p-4 rounded-2xl border mb-6 flex gap-4" style={{ backgroundColor: `${tenant.corPrimaria}08`, borderColor: `${tenant.corPrimaria}22` }}>
+                 <i className="fas fa-magic mt-1" style={{ color: tenant.corPrimaria }}></i>
+                 <p className="text-[11px] leading-relaxed font-bold" style={{ color: `${tenant.corPrimaria}cc` }}>
                    Este é o primeiro acesso. Defina as credenciais do <strong>Administrador Geral</strong> para desbloquear o sistema.
                  </p>
               </div>
@@ -175,7 +166,10 @@ const Login = ({ onLoginSuccess }) => {
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nome Completo</label>
                 <input
-                  className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                  className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-white"
+                  style={{ "--tw-ring-color": `${tenant.corPrimaria}15`, borderColor: undefined }}
+                  onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                  onBlur={(e) => e.target.style.borderColor = ''}
                   value={setupData.nome}
                   onChange={(e) => setSetupData({ ...setupData, nome: e.target.value })}
                   required
@@ -186,7 +180,9 @@ const Login = ({ onLoginSuccess }) => {
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Usuário / Login</label>
                 <input
-                  className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                  className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-white"
+                  onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                  onBlur={(e) => e.target.style.borderColor = ''}
                   value={setupData.username}
                   onChange={(e) => setSetupData({ ...setupData, username: e.target.value })}
                   required
@@ -199,7 +195,9 @@ const Login = ({ onLoginSuccess }) => {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Senha</label>
                   <input
                     type="password"
-                    className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                    className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-white"
+                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                    onBlur={(e) => e.target.style.borderColor = ''}
                     value={setupData.password}
                     onChange={(e) => setSetupData({ ...setupData, password: e.target.value })}
                     required
@@ -209,7 +207,9 @@ const Login = ({ onLoginSuccess }) => {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirmação</label>
                   <input
                     type="password"
-                    className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                    className="w-full bg-gray-50 border border-gray-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-white"
+                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                    onBlur={(e) => e.target.style.borderColor = ''}
                     value={setupData.confirmPassword}
                     onChange={(e) => setSetupData({ ...setupData, confirmPassword: e.target.value })}
                     required
@@ -227,13 +227,16 @@ const Login = ({ onLoginSuccess }) => {
           ) : (
             <form onSubmit={handleLogin} className="space-y-6 animate-fade-in">
               <div className="space-y-1 group">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 group-focus-within:text-blue-600 transition">Usuário</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 group-focus-within:text-wl-primary transition">Usuário</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-blue-500 transition">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-wl-primary transition">
                     <i className="fas fa-user-circle text-lg"></i>
                   </div>
                   <input
-                    className="w-full bg-gray-50 border border-gray-100 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white outline-none transition"
+                    className="w-full bg-gray-50 border border-gray-100 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-white outline-none transition"
+                    style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
+                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                    onBlur={(e) => e.target.style.borderColor = ''}
                     placeholder="ID do usuário"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -243,14 +246,17 @@ const Login = ({ onLoginSuccess }) => {
               </div>
 
               <div className="space-y-1 group">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 group-focus-within:text-blue-600 transition">Senha</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 group-focus-within:text-wl-primary transition">Senha</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-blue-500 transition">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-wl-primary transition">
                     <i className="fas fa-shield-alt text-lg"></i>
                   </div>
                   <input
                     type="password"
-                    className="w-full bg-gray-50 border border-gray-100 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white outline-none transition"
+                    className="w-full bg-gray-50 border border-gray-100 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-white outline-none transition"
+                    style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
+                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                    onBlur={(e) => e.target.style.borderColor = ''}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -260,7 +266,13 @@ const Login = ({ onLoginSuccess }) => {
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-4.5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-700 transition shadow-2xl shadow-blue-500/30 transform active:scale-[0.98] flex justify-center items-center gap-3"
+                className="w-full text-white py-4.5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] transition transform active:scale-[0.98] flex justify-center items-center gap-3"
+                style={{
+                  backgroundColor: tenant.corPrimaria,
+                  boxShadow: `0 10px 30px -5px ${tenant.corPrimaria}50`,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(0.9)'}
+                onMouseLeave={(e) => e.currentTarget.style.filter = ''}
               >
                 ENTRAR <i className="fas fa-arrow-right text-[10px]"></i>
               </button>
@@ -274,7 +286,19 @@ const Login = ({ onLoginSuccess }) => {
              v{appVersion} • build production
            </div>
            <div className="text-[10px] text-gray-500 font-bold">
-             &copy; 2025 SysControl. <a href="https://www.instagram.com/eminobre/" className="text-blue-500 hover:text-blue-700" target="_blank" rel="noopener noreferrer">@eminobre</a>
+             &copy; {new Date().getFullYear()} {tenant.nome}.
+             {tenant.devNome && (
+               <>
+                 {" "}
+                 {tenant.devLink ? (
+                   <a href={tenant.devLink} className="text-wl-primary hover:text-wl-primary-700" target="_blank" rel="noopener noreferrer">
+                     {tenant.devNome}
+                   </a>
+                 ) : (
+                   <span>{tenant.devNome}</span>
+                 )}
+               </>
+             )}
            </div>
         </div>
       </div>

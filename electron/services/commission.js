@@ -33,13 +33,10 @@ function calcularComissaoItem(item, venda, taxaNovos, taxaUsados) {
   const totalItem = item.preco_unitario * item.quantidade;
 
   // Rateio proporcional do desconto da venda para o item
-  let descontoItem = 0;
-  if (venda.desconto_tipo === "fixed") {
-    const ratio = venda.subtotal > 0 ? totalItem / venda.subtotal : 0;
-    descontoItem = (venda.desconto_valor || 0) * ratio;
-  } else {
-    descontoItem = (totalItem * (venda.desconto_valor || 0)) / 100;
-  }
+  // Obs: venda.desconto_valor no banco já é sempre armazenado como valor financeiro (R$),
+  // não importa se o usuário digitou em % originalmente na tela de venda.
+  const ratio = venda.subtotal > 0 ? totalItem / venda.subtotal : 0;
+  const descontoItem = (venda.desconto_valor || 0) * ratio;
 
   const receitaLiqItem = totalItem - descontoItem;
 

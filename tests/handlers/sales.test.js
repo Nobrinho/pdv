@@ -57,6 +57,8 @@ async function criarSchema(db) {
     t.boolean("cancelada").defaultTo(false);
     t.string("motivo_cancelamento").nullable();
     t.datetime("data_cancelamento").nullable();
+    t.boolean("comissao_paga").defaultTo(false);
+    t.datetime("data_pagamento_comissao").nullable();
   });
   await db.schema.createTable("venda_itens", (t) => {
     t.increments("id").primary();
@@ -222,6 +224,17 @@ async function cancelarVenda(db, vendaId, motivo) {
     await trx.rollback();
     return { success: false, error: error.message };
   }
+}
+
+async function payCommissions(db, vendaIds) {
+  if (!vendaIds || vendaIds.length === 0) return { success: true };
+  await db("vendas")
+    .whereIn("id", vendaIds)
+    .update({
+      comissao_paga: true,
+      data_pagamento_comissao: Date.now(),
+    });
+  return { success: true };
 }
 
 async function getSales(db, filters = {}) {
@@ -451,5 +464,33 @@ describe("Vendas - Listagem e Comissões (get-sales)", () => {
     // Lucro Usado = 50 * 0.25 = 12.50
     // Total esperado: 27.50
     expect(venda.comissao_real).toBeCloseTo(27.50);
+  });
+
+  it("registra baixa de comissões passivamente via IDs", async () => {
+    // Insere duas vendas
+    const venda1 = { vendedor_id: 1, subtotal: 100, total_final: 100, pagamentos: [{ metodo: "Dinheiro", valor: 100 }], itens: [] };
+    const venda2 = { vendedor_id: 1, subtotal: 50, total_final: 50, pagamentos: [{ metodo: "Pix", valor: 50 }], itens: [] };
+    
+    const v1 = await criarVenda(db, venda1);
+    const v2 = await criarVenda(db, venda2);
+
+    // Estado inicial
+    const antes = await getSales(db);
+    expect(antes.find(v => v.id === v1.id).comissao_paga).toBe(0); // false no sqlite = 0
+    expect(antes.find(v => v.id === v2.id).comissao_paga).toBe(0);
+
+    // Da Baixa na v1 apenas
+    const res = await payCommissions(db, [v1.id]);
+    expect(res.success).toBe(true);
+
+    // Verifica mutação de status e timestamps
+    const depois = await getSales(db);
+    const vendaBaixada = depois.find(v => v.id === v1.id);
+    const vendaPendente = depois.find(v => v.id === v2.id);
+
+    expect(vendaBaixada.comissao_paga).toBe(1); // true
+    expect(vendaBaixada.data_pagamento_comissao).toBeGreaterThan(0);
+    expect(vendaPendente.comissao_paga).toBe(0);
+    expect(vendaPendente.data_pagamento_comissao).toBeNull();
   });
 });

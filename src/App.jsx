@@ -18,8 +18,10 @@ import Login from "./pages/Login";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
 import Updater from "./components/Updater";
 import Relatorios from "./pages/Relatorios";
+import Comissoes from "./pages/Comissoes";
 import Clientes from "./pages/Clientes";
 import { useAuth } from "./context/AuthContext";
+import { useTenant } from "./context/TenantContext";
 
 // Configuração do Menu (Estática)
 const MENU_ITEMS = [
@@ -72,6 +74,12 @@ const MENU_ITEMS = [
     restricted: true,
   },
   {
+    path: "/comissoes",
+    label: "Comissões",
+    icon: "fa-hand-holding-usd",
+    restricted: true,
+  },
+  {
     path: "/clientes",
     label: "Clientes",
     icon: "fa-users",
@@ -88,6 +96,7 @@ const MENU_ITEMS = [
 function App() {
   const { user, login, logout, hasAccess, requestRouteAccess, unlockedRoutes } =
     useAuth();
+  const { tenant } = useTenant();
   const [appVersion, setAppVersion] = useState("");
 
   const navigate = useNavigate();
@@ -119,8 +128,8 @@ function App() {
     <div className="flex h-screen overflow-hidden bg-gray-100 font-sans text-gray-900">
       <aside className="w-64 bg-gray-800 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-10">
         <div className="h-16 flex items-center justify-center border-b border-gray-700 bg-gray-900 shadow-md">
-          <i className="fas fa-cubes text-blue-500 mr-2 text-xl"></i>
-          <span className="text-lg font-bold tracking-wide">SysControl</span>
+          <i className="fas fa-store text-wl-primary-500 mr-2 text-xl"></i>
+          <span className="text-lg font-bold tracking-wide">{tenant.nome}</span>
         </div>
 
         <div className="px-4 py-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
@@ -173,9 +182,10 @@ function App() {
                 onClick={() => handleMenuClick(item.path)}
                 className={`w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 group text-left relative ${
                   isActive
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40"
+                    ? "bg-wl-primary text-white shadow-lg"
                     : "text-gray-400 hover:bg-gray-700 hover:text-white"
                 }`}
+                style={isActive ? { boxShadow: `0 4px 14px -3px var(--color-primary-900)` } : {}}
               >
                 <i
                   className={`fas ${item.icon} w-6 text-center ${
@@ -201,15 +211,24 @@ function App() {
 
         <div className="p-4 border-t border-gray-700 bg-gray-900 flex justify-between items-center">
           <p className="text-xs text-gray-500">
-            Versão {appVersion || "..."} by{" "}
-            <a
-              href="https://www.instagram.com/eminobre/"
-              className="text-blue-400 hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              @eminobre
-            </a>
+            Versão {appVersion || "..."}
+            {tenant.devNome && (
+              <>
+                {" "}by{" "}
+                {tenant.devLink ? (
+                  <a
+                    href={tenant.devLink}
+                    className="text-wl-primary-400 hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {tenant.devNome}
+                  </a>
+                ) : (
+                  <span className="text-wl-primary-400">{tenant.devNome}</span>
+                )}
+              </>
+            )}
           </p>
 
           <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
@@ -227,6 +246,7 @@ function App() {
           <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
           <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
           <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
+          <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
           <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
 
           <Route path="*" element={<Navigate to="/" />} />

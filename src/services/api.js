@@ -33,6 +33,7 @@ export const api = {
     list:   (f)    => safeCall(window.api.getSales, f),
     items:  (id)   => safeCall(window.api.getSaleItems, id),
     cancel: (data) => safeCall(window.api.cancelSale, data),
+    payCommissions: (ids) => safeCall(window.api.payCommissions, ids),
   },
 
   // --- CLIENTES & FIADO ---
@@ -79,6 +80,7 @@ export const api = {
     backup: () => safeCall(window.api.backupDatabase),
     restore: () => safeCall(window.api.restoreDatabase),
     getVersion: () => safeCall(window.api.getAppVersion),
+    getTenant: () => safeCall(window.api.getTenantConfig),
   },
 
   // --- DASHBOARD ---

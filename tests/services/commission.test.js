@@ -72,7 +72,7 @@ describe("calcularComissaoItem", () => {
   it("desconto percentual rateado corretamente", () => {
     const venda = criarVenda({
       subtotal: 300,
-      desconto_valor: 10,
+      desconto_valor: 30, // O frontend já envia o valor em R$ calculado. 10% de 300 = 30.
       desconto_tipo: "percent",
     });
 

@@ -48,8 +48,9 @@ contextBridge.exposeInMainWorld("api", {
   printSilent: (html, printer) =>
     ipcRenderer.invoke("print-silent", html, printer),
 
-  // --- CANCELAR ---
+  // --- VENDAS & COMISSÕES ---
   cancelSale: (data) => ipcRenderer.invoke("cancel-sale", data),
+  payCommissions: (ids) => ipcRenderer.invoke("pay-commissions", ids),
 
   // --- NOVO: HISTÓRICO ---
   getProductHistory: (filters) => ipcRenderer.invoke("get-product-history", filters),
@@ -74,6 +75,9 @@ contextBridge.exposeInMainWorld("api", {
 
   // --- VERSÃO DO SISTEMA---
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
+
+  // --- WHITE LABEL ---
+  getTenantConfig: () => ipcRenderer.invoke("get-tenant-config"),
 
   getInventoryStats: () => ipcRenderer.invoke("get-inventory-stats"),
 

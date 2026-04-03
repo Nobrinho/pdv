@@ -171,13 +171,9 @@ const useReportData = () => {
       const vendedor = allPeople.find((p) => p.id === venda.vendedor_id);
       const subtotalProdutos = venda.subtotal;
 
-      let desconto = 0;
-      if (venda.desconto_valor) {
-        desconto =
-          venda.desconto_tipo === "fixed"
-            ? venda.desconto_valor
-            : (subtotalProdutos * venda.desconto_valor) / 100;
-      }
+      // O banco de dados sempre hospeda desconto_valor em Reais em termos absolutos (monetários),
+      // pois a tela Vendas.jsx converte a porcentagem para R$ antes de despachar o save da venda.
+      const desconto = venda.desconto_valor || 0;
 
       const acrescimo = venda.acrescimo || 0;
       const valorFinalProdutos = subtotalProdutos - desconto;
@@ -287,7 +283,7 @@ const useReportData = () => {
 
     const lucroLiquido =
       totalFaturamentoPecas -
-      (totalCustoPecas + totalComissoes + totalDespesaMO);
+      (totalCustoPecas + totalComissoes);
 
     setMetrics({
       faturamento: totalFaturamentoPecas,
