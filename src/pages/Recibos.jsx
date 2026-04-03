@@ -361,7 +361,7 @@ const Recibos = () => {
               onClick={handleSilentPrint}
               className="flex-[2] px-4 py-2.5 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 shadow-md active:scale-95"
             >
-              <i className="fas fa-print mr-2"></i> Imprimir Segovia
+              <i className="fas fa-print mr-2"></i> Reimprimir Recibo
             </button>
           </div>
         }

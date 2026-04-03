@@ -32,7 +32,7 @@ const HistoricoPrecos = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await api.products.getHistory({ page, limit: LIMIT });
+      const result = await api.products.history({ page, limit: LIMIT });
       setHistory(result.data || []);
       setTotalPages(result.totalPages || 0);
       setTotalRecords(result.total || 0);

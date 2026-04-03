@@ -40,6 +40,42 @@ const Vendas = () => {
   const [optsCpfReceipt, setOptsCpfReceipt] = useState(false);
   const [receiptCpf, setReceiptCpf] = useState("");
   const [receiptName, setReceiptName] = useState("");
+  const [receiptClientFound, setReceiptClientFound] = useState(null); // cliente já existente encontrado pelo doc
+  const [receiptSearching, setReceiptSearching] = useState(false);
+
+  // Auto-busca quando CPF (11 dígitos) ou CNPJ (14 dígitos) está completo
+  const handleReceiptCpfChange = async (rawValue) => {
+    const masked = applyCpfCnpjMask(rawValue);
+    setReceiptCpf(masked);
+    const digits = masked.replace(/\D/g, "");
+
+    // Resetar se o usuário apagar
+    if (digits.length < 11) {
+      setReceiptClientFound(null);
+      setReceiptName("");
+      return;
+    }
+
+    // CPF = 11 dígitos, CNPJ = 14 dígitos
+    if (digits.length === 11 || digits.length === 14) {
+      try {
+        setReceiptSearching(true);
+        const res = await api.clients.findByDoc(masked);
+        if (res.success && res.client) {
+          setReceiptClientFound(res.client);
+          setReceiptName(res.client.nome);
+        } else {
+          setReceiptClientFound(null);
+          setReceiptName("");
+        }
+      } catch (err) {
+        console.error("Erro ao buscar cliente por documento:", err);
+        setReceiptClientFound(null);
+      } finally {
+        setReceiptSearching(false);
+      }
+    }
+  };
 
   // --- DADOS NOVO CLIENTE ---
   const [newClientData, setNewClientData] = useState({
@@ -168,10 +204,10 @@ const Vendas = () => {
     // --- CPF NO RECIBO LOGIC ---
     if (optsCpfReceipt) {
       if (finalClientId && finalClientObj?.documento) {
-        // Já tem documento, segue normal
+        // Cliente selecionado já tem documento, segue normal
       } else if (finalClientId && !finalClientObj?.documento) {
         if (!receiptCpf) return showAlert("Informe o CPF/CNPJ para o recibo.", "Aviso", "warning");
-        if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
+        if (!validarDocumento(receiptCpf)) return showAlert("Documento inválido.", "Aviso", "error");
         const res = await api.clients.save({ id: finalClientId, ...finalClientObj, documento: receiptCpf });
         if (res.success) {
           finalClientObj = { ...finalClientObj, documento: receiptCpf };
@@ -179,16 +215,18 @@ const Vendas = () => {
           return showAlert("Erro ao salvar documento do cliente.", "Erro", "error");
         }
       } else {
-        if (!receiptCpf || !receiptName) {
-          return showAlert("Nome e CPF são obrigatórios para emissão com CPF.", "Aviso", "warning");
-        }
-        if (!validarDocumento(receiptCpf)) return showAlert("O CPF/CNPJ informado é inválido.", "Aviso", "error");
-        try {
-          const searchRes = await api.clients.findByDoc(receiptCpf);
-          if (searchRes.success && searchRes.client) {
-            finalClientId = searchRes.client.id;
-            finalClientObj = searchRes.client;
-          } else {
+        // Sem cliente selecionado — usar o fluxo de auto-busca
+        if (!receiptCpf) return showAlert("Informe o CPF/CNPJ para o recibo.", "Aviso", "warning");
+        if (!validarDocumento(receiptCpf)) return showAlert("Documento inválido.", "Aviso", "error");
+
+        if (receiptClientFound) {
+          // Cliente já foi encontrado pela auto-busca
+          finalClientId = receiptClientFound.id;
+          finalClientObj = receiptClientFound;
+        } else {
+          // Cliente novo — precisa de nome
+          if (!receiptName) return showAlert("Informe o nome do cliente para o recibo.", "Aviso", "warning");
+          try {
             const res = await api.clients.save({ nome: receiptName, documento: receiptCpf });
             if (res.success && res.id) {
               finalClientId = res.id;
@@ -196,9 +234,9 @@ const Vendas = () => {
             } else {
               return showAlert("Erro ao salvar dados do cliente: " + res.error, "Erro", "error");
             }
+          } catch (error) {
+            return showAlert("Erro na verificação de cliente: " + error.message, "Erro", "error");
           }
-        } catch (error) {
-          return showAlert("Erro na verificação de cliente: " + error.message, "Erro", "error");
         }
       }
     }
@@ -206,7 +244,7 @@ const Vendas = () => {
     const saleData = {
       vendedor_id: selectedSeller,
       trocador_id: selectedMechanic || null,
-      cliente_id: selectedClient || null,
+      cliente_id: finalClientId || null,
       subtotal: totals.subtotal,
       acrescimo_valor: totals.surchargeAmount,
       desconto_valor: totals.discountAmount,
@@ -223,7 +261,7 @@ const Vendas = () => {
       if (result.success) {
         const sellerName = sellers.find((s) => s.id == selectedSeller)?.nome;
         const mechanicName = mechanics.find((m) => m.id == selectedMechanic)?.nome;
-        const clientName = clients.find((c) => c.id == selectedClient)?.nome;
+        const clientName = finalClientObj?.nome || clients.find((c) => c.id == selectedClient)?.nome;
 
         setLastSale({
           ...saleData,
@@ -248,6 +286,10 @@ const Vendas = () => {
         setSearchTerm("");
         handleSelectClient(null);
         setSelectedMechanic("");
+        setOptsCpfReceipt(false);
+        setReceiptCpf("");
+        setReceiptName("");
+        setReceiptClientFound(null);
         loadData();
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
@@ -686,8 +728,31 @@ const Vendas = () => {
                     </div>
                   ) : (
                     <>
-                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="Nome Completo *" value={receiptName} onChange={e => setReceiptName(applyNameMask(e.target.value))} />
-                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="CPF/CNPJ *" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
+                      <div className="relative">
+                        <input
+                          className="w-full border border-gray-300 rounded p-1.5 pl-8 text-sm font-medium"
+                          placeholder="CPF/CNPJ *"
+                          value={receiptCpf}
+                          onChange={e => handleReceiptCpfChange(e.target.value)}
+                          maxLength="18"
+                          autoFocus
+                        />
+                        <i className={`fas ${receiptSearching ? 'fa-spinner fa-spin' : receiptClientFound ? 'fa-check-circle text-green-500' : 'fa-id-card text-gray-400'} absolute left-2.5 top-2.5 text-xs`}></i>
+                      </div>
+                      {receiptClientFound ? (
+                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded p-1.5 text-sm">
+                          <i className="fas fa-user-check text-green-600 text-xs ml-1"></i>
+                          <span className="font-bold text-green-800">{receiptClientFound.nome}</span>
+                        </div>
+                      ) : (
+                        <input
+                          className="w-full border border-gray-300 rounded p-1.5 text-sm"
+                          placeholder="Nome Completo *"
+                          value={receiptName}
+                          onChange={e => setReceiptName(applyNameMask(e.target.value))}
+                          disabled={receiptCpf.replace(/\D/g, '').length < 11}
+                        />
+                      )}
                     </>
                   )}
                 </div>

@@ -3,7 +3,7 @@
 // =============================================================
 import React from "react";
 
-const Modal = ({ isOpen, onClose, title, children, size = "md", icon }) => {
+const Modal = ({ isOpen, onClose, title, children, footer, size = "md", icon }) => {
   if (!isOpen) return null;
 
   const sizeClasses = {
@@ -19,10 +19,10 @@ const Modal = ({ isOpen, onClose, title, children, size = "md", icon }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in backdrop-blur-sm">
       <div
-        className={`bg-white rounded-xl shadow-2xl p-6 w-full ${sizeClasses[size] || sizeClasses.md} transform transition-all scale-100 max-h-[90vh] overflow-y-auto`}
+        className={`bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size] || sizeClasses.md} transform transition-all scale-100 max-h-[90vh] flex flex-col`}
       >
         {title && (
-          <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-3 flex items-center justify-between">
+          <h2 className="text-xl font-bold p-6 pb-3 text-gray-800 border-b flex items-center justify-between shrink-0">
             <span className="flex items-center gap-2">
               {icon && <i className={`fas ${icon}`}></i>}
               {title}
@@ -37,7 +37,14 @@ const Modal = ({ isOpen, onClose, title, children, size = "md", icon }) => {
             )}
           </h2>
         )}
-        {children}
+        <div className="p-6 pt-4 overflow-y-auto flex-1">
+          {children}
+        </div>
+        {footer && (
+          <div className="p-6 pt-3 border-t border-gray-100 shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

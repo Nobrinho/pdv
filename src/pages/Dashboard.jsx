@@ -54,7 +54,7 @@ const Dashboard = () => {
       // Executar chamadas em paralelo para melhor performance
       const [statsData, weeklyData, stockData, invStats] = await Promise.all([
         api.dashboard.stats(),
-        api.dashboard.weekly(),
+        api.dashboard.weeklySales(),
         api.dashboard.lowStock(),
         api.dashboard.inventoryStats()
       ]);
