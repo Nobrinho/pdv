@@ -1,7 +1,7 @@
 {
-  "name": "pdv-whitelabel",
-  "productName": "PDV",
-  "version": "2.0.0",
+  "name": "syscontrol",
+  "productName": "SysControl",
+  "version": "1.7.0",
   "description": "Sistema PDV White Label - Controle de Estoque e Vendas",
   "main": "electron/main.js",
   "author": "Emerson Nobre",
