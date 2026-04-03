@@ -224,6 +224,71 @@ async function cancelarVenda(db, vendaId, motivo) {
   }
 }
 
+async function getSales(db, filters = {}) {
+  const query = db("vendas")
+    .leftJoin("pessoas as vendedor", "vendas.vendedor_id", "vendedor.id")
+    .leftJoin("clientes", "vendas.cliente_id", "clientes.id")
+    .select(
+      "vendas.*",
+      "vendedor.nome as vendedor_nome",
+      "vendedor.comissao_fixa",
+      "clientes.documento as cliente_documento",
+      "clientes.telefone as cliente_telefone",
+      "clientes.nome as cliente_nome"
+    )
+    .orderBy("data_venda", "desc");
+
+  const vendas = await query;
+  const vendaIds = vendas.map((v) => v.id);
+
+  const allItems = await db("venda_itens")
+    .leftJoin("produtos", "venda_itens.produto_id", "produtos.id")
+    .whereIn("venda_id", vendaIds)
+    .select("venda_itens.*", "produtos.tipo");
+
+  const allPayments = await db("venda_pagamentos")
+    .whereIn("venda_id", vendaIds)
+    .select("*");
+
+  // Taxas mockadas (simulando services/commission.js)
+  const comissaoPadrao = 0.30;
+  const comissaoUsados = 0.25;
+
+  const vendasProcessadas = vendas.map((venda) => {
+    const itensVenda = allItems.filter((i) => i.venda_id === venda.id);
+    const pagamentosVenda = allPayments.filter((p) => p.venda_id === venda.id);
+    const custoTotal = itensVenda.reduce(
+      (acc, item) => acc + item.custo_unitario * item.quantidade,
+      0,
+    );
+
+    const taxaVendedorNovos = venda.comissao_fixa
+      ? parseFloat(venda.comissao_fixa) / 100
+      : comissaoPadrao;
+
+    let comissaoTotal = 0;
+    for (const item of itensVenda) {
+      const lucroItem = (item.preco_unitario - item.custo_unitario) * item.quantidade;
+      const calcVal = lucroItem > 0 ? lucroItem : 0;
+      if (item.tipo === "novo") {
+        comissaoTotal += calcVal * taxaVendedorNovos;
+      } else {
+        comissaoTotal += calcVal * comissaoUsados;
+      }
+    }
+
+    return {
+      ...venda,
+      custo_total_real: custoTotal,
+      comissao_real: comissaoTotal,
+      lista_pagamentos: pagamentosVenda,
+      itens: itensVenda,
+    };
+  });
+
+  return vendasProcessadas;
+}
+
 // ============================
 // Testes
 // ============================
@@ -332,5 +397,59 @@ describe("Vendas - Fluxo Completo", () => {
 
     const produto = await db("produtos").where("id", 1).first();
     expect(produto.estoque_atual).toBe(10);
+  });
+});
+
+describe("Vendas - Listagem e Comissões (get-sales)", () => {
+  it("carrega vendas com dados do cliente inclusos", async () => {
+    // Insere uma venda com cliente vinculado
+    const data = {
+      vendedor_id: 1,
+      cliente_id: 1,
+      subtotal: 100,
+      total_final: 100,
+      desconto_valor: 0,
+      desconto_tipo: "percent",
+      itens: [{ id: 1, qty: 1, preco_venda: 100, custo: 50 }], // Produto Teste A (novo)
+      pagamentos: [{ metodo: "Pix", valor: 100 }],
+    };
+
+    await criarVenda(db, data);
+
+    const vendas = await getSales(db);
+    expect(vendas.length).toBe(1);
+    
+    const venda = vendas[0];
+    // Verifica vinculo com cliente
+    expect(venda.cliente_nome).toBe("Maria Cliente");
+    expect(venda.cliente_documento).toBe("123.456.789-00");
+  });
+
+  it("calcula corretamente comissão diferenciada para produtos usados", async () => {
+    const data = {
+      vendedor_id: 1,
+      cliente_id: null,
+      subtotal: 180,
+      total_final: 180,
+      desconto_valor: 0,
+      desconto_tipo: "percent",
+      itens: [
+        { id: 1, qty: 1, preco_venda: 100, custo: 50 }, // novo: lucro de $50
+        { id: 2, qty: 1, preco_venda: 80, custo: 30 }   // usado: lucro de $50
+      ],
+      pagamentos: [{ metodo: "Pix", valor: 180 }],
+    };
+
+    await criarVenda(db, data);
+
+    const vendas = await getSales(db);
+    const venda = vendas[0];
+
+    // O Mock está simulando comissaoPadrao = 0.30 e comissaoUsados = 0.25
+    // Taxa do vendedor está nula, então comissao de Novos é 0.30
+    // Lucro Novo = 50 * 0.30 = 15
+    // Lucro Usado = 50 * 0.25 = 12.50
+    // Total esperado: 27.50
+    expect(venda.comissao_real).toBeCloseTo(27.50);
   });
 });
