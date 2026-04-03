@@ -75,6 +75,121 @@ function register(safeHandle, knex) {
 
     return { data, total, page, totalPages: Math.ceil(total / limit) };
   });
+
+  // === IMPORTAÇÃO EM LOTE ===
+  safeHandle("import-products-batch", async (event, { products, conflictMode }) => {
+    // conflictMode: "skip" | "update"
+    const trx = await knex.transaction();
+    const results = { created: 0, updated: 0, skipped: 0, errors: [] };
+
+    try {
+      for (const [index, product] of products.entries()) {
+        try {
+          // Validação mínima
+          if (!product.descricao || !String(product.descricao).trim()) {
+            results.errors.push({ row: index + 1, error: "Descrição obrigatória" });
+            continue;
+          }
+
+          // Converter para String com segurança para evitar erro de .trim() em números
+          const safeDesc = String(product.descricao).trim();
+          const safeCod = product.codigo ? String(product.codigo).trim() : null;
+
+          // Buscar duplicata por código (mesmo que esteja inativo para evitar conflito UNIQUE)
+          const existing = safeCod
+            ? await trx("produtos").where("codigo", safeCod).first()
+            : null;
+
+          if (existing && conflictMode === "skip") {
+            results.skipped++;
+            continue;
+          }
+
+          if (existing) {
+            // Atualizar produto existente
+            const updates = {
+              descricao: safeDesc,
+              custo: parseFloat(product.custo || existing.custo),
+              preco_venda: parseFloat(product.preco_venda || existing.preco_venda),
+              estoque_atual: parseInt(product.estoque_atual ?? existing.estoque_atual),
+              tipo: product.tipo || existing.tipo,
+              ativo: true,
+            };
+            await trx("produtos").where("id", existing.id).update(updates);
+
+            // Registrar histórico se preço ou estoque mudou
+            if (
+              parseFloat(existing.preco_venda) !== updates.preco_venda ||
+              parseInt(existing.estoque_atual) !== updates.estoque_atual
+            ) {
+              await trx("historico_produtos").insert({
+                produto_id: existing.id,
+                preco_antigo: existing.preco_venda,
+                preco_novo: updates.preco_venda,
+                estoque_antigo: existing.estoque_atual,
+                estoque_novo: updates.estoque_atual,
+                tipo_alteracao: "atualizacao_lote",
+                data_alteracao: Date.now(),
+              });
+            }
+            results.updated++;
+          } else {
+            // Criar novo produto
+            const codigo = safeCod || ("AUTO-" + Date.now() + "-" + index);
+            const [id] = await trx("produtos").insert({
+              codigo,
+              descricao: safeDesc,
+              custo: parseFloat(product.custo || 0),
+              preco_venda: parseFloat(product.preco_venda || 0),
+              estoque_atual: parseInt(product.estoque_atual || 0),
+              tipo: product.tipo || "novo",
+              ativo: true,
+            });
+
+            await trx("historico_produtos").insert({
+              produto_id: id,
+              preco_novo: parseFloat(product.preco_venda || 0),
+              estoque_novo: parseInt(product.estoque_atual || 0),
+              tipo_alteracao: "cadastro_lote",
+              data_alteracao: Date.now(),
+            });
+            results.created++;
+          }
+        } catch (rowError) {
+          results.errors.push({ row: index + 1, error: rowError.message });
+        }
+      }
+
+      await trx.commit();
+      return { success: true, ...results };
+    } catch (error) {
+      await trx.rollback();
+      return { success: false, error: error.message };
+    }
+  });
+
+  // === DIALOG DE ARQUIVO ===
+  safeHandle("open-file-dialog", async () => {
+    const { dialog } = require("electron");
+    const path = require("path");
+    const fs = require("fs");
+
+    const result = await dialog.showOpenDialog({
+      title: "Selecionar Planilha de Produtos",
+      filters: [{ name: "Planilhas", extensions: ["xlsx", "xls", "csv"] }],
+      properties: ["openFile"],
+    });
+
+    if (result.canceled || !result.filePaths.length) return { canceled: true };
+
+    const filePath = result.filePaths[0];
+    const buffer = fs.readFileSync(filePath);
+    return {
+      canceled: false,
+      buffer: buffer.toString("base64"),
+      fileName: path.basename(filePath),
+    };
+  });
 }
 
 module.exports = { register };

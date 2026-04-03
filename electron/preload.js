@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("api", {
   searchProducts: (params) => ipcRenderer.invoke("search-products", params),
   saveProduct: (product) => ipcRenderer.invoke("save-product", product),
   deleteProduct: (id) => ipcRenderer.invoke("delete-product", id),
+  importProductsBatch: (data) => ipcRenderer.invoke("import-products-batch", data),
+  openFileDialog: () => ipcRenderer.invoke("open-file-dialog"),
 
   // --- PESSOAS (Equipa) ---
   getPeople: () => ipcRenderer.invoke("get-people"),

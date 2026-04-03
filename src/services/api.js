@@ -24,6 +24,7 @@ export const api = {
     save:    (data)   => safeCall(window.api.saveProduct, data),
     delete:  (id)     => safeCall(window.api.deleteProduct, id),
     history: (f)      => safeCall(window.api.getProductHistory, f),
+    importBatch: (data) => safeCall(window.api.importProductsBatch, data),
   },
 
   // --- VENDAS & RECIBOS ---
@@ -107,5 +108,6 @@ export const api = {
     checkUpdates: () => safeCall(window.api.checkForUpdates),
     downloadUpdate: () => safeCall(window.api.downloadUpdate),
     quitAndInstall: () => safeCall(window.api.quitAndInstall),
+    openFileDialog: () => safeCall(window.api.openFileDialog),
   },
 };
