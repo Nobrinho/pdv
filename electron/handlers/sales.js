@@ -125,7 +125,7 @@ function register(safeHandle, knex) {
     const allItems = await knex("venda_itens")
       .leftJoin("produtos", "venda_itens.produto_id", "produtos.id")
       .whereIn("venda_id", vendaIds)
-      .select("venda_itens.*", "produtos.tipo");
+      .select("venda_itens.*", "produtos.tipo", "produtos.descricao");
 
     const allPayments = await knex("venda_pagamentos")
       .whereIn("venda_id", vendaIds)
@@ -155,6 +155,7 @@ function register(safeHandle, knex) {
         custo_total_real: custoTotal,
         comissao_real: comissaoTotal,
         lista_pagamentos: pagamentosVenda,
+        itens: itensVenda,
       };
     });
 
@@ -194,6 +195,17 @@ function register(safeHandle, knex) {
       await trx.rollback();
       return { success: false, error: error.message };
     }
+  });
+
+  safeHandle("pay-commissions", async (event, vendaIds) => {
+    if (!vendaIds || vendaIds.length === 0) return { success: true };
+    await knex("vendas")
+      .whereIn("id", vendaIds)
+      .update({
+        comissao_paga: true,
+        data_pagamento_comissao: Date.now(),
+      });
+    return { success: true };
   });
 }
 

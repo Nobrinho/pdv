@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
 import Updater from "./components/Updater";
 import Relatorios from "./pages/Relatorios";
+import Comissoes from "./pages/Comissoes";
 import Clientes from "./pages/Clientes";
 import { useAuth } from "./context/AuthContext";
 import { useTenant } from "./context/TenantContext";
@@ -70,6 +71,12 @@ const MENU_ITEMS = [
     path: "/relatorios",
     label: "Relatórios",
     icon: "fa-chart-line",
+    restricted: true,
+  },
+  {
+    path: "/comissoes",
+    label: "Comissões",
+    icon: "fa-hand-holding-usd",
     restricted: true,
   },
   {
@@ -239,6 +246,7 @@ function App() {
           <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
           <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
           <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
+          <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
           <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
 
           <Route path="*" element={<Navigate to="/" />} />

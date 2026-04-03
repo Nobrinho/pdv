@@ -33,6 +33,7 @@ export const api = {
     list:   (f)    => safeCall(window.api.getSales, f),
     items:  (id)   => safeCall(window.api.getSaleItems, id),
     cancel: (data) => safeCall(window.api.cancelSale, data),
+    payCommissions: (ids) => safeCall(window.api.payCommissions, ids),
   },
 
   // --- CLIENTES & FIADO ---
