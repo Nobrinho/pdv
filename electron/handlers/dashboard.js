@@ -67,7 +67,7 @@ function register(safeHandle, knex) {
     });
 
     const lucro =
-      totalFaturamento - totalCustoProdutos - totalComissoes - totalMaoDeObra;
+      totalFaturamento - totalCustoProdutos - totalComissoes;
 
     return {
       faturamento: totalFaturamento,

@@ -327,8 +327,7 @@ const Relatorios = () => {
             Lucro Líquido Real
           </p>
           <p className="text-xs text-green-600">
-            Fat. Peças + Acréscimos - (Custo Peças + Comissões + Mão de Obra
-            Total)
+            Fat. Peças + Acréscimos - (Custo Peças + Comissões)
           </p>
         </div>
         <p className="text-3xl font-bold text-green-700 tracking-tight">

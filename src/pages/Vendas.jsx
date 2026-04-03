@@ -179,6 +179,14 @@ const Vendas = () => {
         "Pagamento Incompleto",
         "warning",
       );
+    // Trava de Negócio: Desconto não pode consumir valor de adicionais ou mão de obra
+    if (totals.discountAmount > totals.subtotal) {
+      return showAlert(
+        "O desconto não pode ser maior que o subtotal das peças.",
+        "Desconto Inválido",
+        "error",
+      );
+    }
 
     const labor = parseFloat(laborInput) || 0;
 

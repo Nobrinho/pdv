@@ -283,7 +283,7 @@ const useReportData = () => {
 
     const lucroLiquido =
       totalFaturamentoPecas -
-      (totalCustoPecas + totalComissoes + totalDespesaMO);
+      (totalCustoPecas + totalComissoes);
 
     setMetrics({
       faturamento: totalFaturamentoPecas,
