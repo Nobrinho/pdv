@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React from "react";
 import dayjs from "dayjs";
-import { LOGO_BASE64 as logo } from "../assets/logoBase64";
+import { useTenant } from "../context/TenantContext";
 
 interface CupomFiscalProps {
   sale: any;
@@ -9,6 +9,8 @@ interface CupomFiscalProps {
 }
 
 const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
+  const { tenant } = useTenant();
+
   if (!sale || !items) return null;
 
   const styles = {
@@ -29,14 +31,14 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
       marginBottom: "5px",
       paddingBottom: "5px",
     },
-    table: { width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }, // tableLayout fixed ajuda no controle de colunas
+    table: { width: "100%", borderCollapse: "collapse", tableLayout: "fixed" },
     tdItem: {
       padding: "4px 0",
       verticalAlign: "top",
       wordWrap: "break-word",
       overflowWrap: "break-word",
-      whiteSpace: "normal", // Garante a quebra de linha
-      width: "70%", // Dá mais espaço para o nome do produto
+      whiteSpace: "normal",
+      width: "70%",
     },
     tdTotal: {
       padding: "4px 0",
@@ -67,23 +69,39 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
 
   return (
     <div id="cupom-fiscal" style={styles.container}>
-      {/* Cabeçalho */}
+      {/* Cabeçalho — Dados dinâmicos da loja */}
       <div style={{ ...styles.center, ...styles.borderBottom }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: "5px",
-          }}
-        >
-          <img src={logo} alt="logo" width={70} />
-        </div>
+        {tenant.logoBase64 && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: "5px",
+            }}
+          >
+            <img
+              src={tenant.logoBase64}
+              alt="logo"
+              width={70}
+              style={{ maxHeight: "60px", objectFit: "contain" }}
+            />
+          </div>
+        )}
         <h2 style={{ ...styles.bold, fontSize: "14px", margin: "0" }}>
-          BARBA PNEUS
+          {tenant.nome}
         </h2>
-        <p style={{ margin: "2px 0" }}>Av. Brigadeiro Hilario Gurjão, 22</p>
-        <p style={{ margin: "1px 0" }}>Jorge Teixeira 1 etapa - MANAUS/AM</p>
-        <p style={{ margin: "1px 0" }}>Tel: (92) 99148-7719</p>
+        {tenant.endereco && (
+          <p style={{ margin: "2px 0" }}>{tenant.endereco}</p>
+        )}
+        {tenant.cidade && (
+          <p style={{ margin: "1px 0" }}>{tenant.cidade}</p>
+        )}
+        {tenant.telefone && (
+          <p style={{ margin: "1px 0" }}>Tel: {tenant.telefone}</p>
+        )}
+        {tenant.documento && (
+          <p style={{ margin: "1px 0" }}>CNPJ: {tenant.documento}</p>
+        )}
         <p style={{ ...styles.bold, margin: "5px 0 2px 0" }}>RECIBO DE VENDA</p>
         <p style={styles.textSmall}>{dayjs(data).format("DD/MM/YYYY HH:mm")}</p>
         <p style={styles.textSmall}>ID: #{sale.id}</p>
@@ -113,7 +131,7 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
         </div>
       )}
 
-      {/* Tabela de Itens (Ajustada para quebrar linha) */}
+      {/* Tabela de Itens */}
       <table style={{ ...styles.table, ...styles.borderBottom }}>
         <thead>
           <tr>
@@ -133,7 +151,6 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
           {items.map((item, idx) => (
             <tr key={idx}>
               <td style={styles.tdItem}>
-                {/* Removido o substring para mostrar o nome todo */}
                 {item.qty || item.quantidade} x{" "}
                 {item.descricao || "Produto sem descrição"}
                 <br />

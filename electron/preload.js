@@ -75,6 +75,9 @@ contextBridge.exposeInMainWorld("api", {
   // --- VERSÃO DO SISTEMA---
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
 
+  // --- WHITE LABEL ---
+  getTenantConfig: () => ipcRenderer.invoke("get-tenant-config"),
+
   getInventoryStats: () => ipcRenderer.invoke("get-inventory-stats"),
 
   // --- CLIENTES & FIADO (NOVO) ---

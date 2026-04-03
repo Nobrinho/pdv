@@ -25,13 +25,13 @@ function register(safeHandle, knex) {
 
       const [saleId] = await trx("vendas").insert({
         vendedor_id: saleData.vendedor_id,
-        trocador_id: null,
+        trocador_id: saleData.trocador_id || null,
         cliente_id: saleData.cliente_id || null,
         subtotal: saleData.subtotal,
-        mao_de_obra: 0,
+        mao_de_obra: saleData.mao_de_obra || 0,
         acrescimo: saleData.acrescimo_valor || 0,
         desconto_valor: saleData.desconto_valor || 0,
-        desconto_tipo: saleData.desconto_tipo || "percent",
+        desconto_tipo: saleData.desconto_tipo || "fixed",
         total_final: saleData.total_final,
         forma_pagamento: formaPagamentoResumo,
         data_venda: Date.now(),

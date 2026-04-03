@@ -79,6 +79,7 @@ export const api = {
     backup: () => safeCall(window.api.backupDatabase),
     restore: () => safeCall(window.api.restoreDatabase),
     getVersion: () => safeCall(window.api.getAppVersion),
+    getTenant: () => safeCall(window.api.getTenantConfig),
   },
 
   // --- DASHBOARD ---

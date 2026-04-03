@@ -1,6 +1,8 @@
 // @ts-nocheck
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
+import { useTenant } from "../context/TenantContext";
+import { processLogoForThermal, processBackgroundImage } from "../context/TenantContext";
 import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
@@ -8,6 +10,7 @@ import StatusBadge from "../components/ui/StatusBadge";
 
 const Config = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { tenant, saveTenantBatch } = useTenant();
 
   const [roles, setRoles] = useState([]);
   const [newRole, setNewRole] = useState("");
@@ -28,6 +31,45 @@ const Config = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+
+  // --- WHITE LABEL: Estado local da identidade ---
+  const [identity, setIdentity] = useState({
+    nome: "",
+    subtitulo: "",
+    endereco: "",
+    cidade: "",
+    telefone: "",
+    documento: "",
+    corPrimaria: "#2563EB",
+    corSecundaria: "#4F46E5",
+    devNome: "",
+    devLink: "",
+  });
+  const [logoPreview, setLogoPreview] = useState("");
+  const [bgPreview, setBgPreview] = useState("");
+  const [savingIdentity, setSavingIdentity] = useState(false);
+  const logoInputRef = useRef(null);
+  const bgInputRef = useRef(null);
+
+  // Sincronizar estado local com tenant carregado
+  useEffect(() => {
+    if (tenant) {
+      setIdentity({
+        nome: tenant.nome || "",
+        subtitulo: tenant.subtitulo || "",
+        endereco: tenant.endereco || "",
+        cidade: tenant.cidade || "",
+        telefone: tenant.telefone || "",
+        documento: tenant.documento || "",
+        corPrimaria: tenant.corPrimaria || "#2563EB",
+        corSecundaria: tenant.corSecundaria || "#4F46E5",
+        devNome: tenant.devNome || "",
+        devLink: tenant.devLink || "",
+      });
+      setLogoPreview(tenant.logoBase64 || "");
+      setBgPreview(tenant.bgBase64 || "");
+    }
+  }, [tenant]);
 
   const loadData = useCallback(async () => {
     try {
@@ -69,6 +111,7 @@ const Config = () => {
     loadData();
   }, [loadData]);
 
+  // --- Handlers existentes ---
   const handleSaveCommission = async () => {
     setIsLoading(true);
     try {
@@ -189,6 +232,71 @@ const Config = () => {
     }
   };
 
+  // --- WHITE LABEL: Handlers de identidade ---
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validar tipo
+    if (!file.type.startsWith("image/")) {
+      return showAlert("Selecione um arquivo de imagem válido.", "Formato Inválido", "error");
+    }
+
+    // Validar tamanho (max 5MB antes do processamento)
+    if (file.size > 5 * 1024 * 1024) {
+      return showAlert("A imagem deve ter no máximo 5MB.", "Arquivo Grande", "error");
+    }
+
+    try {
+      const processed = await processLogoForThermal(file);
+      setLogoPreview(processed);
+      showAlert("Logo processada para impressora térmica (P&B, 200px).", "Pré-visualização", "success");
+    } catch (err) {
+      showAlert("Erro ao processar logo: " + err.message, "Erro", "error");
+    }
+  };
+
+  const handleBgUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      return showAlert("Selecione um arquivo de imagem válido.", "Formato Inválido", "error");
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      return showAlert("A imagem deve ter no máximo 10MB.", "Arquivo Grande", "error");
+    }
+
+    try {
+      const processed = await processBackgroundImage(file);
+      setBgPreview(processed);
+      showAlert("Background processado e otimizado.", "Pré-visualização", "success");
+    } catch (err) {
+      showAlert("Erro ao processar imagem: " + err.message, "Erro", "error");
+    }
+  };
+
+  const handleSaveIdentity = async () => {
+    if (!identity.nome.trim()) {
+      return showAlert("O nome da loja é obrigatório.", "Atenção", "warning");
+    }
+
+    setSavingIdentity(true);
+    try {
+      await saveTenantBatch({
+        ...identity,
+        logoBase64: logoPreview,
+        bgBase64: bgPreview,
+      });
+      showAlert("Identidade da loja atualizada com sucesso! As mudanças já estão visíveis.", "Sucesso", "success");
+    } catch (error) {
+      showAlert("Erro ao salvar identidade: " + error.message, "Erro", "error");
+    } finally {
+      setSavingIdentity(false);
+    }
+  };
+
   const userColumns = [
     { key: "nome", label: "Nome completo", bold: true },
     { key: "username", label: "Login / Usuário", format: (v) => <span className="font-mono text-gray-500">{v}</span> },
@@ -196,7 +304,14 @@ const Config = () => {
       key: "cargo", 
       label: "Permissão", 
       align: "center",
-      format: (v) => <StatusBadge type={v === "admin" ? "secondary" : "success"} label={v === "admin" ? "Admin" : "Caixa"} />
+      format: (v) => {
+        let type = "success";
+        let label = "Vendedor";
+        if (v === "admin") { type = "secondary"; label = "Administrador"; }
+        else if (v === "caixa") { type = "warning"; label = "Caixa"; }
+        else if (v) { label = v.charAt(0).toUpperCase() + v.slice(1); }
+        return <StatusBadge type={type} label={label} />;
+      }
     },
     {
       key: "actions",
@@ -218,14 +333,247 @@ const Config = () => {
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-gray-50 custom-scrollbar">
       <div className="mb-6">
         <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Painel de Configurações</h1>
-        <p className="text-xs text-gray-500 mt-1">Ajuste taxas, gerencie usuários e realize manutenção de dados.</p>
+        <p className="text-xs text-gray-500 mt-1">Ajuste taxas, gerencie usuários e personalize a identidade da loja.</p>
       </div>
 
+      {/* ====== SEÇÃO: IDENTIDADE DA LOJA (WHITE LABEL) ====== */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+        <h2 className="text-sm font-black mb-6 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+          <i className="fas fa-palette text-wl-primary"></i> Identidade da Loja
+        </h2>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Coluna 1: Dados básicos */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Dados da Empresa</h3>
+            <FormField
+              label="Nome da Loja *"
+              placeholder="Ex: Barba Pneus"
+              value={identity.nome}
+              onChange={(v) => setIdentity({ ...identity, nome: v })}
+              icon="fa-store"
+            />
+            <FormField
+              label="Subtítulo do Sistema"
+              placeholder="Ex: Terminal de Vendas"
+              value={identity.subtitulo}
+              onChange={(v) => setIdentity({ ...identity, subtitulo: v })}
+              icon="fa-tag"
+            />
+            <FormField
+              label="Endereço"
+              placeholder="Av. Principal, 100"
+              value={identity.endereco}
+              onChange={(v) => setIdentity({ ...identity, endereco: v })}
+              icon="fa-map-marker-alt"
+            />
+            <FormField
+              label="Cidade / UF"
+              placeholder="Ex: São Paulo/SP"
+              value={identity.cidade}
+              onChange={(v) => setIdentity({ ...identity, cidade: v })}
+              icon="fa-city"
+            />
+            <FormField
+              label="Telefone"
+              placeholder="(00) 00000-0000"
+              value={identity.telefone}
+              onChange={(v) => setIdentity({ ...identity, telefone: v })}
+              icon="fa-phone"
+            />
+            <FormField
+              label="CNPJ"
+              placeholder="00.000.000/0000-00"
+              value={identity.documento}
+              onChange={(v) => setIdentity({ ...identity, documento: v })}
+              icon="fa-file-alt"
+            />
+          </div>
+
+          {/* Coluna 2: Cores + Dev */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Aparência</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Cor Primária</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={identity.corPrimaria}
+                    onChange={(e) => setIdentity({ ...identity, corPrimaria: e.target.value })}
+                    className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={identity.corPrimaria}
+                    onChange={(e) => setIdentity({ ...identity, corPrimaria: e.target.value })}
+                    className="flex-1 border border-gray-300 rounded-xl p-2 text-sm font-mono font-bold text-gray-600 outline-none"
+                    maxLength={7}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Cor Secundária</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={identity.corSecundaria}
+                    onChange={(e) => setIdentity({ ...identity, corSecundaria: e.target.value })}
+                    className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={identity.corSecundaria}
+                    onChange={(e) => setIdentity({ ...identity, corSecundaria: e.target.value })}
+                    className="flex-1 border border-gray-300 rounded-xl p-2 text-sm font-mono font-bold text-gray-600 outline-none"
+                    maxLength={7}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Preview de cores */}
+            <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pré-visualização</p>
+              <div className="flex gap-2 mb-3">
+                <div className="h-8 flex-1 rounded-lg" style={{ backgroundColor: identity.corPrimaria }}></div>
+                <div className="h-8 flex-1 rounded-lg" style={{ backgroundColor: identity.corSecundaria }}></div>
+              </div>
+              <div className="h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${identity.corPrimaria}, ${identity.corSecundaria})` }}></div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100">
+              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Créditos do Desenvolvedor</h3>
+              <FormField
+                label="Nome / @usuario"
+                placeholder="Ex: @eminobre"
+                value={identity.devNome}
+                onChange={(v) => setIdentity({ ...identity, devNome: v })}
+                icon="fa-code"
+              />
+              <div className="mt-3">
+                <FormField
+                  label="Link (opcional)"
+                  placeholder="https://instagram.com/..."
+                  value={identity.devLink}
+                  onChange={(v) => setIdentity({ ...identity, devLink: v })}
+                  icon="fa-link"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Coluna 3: Uploads */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Imagens</h3>
+
+            {/* Logo para Recibo */}
+            <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">
+                Logo do Recibo (Impressora Térmica)
+              </label>
+              <p className="text-[9px] text-gray-400 mb-3 leading-relaxed">
+                A imagem será automaticamente convertida para <strong>preto e branco</strong>, redimensionada para <strong>200px</strong> de largura e otimizada para impressão térmica.
+              </p>
+              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+              
+              {logoPreview ? (
+                <div className="flex items-center gap-3">
+                  <div className="bg-white border border-gray-200 rounded-lg p-2 flex items-center justify-center" style={{ width: 80, height: 60 }}>
+                    <img src={logoPreview} alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => logoInputRef.current?.click()}
+                      className="text-xs font-bold text-wl-primary hover:underline"
+                    >
+                      <i className="fas fa-redo mr-1"></i> Trocar
+                    </button>
+                    <button
+                      onClick={() => setLogoPreview("")}
+                      className="text-xs font-bold text-red-500 hover:underline"
+                    >
+                      <i className="fas fa-trash mr-1"></i> Remover
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 text-center hover:border-gray-400 transition text-gray-400 hover:text-gray-600"
+                >
+                  <i className="fas fa-cloud-upload-alt text-2xl mb-2 block"></i>
+                  <span className="text-xs font-bold">Clique para enviar logo</span>
+                </button>
+              )}
+            </div>
+
+            {/* Background do Login */}
+            <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">
+                Fundo da Tela de Login
+              </label>
+              <p className="text-[9px] text-gray-400 mb-3 leading-relaxed">
+                Se nenhuma imagem for enviada, será usado um <strong>gradiente elegante</strong> com as cores primária e secundária.
+              </p>
+              <input ref={bgInputRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden" />
+
+              {bgPreview ? (
+                <div>
+                  <div className="w-full h-24 rounded-lg overflow-hidden border border-gray-200 mb-2">
+                    <img src={bgPreview} alt="Background" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => bgInputRef.current?.click()}
+                      className="flex-1 text-xs font-bold text-wl-primary hover:underline py-1"
+                    >
+                      <i className="fas fa-redo mr-1"></i> Trocar
+                    </button>
+                    <button
+                      onClick={() => setBgPreview("")}
+                      className="flex-1 text-xs font-bold text-red-500 hover:underline py-1"
+                    >
+                      <i className="fas fa-trash mr-1"></i> Remover
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => bgInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 text-center hover:border-gray-400 transition text-gray-400 hover:text-gray-600"
+                >
+                  <i className="fas fa-image text-2xl mb-2 block"></i>
+                  <span className="text-xs font-bold">Clique para enviar imagem de fundo</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Botão Salvar Identidade */}
+        <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+          <button
+            onClick={handleSaveIdentity}
+            disabled={savingIdentity}
+            className="bg-wl-primary text-white px-8 py-3.5 rounded-xl font-black text-sm hover:bg-wl-primary-700 transition shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
+          >
+            {savingIdentity ? (
+              <><i className="fas fa-circle-notch fa-spin"></i> SALVANDO...</>
+            ) : (
+              <><i className="fas fa-save"></i> SALVAR IDENTIDADE</>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ====== SEÇÕES EXISTENTES ====== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {/* Card Comissão */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
           <h2 className="text-sm font-black mb-6 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-percent text-blue-600"></i> Taxas de Comissão
+            <i className="fas fa-percent text-wl-primary"></i> Taxas de Comissão
           </h2>
 
           <div className="space-y-4 flex-1">
@@ -250,7 +598,7 @@ const Config = () => {
           <button
             onClick={handleSaveCommission}
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black text-sm hover:bg-blue-700 transition mt-6 shadow-md shadow-blue-50 active:scale-95 disabled:opacity-50"
+            className="w-full bg-wl-primary text-white py-3.5 rounded-xl font-black text-sm hover:bg-wl-primary-700 transition mt-6 shadow-md active:scale-95 disabled:opacity-50"
           >
             {isLoading ? "SALVANDO..." : "ATUALIZAR TAXAS"}
           </button>

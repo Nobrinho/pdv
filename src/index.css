@@ -2,6 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ====== WHITE LABEL — CSS Custom Properties ====== */
+:root {
+  --color-primary: #2563EB;
+  --color-primary-50: hsl(217, 91%, 97%);
+  --color-primary-100: hsl(217, 91%, 93%);
+  --color-primary-200: hsl(217, 91%, 85%);
+  --color-primary-300: hsl(217, 91%, 73%);
+  --color-primary-400: hsl(217, 91%, 60%);
+  --color-primary-500: hsl(217, 91%, 50%);
+  --color-primary-600: #2563EB;
+  --color-primary-700: hsl(217, 91%, 38%);
+  --color-primary-800: hsl(217, 91%, 28%);
+  --color-primary-900: hsl(217, 91%, 18%);
+
+  --color-secondary: #4F46E5;
+  --color-secondary-50: hsl(244, 76%, 97%);
+  --color-secondary-100: hsl(244, 76%, 93%);
+  --color-secondary-200: hsl(244, 76%, 85%);
+  --color-secondary-500: hsl(244, 76%, 50%);
+  --color-secondary-600: #4F46E5;
+  --color-secondary-700: hsl(244, 76%, 38%);
+}
+
+/* ====== Utility Classes (dinâmicas via CSS vars) ====== */
+@layer utilities {
+  /* Backgrounds */
+  .bg-wl-primary { background-color: var(--color-primary) !important; }
+  .bg-wl-primary-50 { background-color: var(--color-primary-50) !important; }
+  .bg-wl-primary-100 { background-color: var(--color-primary-100) !important; }
+  .bg-wl-primary-200 { background-color: var(--color-primary-200) !important; }
+  .bg-wl-primary-700 { background-color: var(--color-primary-700) !important; }
+  .bg-wl-primary-800 { background-color: var(--color-primary-800) !important; }
+  .bg-wl-primary-900 { background-color: var(--color-primary-900) !important; }
+  .bg-wl-secondary { background-color: var(--color-secondary) !important; }
+
+  /* Text */
+  .text-wl-primary { color: var(--color-primary) !important; }
+  .text-wl-primary-400 { color: var(--color-primary-400) !important; }
+  .text-wl-primary-500 { color: var(--color-primary-500) !important; }
+  .text-wl-primary-600 { color: var(--color-primary-600) !important; }
+  .text-wl-primary-700 { color: var(--color-primary-700) !important; }
+  .text-wl-secondary { color: var(--color-secondary) !important; }
+
+  /* Borders */
+  .border-wl-primary { border-color: var(--color-primary) !important; }
+  .border-wl-primary-100 { border-color: var(--color-primary-100) !important; }
+  .border-wl-primary-200 { border-color: var(--color-primary-200) !important; }
+  .border-wl-primary-500 { border-color: var(--color-primary-500) !important; }
+
+  /* Ring */
+  .ring-wl-primary { --tw-ring-color: var(--color-primary) !important; }
+  .focus\:ring-wl-primary:focus { --tw-ring-color: var(--color-primary-200) !important; }
+
+  /* Shadow */
+  .shadow-wl-primary { --tw-shadow-color: var(--color-primary-900) !important; }
+
+  /* Hover states */
+  .hover\:bg-wl-primary-700:hover { background-color: var(--color-primary-700) !important; }
+  .hover\:bg-wl-primary-50:hover { background-color: var(--color-primary-50) !important; }
+  .hover\:text-wl-primary:hover { color: var(--color-primary) !important; }
+  .hover\:text-wl-primary-700:hover { color: var(--color-primary-700) !important; }
+  .hover\:border-wl-primary-200:hover { border-color: var(--color-primary-200) !important; }
+
+  /* Group hover */
+  .group-hover\:text-wl-primary:hover { color: var(--color-primary) !important; }
+
+  /* Focus within */
+  .group-focus-within\:text-wl-primary:focus-within { color: var(--color-primary) !important; }
+
+  /* Gradient */
+  .from-wl-primary { --tw-gradient-from: var(--color-primary); }
+  .to-wl-secondary { --tw-gradient-to: var(--color-secondary); }
+}
+
 /* Estilos globais customizados */
 body {
     background-color: #F3F4F6;

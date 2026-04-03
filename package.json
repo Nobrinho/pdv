@@ -1,8 +1,8 @@
 {
-  "name": "syscontrol-desktop",
-  "productName": "SysControl",
-  "version": "1.6.0",
-  "description": "Sistema de Controle de Estoque e Vendas",
+  "name": "pdv-whitelabel",
+  "productName": "PDV",
+  "version": "2.0.0",
+  "description": "Sistema PDV White Label - Controle de Estoque e Vendas",
   "main": "electron/main.js",
   "author": "Emerson Nobre",
   "license": "MIT",
@@ -23,7 +23,7 @@
     "migrate:latest": "knex migrate:latest --knexfile ./database/knexfile.js"
   },
   "build": {
-    "appId": "com.syscontrol.app",
+    "appId": "com.pdv.whitelabel",
     "publish": [
       {
         "provider": "github",
@@ -31,8 +31,8 @@
         "repo": "pdv"
       }
     ],
-    "productName": "SysControl",
-    "copyright": "Copyright © 2025 Emerson Nobre. All rights reserved.",
+    "productName": "PDV",
+    "copyright": "Copyright © 2025",
     "directories": {
       "output": "dist_electron"
     },
@@ -68,7 +68,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SysControl"
+      "shortcutName": "PDV"
     }
   },
   "dependencies": {

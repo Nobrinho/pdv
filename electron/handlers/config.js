@@ -11,6 +11,13 @@ function register(safeHandle, knex, mainWindow) {
     return (await knex("configuracoes").where("chave", k).first())?.valor;
   });
 
+  // --- WHITE LABEL: Retorna todas as configurações de identidade da loja ---
+  safeHandle("get-tenant-config", async () => {
+    const rows = await knex("configuracoes")
+      .whereRaw("chave LIKE 'loja_%' OR chave LIKE 'cor_%' OR chave LIKE 'dev_%'");
+    return Object.fromEntries(rows.map((r) => [r.chave, r.valor]));
+  });
+
   safeHandle("save-config", async (event, k, v) => {
     const ex = await knex("configuracoes").where("chave", k).first();
     ex

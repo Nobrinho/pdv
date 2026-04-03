@@ -7,14 +7,17 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 import { HashRouter } from 'react-router-dom'
 import { AlertProvider } from './context/AlertSystem';
 import { AuthProvider } from './context/AuthContext';
+import { TenantProvider } from './context/TenantContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <HashRouter>
+    <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AlertProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <TenantProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </TenantProvider>
       </AlertProvider>
     </HashRouter>
   </React.StrictMode>,
