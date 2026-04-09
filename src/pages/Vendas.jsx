@@ -321,18 +321,18 @@ const Vendas = () => {
   };
 
   return (
-    <div className="flex h-full gap-4 p-4 bg-gray-100">
+    <div className="flex h-full gap-4 p-4 bg-surface-200">
       {/* Esquerda: Produtos e Carrinho */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Barra de Busca e Seleção */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-surface-100 p-4 rounded-xl shadow-sm border border-surface-200">
           <div className="flex gap-4 mb-3">
             <div className="w-1/2">
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+              <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                 Vendedor
               </label>
               <select
-                className="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-surface-300 rounded-lg p-2.5 bg-surface-50 outline-none focus:ring-2 focus:ring-primary-500"
                 value={selectedSeller}
                 onChange={(e) => setSelectedSeller(e.target.value)}
               >
@@ -347,12 +347,12 @@ const Vendas = () => {
 
             <div className="w-1/2 flex gap-2 items-end">
               <div className="flex-1 relative">
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                   Cliente
                 </label>
                 <div className="relative">
                   <input
-                    className={`w-full border rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-blue-500 ${selectedClient ? "border-green-500 bg-green-50 text-green-800 font-bold" : "border-gray-300 bg-white"}`}
+                    className={`w-full border rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-primary-500 transition-all ${selectedClient ? "border-green-500 bg-green-500/10 text-green-600 font-bold shadow-sm" : "border-surface-300 bg-surface-100 text-surface-800 focus:bg-surface-50"}`}
                     placeholder={selectedClient ? "" : "Buscar Cliente..."}
                     value={clientSearchTerm}
                     onChange={(e) => {
@@ -366,12 +366,12 @@ const Vendas = () => {
                     }
                   />
                   <i
-                    className={`fas ${selectedClient ? "fa-user-check text-green-600" : "fa-search text-gray-400"} absolute left-3 top-3`}
+                    className={`fas ${selectedClient ? "fa-user-check text-green-600" : "fa-search text-surface-400"} absolute left-3 top-3`}
                   ></i>
                   {selectedClient && (
                     <button
                       onClick={() => handleSelectClient(null)}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-red-500"
+                      className="absolute right-3 top-3 text-surface-400 hover:text-red-500"
                     >
                       <i className="fas fa-times"></i>
                     </button>
@@ -379,9 +379,9 @@ const Vendas = () => {
                 </div>
                 {showClientResults &&
                   (clientSearchTerm.length > 0 || clients.length > 0) && (
-                    <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
+                    <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
                       <div
-                        className="p-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-600 italic border-b"
+                        className="p-2 hover:bg-surface-200 cursor-pointer text-sm text-surface-600 italic border-b"
                         onClick={() => handleSelectClient(null)}
                       >
                         <i className="fas fa-user-tag mr-2"></i> Consumidor
@@ -391,9 +391,9 @@ const Vendas = () => {
                         <div
                           key={c.id}
                           onClick={() => handleSelectClient(c)}
-                          className="p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 text-sm"
+                          className="p-2 hover:bg-primary-50 cursor-pointer border-b border-surface-200 text-sm"
                         >
-                          <div className="font-bold text-gray-800">
+                          <div className="font-bold text-surface-800">
                             {c.nome}
                           </div>
                         </div>
@@ -411,38 +411,38 @@ const Vendas = () => {
           </div>
 
           <div className="relative">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
               Produto (Bipar ou Digitar)
             </label>
             <input
               ref={searchInputRef}
-              className="w-full border border-gray-300 rounded-lg p-2.5 pl-10 text-lg outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-surface-300 rounded-lg p-2.5 pl-10 text-lg outline-none focus:ring-2 focus:ring-primary-500 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               placeholder="Código ou Nome..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleSearchKeyDown}
             />
-            <i className="fas fa-barcode absolute left-3 top-9 text-gray-400 text-lg"></i>
+            <i className="fas fa-barcode absolute left-3 top-9 text-surface-400 text-lg"></i>
 
             {searchResults.length > 0 && (
-              <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto z-50">
+              <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto z-50">
                 {searchResults.map((p) => (
                   <div
                     key={p.id}
                     onClick={() => selectProduct(p)}
-                    className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 flex justify-between items-center group"
+                    className="p-3 hover:bg-primary-50 cursor-pointer border-b border-surface-200 flex justify-between items-center group"
                   >
                     <div>
-                      <div className="font-medium text-gray-800">
+                      <div className="font-medium text-surface-800">
                         {p.descricao}
                       </div>
-                      <div className="text-xs text-gray-500">{p.codigo}</div>
+                      <div className="text-xs text-surface-500">{p.codigo}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-blue-600">
+                      <div className="font-bold text-primary-600">
                         R$ {p.preco_venda.toFixed(2)}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-surface-400">
                         Estoque: {p.estoque_atual}
                       </div>
                     </div>
@@ -454,21 +454,21 @@ const Vendas = () => {
         </div>
 
         {/* Tabela do Carrinho */}
-        <div className="bg-white rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col z-10 border border-gray-100">
+        <div className="bg-surface-100 rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col z-10 border border-surface-200">
           <div className="overflow-y-auto flex-1 p-2">
             <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50 sticky top-0">
+              <thead className="bg-surface-50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-left text-xs font-bold text-surface-500 uppercase">
                     Item
                   </th>
-                  <th className="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase w-24">
+                  <th className="px-4 py-2 text-center text-xs font-bold text-surface-500 uppercase w-24">
                     Qtd
                   </th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-right text-xs font-bold text-surface-500 uppercase">
                     Unit.
                   </th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-right text-xs font-bold text-surface-500 uppercase">
                     Total
                   </th>
                   <th className="px-4 py-2 w-10"></th>
@@ -476,25 +476,25 @@ const Vendas = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {cart.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 text-sm text-gray-800 font-medium">
+                  <tr key={item.id} className="hover:bg-surface-50 transition">
+                    <td className="px-4 py-3 text-sm text-surface-800 font-medium">
                       {item.descricao}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <input
                         type="number"
                         min="1"
-                        className="w-16 text-center border rounded p-1 text-sm font-bold bg-gray-50 focus:bg-white outline-none"
+                        className="w-16 text-center border rounded p-1 text-sm font-bold bg-surface-50 focus:bg-surface-100 outline-none"
                         value={item.qty}
                         onChange={(e) =>
                           handleQuantityChange(item.id, e.target.value)
                         }
                       />
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-500">
+                    <td className="px-4 py-3 text-right text-sm text-surface-500">
                       {formatCurrency(item.preco_venda)}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                    <td className="px-4 py-3 text-right text-sm font-medium text-surface-900">
                       {formatCurrency(item.preco_venda * item.qty)}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -509,7 +509,7 @@ const Vendas = () => {
                 ))}
                 {cart.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="text-center py-20 text-gray-400">
+                    <td colSpan="5" className="text-center py-20 text-surface-400">
                       Carrinho Vazio
                     </td>
                   </tr>
@@ -517,9 +517,9 @@ const Vendas = () => {
               </tbody>
             </table>
           </div>
-          <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-            <span className="text-gray-500 font-medium">Subtotal Itens:</span>
-            <span className="text-xl font-bold text-gray-800">
+          <div className="p-4 bg-surface-50 border-t border-surface-200 flex justify-between items-center">
+            <span className="text-surface-500 font-medium">Subtotal Itens:</span>
+            <span className="text-xl font-bold text-surface-800">
               {formatCurrency(totals.subtotal)}
             </span>
           </div>
@@ -528,20 +528,20 @@ const Vendas = () => {
 
       {/* Direita: Pagamento */}
       <div className="w-96 flex flex-col gap-4">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 space-y-4">
-          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide border-b pb-2">
+        <div className="bg-surface-100 p-5 rounded-xl shadow-sm border border-surface-200 space-y-4">
+          <h2 className="text-sm font-bold text-surface-500 uppercase tracking-wide border-b pb-2">
             Ajustes
           </h2>
 
           <div className="border-b border-dashed pb-3">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
               Mão de Obra (R$)
             </label>
             <div className="flex gap-2">
               <input
                 id="labor-input"
                 type="number"
-                className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm font-medium focus:ring-1 focus:ring-blue-500 outline-none"
+                className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm font-medium focus:ring-1 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                 value={laborInput}
                 onChange={(e) => setLaborInput(e.target.value)}
                 placeholder="0.00"
@@ -549,7 +549,7 @@ const Vendas = () => {
               />
               <select
                 id="mechanic-select"
-                className="w-1/2 border border-gray-300 rounded p-1.5 text-xs bg-white"
+                className="w-1/2 border border-surface-300 rounded p-1.5 text-xs bg-surface-100"
                 value={selectedMechanic}
                 onChange={(e) => setSelectedMechanic(e.target.value)}
               >
@@ -564,79 +564,79 @@ const Vendas = () => {
           </div>
 
           <div className="flex gap-2 items-center">
-            <div className="flex bg-gray-100 rounded p-0.5 border border-gray-200">
+            <div className="flex bg-surface-200 rounded p-0.5 border border-surface-200">
               <button
                 onClick={() => setSurchargeType("fixed")}
-                className={`text-xs px-2 py-1 rounded ${surchargeType === "fixed" ? "bg-white shadow text-green-600 font-bold" : "text-gray-400"}`}
+                className={`text-xs px-2 py-1 rounded ${surchargeType === "fixed" ? "bg-surface-100 shadow text-green-600 font-bold" : "text-surface-400"}`}
               >
                 R$
               </button>
               <button
                 onClick={() => setSurchargeType("percent")}
-                className={`text-xs px-2 py-1 rounded ${surchargeType === "percent" ? "bg-white shadow text-green-600 font-bold" : "text-gray-400"}`}
+                className={`text-xs px-2 py-1 rounded ${surchargeType === "percent" ? "bg-surface-100 shadow text-green-600 font-bold" : "text-surface-400"}`}
               >
                 %
               </button>
             </div>
             <input
               type="number"
-              className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm text-green-600 outline-none"
+              className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm text-green-600 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               placeholder="Acréscimo"
               value={surchargeValue}
               onChange={(e) => setSurchargeValue(e.target.value)}
             />
           </div>
           <div className="flex gap-2 items-center">
-            <div className="flex bg-gray-100 rounded p-0.5 border border-gray-200">
+            <div className="flex bg-surface-200 rounded p-0.5 border border-surface-200">
               <button
                 onClick={() => setDiscountType("fixed")}
-                className={`text-xs px-2 py-1 rounded ${discountType === "fixed" ? "bg-white shadow text-red-600 font-bold" : "text-gray-400"}`}
+                className={`text-xs px-2 py-1 rounded ${discountType === "fixed" ? "bg-surface-100 shadow text-red-600 font-bold" : "text-surface-400"}`}
               >
                 R$
               </button>
               <button
                 onClick={() => setDiscountType("percent")}
-                className={`text-xs px-2 py-1 rounded ${discountType === "percent" ? "bg-white shadow text-red-600 font-bold" : "text-gray-400"}`}
+                className={`text-xs px-2 py-1 rounded ${discountType === "percent" ? "bg-surface-100 shadow text-red-600 font-bold" : "text-surface-400"}`}
               >
                 %
               </button>
             </div>
             <input
               type="number"
-              className="flex-1 border border-gray-300 rounded p-1.5 text-right text-sm text-red-600 outline-none"
+              className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm text-red-600 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               placeholder="Desconto"
               value={discountValue}
               onChange={(e) => setDiscountValue(e.target.value)}
             />
           </div>
           <div className="flex justify-between items-center pt-2 border-t border-dashed">
-            <span className="text-gray-600 font-bold">Total a Pagar</span>
-            <span className="text-2xl font-extrabold text-blue-700">
+            <span className="text-surface-600 font-bold">Total a Pagar</span>
+            <span className="text-2xl font-extrabold text-primary-700">
               {formatCurrency(totals.total)}
             </span>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-600 flex-1 flex flex-col">
-          <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
+        <div className="bg-surface-100 p-5 rounded-xl shadow-md border-l-4 border-primary-600 flex-1 flex flex-col">
+          <h2 className="text-sm font-bold text-surface-500 uppercase tracking-wide mb-4">
             Pagamento
           </h2>
-          <div className="flex-1 bg-gray-50 rounded-lg p-2 mb-4 overflow-y-auto max-h-40 border border-gray-100">
+          <div className="flex-1 bg-surface-50 rounded-lg p-2 mb-4 overflow-y-auto max-h-40 border border-surface-200">
             {payments.map((p, idx) => (
               <div
                 key={idx}
-                className="flex justify-between items-center p-2 bg-white rounded shadow-sm mb-1 text-sm"
+                className="flex justify-between items-center p-2 bg-surface-100 rounded shadow-sm mb-1 text-sm"
               >
                 <div>
-                  <span className="font-bold text-gray-700">{p.metodo}</span>
+                  <span className="font-bold text-surface-800">{p.metodo}</span>
                   {p.detalhes && (
-                    <span className="text-xs text-gray-400 ml-1">
+                    <span className="text-xs text-surface-400 ml-1">
                       ({p.detalhes})
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-800">
+                  <span className="font-medium text-surface-800">
                     {formatCurrency(p.valor)}
                   </span>
                   <button
@@ -649,7 +649,7 @@ const Vendas = () => {
               </div>
             ))}
             {payments.length === 0 && (
-              <p className="text-center text-xs text-gray-400 py-4">
+              <p className="text-center text-xs text-surface-400 py-4">
                 Nenhum pagamento adicionado
               </p>
             )}
@@ -660,7 +660,7 @@ const Vendas = () => {
           >
             <div className="grid grid-cols-2 gap-2">
               <select
-                className="border border-gray-300 rounded p-2 text-sm bg-white"
+                className="border border-surface-300 rounded p-2 text-sm bg-surface-100"
                 value={currentPaymentMethod}
                 onChange={(e) => setCurrentPaymentMethod(e.target.value)}
               >
@@ -672,7 +672,7 @@ const Vendas = () => {
               </select>
               {currentPaymentMethod === "Crédito" && (
                 <select
-                  className="border border-gray-300 rounded p-2 text-sm bg-white"
+                  className="border border-surface-300 rounded p-2 text-sm bg-surface-100"
                   value={installments}
                   onChange={(e) => setInstallments(e.target.value)}
                 >
@@ -688,7 +688,7 @@ const Vendas = () => {
               <input
                 ref={paymentInputRef}
                 type="number"
-                className="flex-1 border border-gray-300 rounded p-2 text-right font-bold text-gray-800"
+                className="flex-1 border border-surface-300 rounded p-2 text-right font-bold text-surface-800 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                 placeholder="0.00"
                 value={currentPaymentValue}
                 onChange={(e) => setCurrentPaymentValue(e.target.value)}
@@ -696,14 +696,14 @@ const Vendas = () => {
               />
               <button
                 onClick={addPayment}
-                className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700"
+                className="bg-primary-600 text-white px-4 py-2 rounded font-bold hover:bg-primary-700"
               >
                 +
               </button>
             </div>
           </div>
 
-          <div className="mt-auto pt-4 border-t border-gray-200">
+          <div className="mt-auto pt-4 border-t border-surface-200">
             <div className="flex justify-between text-sm mb-2">
               <span>Pago:</span>
               <span className="font-bold text-green-600">
@@ -716,45 +716,45 @@ const Vendas = () => {
                 <span>{formatCurrency(totals.remaining)}</span>
               </div>
             ) : (
-              <div className="flex justify-between text-lg font-bold text-blue-600">
+              <div className="flex justify-between text-lg font-bold text-primary-600">
                 <span>Troco:</span>
                 <span>{formatCurrency(totals.change)}</span>
               </div>
             )}
-            <div className="mt-4 border-t border-gray-200 pt-3">
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-700">
-                <input type="checkbox" className="w-4 h-4 text-blue-600" checked={optsCpfReceipt} onChange={e => setOptsCpfReceipt(e.target.checked)} />
+            <div className="mt-4 border-t border-surface-200 pt-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-surface-800">
+                <input type="checkbox" className="w-4 h-4 text-primary-600 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" checked={optsCpfReceipt} onChange={e => setOptsCpfReceipt(e.target.checked)} />
                 Deseja CPF no Recibo?
               </label>
               {optsCpfReceipt && (
-                <div className="mt-2 space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="mt-2 space-y-2 p-3 bg-primary-500/10 rounded-lg border border-primary-500/20">
                   {selectedClient && clients.find(c => c.id == selectedClient)?.documento ? (
-                    <p className="text-xs text-blue-800 font-medium"><i className="fas fa-check-circle mr-1"></i> Cliente já possui CPF/CNPJ cadastrado.</p>
+                    <p className="text-xs text-primary-600 font-medium"><i className="fas fa-check-circle mr-1"></i> Cliente já possui CPF/CNPJ cadastrado.</p>
                   ) : selectedClient ? (
                     <div>
-                      <input className="w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="Digite o CPF/CNPJ" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
+                      <input className="w-full border border-surface-300 rounded p-1.5 text-sm bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none" placeholder="Digite o CPF/CNPJ" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
                     </div>
                   ) : (
                     <>
                       <div className="relative">
                         <input
-                          className="w-full border border-gray-300 rounded p-1.5 pl-8 text-sm font-medium"
+                          className="w-full border border-surface-300 rounded p-1.5 pl-8 text-sm font-medium bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none placeholder:text-surface-400"
                           placeholder="CPF/CNPJ *"
                           value={receiptCpf}
                           onChange={e => handleReceiptCpfChange(e.target.value)}
                           maxLength="18"
                           autoFocus
                         />
-                        <i className={`fas ${receiptSearching ? 'fa-spinner fa-spin' : receiptClientFound ? 'fa-check-circle text-green-500' : 'fa-id-card text-gray-400'} absolute left-2.5 top-2.5 text-xs`}></i>
+                        <i className={`fas ${receiptSearching ? 'fa-spinner fa-spin' : receiptClientFound ? 'fa-check-circle text-green-500' : 'fa-id-card text-surface-400'} absolute left-2.5 top-2.5 text-xs`}></i>
                       </div>
                       {receiptClientFound ? (
-                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded p-1.5 text-sm">
+                        <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded p-1.5 text-sm">
                           <i className="fas fa-user-check text-green-600 text-xs ml-1"></i>
-                          <span className="font-bold text-green-800">{receiptClientFound.nome}</span>
+                          <span className="font-bold text-green-600 whitespace-nowrap overflow-hidden text-ellipsis">{receiptClientFound.nome}</span>
                         </div>
                       ) : (
                         <input
-                          className="w-full border border-gray-300 rounded p-1.5 text-sm"
+                          className="w-full border border-surface-300 rounded p-1.5 text-sm bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none placeholder:text-surface-400"
                           placeholder="Nome Completo *"
                           value={receiptName}
                           onChange={e => setReceiptName(applyNameMask(e.target.value))}
@@ -769,7 +769,7 @@ const Vendas = () => {
             <button
               onClick={handleFinishSale}
               disabled={totals.remaining > 0.01}
-              className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${totals.remaining > 0.01 ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
+              className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${totals.remaining > 0.01 ? "bg-surface-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
             >
               CONCLUIR VENDA
             </button>
@@ -779,18 +779,18 @@ const Vendas = () => {
 
       {showClientModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 flex items-center">
-              <i className="fas fa-user-plus mr-2 text-blue-600"></i> Novo
+          <div className="bg-surface-100 rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-surface-800 border-b pb-2 flex items-center">
+              <i className="fas fa-user-plus mr-2 text-primary-600"></i> Novo
               Cliente Rápido
             </h2>
             <form onSubmit={handleSaveNewClient} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                   Nome Completo *
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                   value={newClientData.nome}
                   onChange={(e) =>
                     setNewClientData({ ...newClientData, nome: e.target.value })
@@ -800,11 +800,11 @@ const Vendas = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                   CPF / Documento *
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                   value={newClientData.documento}
                   onChange={(e) =>
                     setNewClientData({
@@ -816,11 +816,11 @@ const Vendas = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                   Telefone / WhatsApp *
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                   value={newClientData.telefone}
                   onChange={(e) =>
                     setNewClientData({
@@ -832,11 +832,11 @@ const Vendas = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                   Endereço (Opcional)
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                   value={newClientData.endereco}
                   onChange={(e) =>
                     setNewClientData({
@@ -850,13 +850,13 @@ const Vendas = () => {
                 <button
                   type="button"
                   onClick={() => setShowClientModal(false)}
-                  className="px-4 py-2 bg-gray-100 rounded text-gray-700 hover:bg-gray-200 font-medium"
+                  className="px-4 py-2 bg-surface-200 rounded text-surface-800 hover:bg-surface-300 font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 shadow-md"
+                  className="px-4 py-2 bg-primary-600 text-white rounded font-bold hover:bg-primary-700 shadow-md"
                 >
                   Salvar e Selecionar
                 </button>
@@ -868,20 +868,20 @@ const Vendas = () => {
 
       {showReceipt && lastSale && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-200 p-4 rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[340px]">
+          <div className="bg-surface-300 p-4 rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[340px]">
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
               <CupomFiscal sale={lastSale} items={lastSale.itens} />
             </div>
-            <div className="mt-4 flex gap-2 pt-2 border-t border-gray-300">
+            <div className="mt-4 flex gap-2 pt-2 border-t border-surface-300">
               <button
                 onClick={handleSilentPrint}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow active:scale-95 transition-transform flex items-center justify-center"
+                className="flex-1 bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow active:scale-95 transition-transform flex items-center justify-center"
               >
                 <i className="fas fa-print mr-2"></i> Imprimir
               </button>
               <button
                 onClick={() => setShowReceipt(false)}
-                className="flex-1 bg-gray-400 text-white py-3 rounded-lg font-bold hover:bg-gray-500 active:scale-95 transition-transform"
+                className="flex-1 bg-surface-500 text-white py-3 rounded-lg font-bold hover:bg-surface-600 active:scale-95 transition-transform"
               >
                 Fechar
               </button>

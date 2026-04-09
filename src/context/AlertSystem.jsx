@@ -93,16 +93,16 @@ export const AlertProvider = ({ children }) => {
       case "confirm":
         return {
           icon: "fa-question",
-          color: "text-blue-500",
-          bg: "bg-blue-100",
-          btn: "bg-blue-600 hover:bg-blue-700",
+          color: "text-primary-500",
+          bg: "bg-primary-100",
+          btn: "bg-primary-600 hover:bg-primary-700",
         };
       default:
         return {
           icon: "fa-info",
-          color: "text-blue-500",
-          bg: "bg-blue-100",
-          btn: "bg-blue-600 hover:bg-blue-700",
+          color: "text-primary-500",
+          bg: "bg-primary-100",
+          btn: "bg-primary-600 hover:bg-primary-700",
         };
     }
   };
@@ -122,7 +122,7 @@ export const AlertProvider = ({ children }) => {
           onClick={(e) => e.stopPropagation()}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl p-6 w-96 max-w-[90%] transform transition-all scale-100 border border-gray-100"
+            className="bg-surface-100 rounded-xl shadow-2xl p-6 w-96 max-w-[90%] transform transition-all scale-100 border border-surface-200"
             role="dialog"
             aria-modal="true"
           >
@@ -132,12 +132,12 @@ export const AlertProvider = ({ children }) => {
               >
                 <i className={`fas ${styles.icon} text-lg`}></i>
               </div>
-              <h3 className="text-xl font-bold text-gray-800">
+              <h3 className="text-xl font-bold text-surface-800">
                 {alertState.title}
               </h3>
             </div>
 
-            <p className="text-gray-600 mb-6 text-base leading-relaxed">
+            <p className="text-surface-600 mb-6 text-base leading-relaxed">
               {alertState.message}
             </p>
 
@@ -147,7 +147,7 @@ export const AlertProvider = ({ children }) => {
                   onClick={() => {
                     if (alertState.onCancel) alertState.onCancel();
                   }}
-                  className="px-5 py-2 rounded-lg text-gray-700 font-semibold hover:bg-gray-100 transition"
+                  className="px-5 py-2 rounded-lg text-surface-800 font-semibold hover:bg-surface-200 transition"
                 >
                   Cancelar
                 </button>
@@ -157,7 +157,7 @@ export const AlertProvider = ({ children }) => {
                 onClick={() => {
                   if (alertState.onConfirm) alertState.onConfirm();
                 }}
-                className={`px-6 py-2 rounded-lg text-white font-bold shadow-md transition transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${styles.btn}`}
+                className={`px-6 py-2 rounded-lg text-white font-bold shadow-md transition transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${styles.btn}`}
               >
                 {alertState.type === "confirm" ? "Sim, Confirmar" : "Entendido"}
               </button>

@@ -27,25 +27,40 @@ function hexToHSL(hex) {
       case b: h = ((r - g) / d + 4) / 6; break;
     }
   }
-
   return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-/** Gera uma palette completa a partir de uma cor hex */
+/** HSL para R G B nativo (para suportar opacidade do Tailwind) */
+function hslToRgbValues(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return `${Math.round(255 * f(0))} ${Math.round(255 * f(8))} ${Math.round(255 * f(4))}`;
+}
+
+function hexToRgbValues(hex) {
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+  return `${r} ${g} ${b}`;
+}
+
+/** Gera uma palette completa a partir de uma cor hex, retornando apenas valores RGB */
 function generatePalette(hex) {
   try {
     const { h, s } = hexToHSL(hex);
     return {
-      50:  `hsl(${h}, ${s}%, 97%)`,
-      100: `hsl(${h}, ${s}%, 93%)`,
-      200: `hsl(${h}, ${s}%, 85%)`,
-      300: `hsl(${h}, ${s}%, 73%)`,
-      400: `hsl(${h}, ${s}%, 60%)`,
-      500: `hsl(${h}, ${s}%, 50%)`,
-      600: hex,
-      700: `hsl(${h}, ${s}%, 38%)`,
-      800: `hsl(${h}, ${s}%, 28%)`,
-      900: `hsl(${h}, ${s}%, 18%)`,
+      50:  hslToRgbValues(h, s, 97),
+      100: hslToRgbValues(h, s, 93),
+      200: hslToRgbValues(h, s, 85),
+      300: hslToRgbValues(h, s, 73),
+      400: hslToRgbValues(h, s, 60),
+      500: hslToRgbValues(h, s, 50),
+      600: hexToRgbValues(hex),
+      700: hslToRgbValues(h, s, 38),
+      800: hslToRgbValues(h, s, 28),
+      900: hslToRgbValues(h, s, 18),
     };
   } catch {
     return null;
@@ -62,6 +77,7 @@ function injectCSSVars(primary, secondary) {
     Object.entries(primaryPalette).forEach(([shade, value]) => {
       root.style.setProperty(`--color-primary-${shade}`, value);
     });
+    // Fallback/Legacy
     root.style.setProperty("--color-primary", primary);
   }
 

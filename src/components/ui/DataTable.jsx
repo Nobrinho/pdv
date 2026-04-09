@@ -16,15 +16,15 @@ const DataTable = ({
   onRowClick,
 }) => {
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden bg-white border border-gray-100 rounded-xl shadow-sm">
+    <div className="w-full h-full flex flex-col overflow-hidden bg-surface-100 border border-surface-200 rounded-xl shadow-sm">
       <div className="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+        <table className="min-w-full divide-y divide-surface-200">
+          <thead className="bg-surface-50 sticky top-0 z-10">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider ${
+                  className={`px-4 py-3 text-xs font-bold text-surface-500 uppercase tracking-wider ${
                     col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"
                   }`}
                 >
@@ -33,19 +33,19 @@ const DataTable = ({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
+          <tbody className="bg-surface-100 divide-y divide-surface-200">
             {loading ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-20 text-center">
                   <div className="flex justify-center flex-col items-center gap-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span className="text-xs text-gray-400 font-medium">Carregando dados...</span>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                    <span className="text-xs text-surface-400 font-medium">Carregando dados...</span>
                   </div>
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-20 text-center text-gray-400 italic text-sm">
+                <td colSpan={columns.length} className="px-6 py-20 text-center text-surface-400 italic text-sm">
                   {emptyMessage}
                 </td>
               </tr>
@@ -54,7 +54,7 @@ const DataTable = ({
                 <tr
                   key={row.id || idx}
                   onClick={() => onRowClick && onRowClick(row)}
-                  className={`transition-colors group ${onRowClick ? "cursor-pointer hover:bg-blue-50/50" : "hover:bg-gray-50/80"}`}
+                  className={`transition-colors group ${onRowClick ? "cursor-pointer hover:bg-primary-500/10" : "hover:bg-surface-50/80"}`}
                 >
                   {columns.map((col) => {
                     const value = row[col.key];
@@ -65,7 +65,7 @@ const DataTable = ({
                         key={col.key}
                         className={`px-4 py-3 text-sm whitespace-nowrap ${
                           col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"
-                        } ${col.bold ? "font-bold text-gray-900" : "text-gray-600"}`}
+                        } ${col.bold ? "font-bold text-surface-900" : "text-surface-600"}`}
                       >
                         {content}
                       </td>

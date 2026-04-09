@@ -193,7 +193,7 @@ const Recibos = () => {
   };
 
   const columns = [
-    { key: "id", label: "ID", format: (v) => <span className="font-mono text-gray-400">#{v}</span> },
+    { key: "id", label: "ID", format: (v) => <span className="font-mono text-surface-400">#{v}</span> },
     { key: "data_venda", label: "Data/Hora", format: (v) => dayjs(v).format("DD/MM/YYYY HH:mm") },
     { key: "cliente_nome", label: "Cliente", format: (v) => v || "Consumidor Final", bold: true },
     { key: "vendedor_nome", label: "Vendedor" },
@@ -203,7 +203,7 @@ const Recibos = () => {
       format: (val, row) => (
         <div className="flex flex-col gap-1">
           {val && val.length > 0 ? val.map((p, i) => (
-            <span key={i} className="text-[10px] bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded border border-gray-100 w-fit whitespace-nowrap uppercase font-bold">
+            <span key={i} className="text-[10px] bg-surface-50 text-surface-600 px-1.5 py-0.5 rounded border border-surface-200 w-fit whitespace-nowrap uppercase font-bold">
               {p.metodo}: {formatCurrency(p.valor)}
             </span>
           )) : <span className="text-xs">{row.forma_pagamento}</span>}
@@ -215,7 +215,7 @@ const Recibos = () => {
       label: "Total", 
       align: "right",
       format: (val, row) => (
-        <span className={`font-black ${row.cancelada ? "text-red-300 line-through" : "text-gray-800"}`}>
+        <span className={`font-black ${row.cancelada ? "text-red-300 line-through" : "text-surface-800"}`}>
           {formatCurrency(val)}
         </span>
       )
@@ -240,7 +240,7 @@ const Recibos = () => {
         <div className="flex justify-center gap-2">
           <button
             onClick={() => handleViewReceipt(row)}
-            className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition active:scale-90"
+            className="text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition active:scale-90"
             title="Ver Recibo"
           >
             <i className="fas fa-eye"></i>
@@ -248,7 +248,7 @@ const Recibos = () => {
           {!row.cancelada && (
             <button
               onClick={() => initiateCancel(row)}
-              className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition active:scale-90"
+              className="text-red-500 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition active:scale-90"
               title="Cancelar Venda"
             >
               <i className="fas fa-ban"></i>
@@ -260,19 +260,19 @@ const Recibos = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50 overflow-hidden">
+    <div className="p-4 md:p-6 h-full flex flex-col bg-surface-50 overflow-hidden">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Histórico de Vendas</h1>
-        <p className="text-xs text-gray-500 mt-1">Consulte notas antigas, imprima segundas vias ou realize cancelamentos.</p>
+        <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Histórico de Vendas</h1>
+        <p className="text-xs text-surface-500 mt-1">Consulte notas antigas, imprima segundas vias ou realize cancelamentos.</p>
       </div>
 
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-4 flex flex-col gap-4">
+      <div className="bg-surface-100 p-4 rounded-2xl shadow-sm border border-surface-200 mb-4 flex flex-col gap-4">
         <div className="flex gap-2 pb-2 overflow-x-auto custom-scrollbar">
           {['weekly', 'monthly', 'yearly'].map(period => (
             <button
               key={period}
               onClick={() => handlePeriodChange(period)}
-              className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${periodType === period ? "bg-blue-600 text-white shadow-md shadow-blue-100" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
+              className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${periodType === period ? "bg-primary-600 text-white shadow-md shadow-blue-100" : "bg-surface-200 text-surface-400 hover:bg-surface-300"}`}
             >
               {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
             </button>
@@ -284,9 +284,9 @@ const Recibos = () => {
           <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); }} />
           
           <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Vendedor</label>
+            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Vendedor</label>
             <select
-              className="w-full border border-gray-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-100 outline-none bg-white transition-all"
+              className="w-full border border-surface-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-100 outline-none bg-surface-100 transition-all"
               value={filters.sellerId}
               onChange={(e) => setFilters({ ...filters, sellerId: e.target.value })}
             >
@@ -296,10 +296,10 @@ const Recibos = () => {
           </div>
 
           <div className="relative">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Cliente</label>
+            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Cliente</label>
             <div className="relative">
               <input
-                className={`w-full border rounded-xl p-2.5 pl-9 text-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all ${filters.clientId ? "border-green-500 bg-green-50 text-green-800 font-bold" : "border-gray-300 bg-white"}`}
+                className={`w-full border rounded-xl p-2.5 pl-9 text-sm outline-none focus:ring-2 focus:ring-primary-100 transition-all ${filters.clientId ? "border-green-500 bg-green-500/10 text-green-600 text-green-800 font-bold" : "border-surface-300 bg-surface-100"}`}
                 placeholder={filters.clientId ? "" : "Buscar por nome..."}
                 value={clientSearchTerm}
                 onChange={(e) => {
@@ -310,20 +310,20 @@ const Recibos = () => {
                 onFocus={() => setShowClientResults(true)}
                 onBlur={() => setTimeout(() => setShowClientResults(false), 200)}
               />
-              <i className={`fas ${filters.clientId ? "fa-user-check text-green-600" : "fa-search text-gray-400"} absolute left-3.5 top-3.5 text-xs`}></i>
+              <i className={`fas ${filters.clientId ? "fa-user-check text-green-600" : "fa-search text-surface-400"} absolute left-3.5 top-3.5 text-xs`}></i>
               {filters.clientId && (
-                <button onClick={() => handleSelectClient(null)} className="absolute right-3 top-3.5 text-gray-400 hover:text-red-500">
+                <button onClick={() => handleSelectClient(null)} className="absolute right-3 top-3.5 text-surface-400 hover:text-red-500">
                   <i className="fas fa-times text-xs"></i>
                 </button>
               )}
             </div>
             {showClientResults && (clientSearchTerm.length > 0 || clients.length > 0) && (
-              <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto z-[60] p-1">
-                <div className="p-2 hover:bg-gray-100 cursor-pointer text-[10px] font-black uppercase text-gray-400 border-b tracking-widest" onClick={() => handleSelectClient(null)}>
+              <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto z-[60] p-1">
+                <div className="p-2 hover:bg-surface-200 cursor-pointer text-[10px] font-black uppercase text-surface-400 border-b tracking-widest" onClick={() => handleSelectClient(null)}>
                   TODOS / LIMPAR FILTRO
                 </div>
                 {filteredClientsList.map((c) => (
-                  <div key={c.id} onClick={() => handleSelectClient(c)} className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 text-sm font-bold text-gray-700 rounded-lg">
+                  <div key={c.id} onClick={() => handleSelectClient(c)} className="p-3 hover:bg-primary-50 cursor-pointer border-b border-surface-50 text-sm font-bold text-surface-800 rounded-lg">
                     {c.nome}
                   </div>
                 ))}
@@ -353,21 +353,21 @@ const Recibos = () => {
           <div className="flex gap-2 w-full">
             <button
               onClick={() => setShowReceiptModal(false)}
-              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200"
+              className="flex-1 px-4 py-2.5 bg-surface-200 text-surface-800 rounded-xl font-bold text-sm hover:bg-surface-300"
             >
               Fechar
             </button>
             <button
               onClick={handleSilentPrint}
-              className="flex-[2] px-4 py-2.5 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 shadow-md active:scale-95"
+              className="flex-[2] px-4 py-2.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 shadow-md active:scale-95"
             >
               <i className="fas fa-print mr-2"></i> Reimprimir Recibo
             </button>
           </div>
         }
       >
-        <div className="flex justify-center bg-gray-100 p-4 rounded-xl">
-           <div id="cupom-fiscal-wrapper" className="bg-white p-2 shadow-sm rounded">
+        <div className="flex justify-center bg-surface-200 p-4 rounded-xl">
+           <div id="cupom-fiscal-wrapper" className="bg-surface-100 p-2 shadow-sm rounded">
               <CupomFiscal sale={selectedSale} items={saleItems} />
            </div>
         </div>
@@ -384,7 +384,7 @@ const Recibos = () => {
           <div className="flex gap-2 w-full">
             <button
               onClick={() => setShowCancelModal(false)}
-              className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm"
+              className="flex-1 px-4 py-2.5 bg-surface-200 text-surface-800 rounded-xl font-bold text-sm"
             >
               Voltar
             </button>
@@ -398,7 +398,7 @@ const Recibos = () => {
         }
       >
         <div className="space-y-6">
-          <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+          <div className="bg-red-500/10 text-red-500 p-4 rounded-xl border border-red-100">
              <div className="text-[10px] font-black text-red-400 uppercase mb-2">Atenção</div>
              <p className="text-sm text-red-800 font-medium">Você está prestes a cancelar a venda <span className="font-bold">#{saleToCancel?.id}</span>. Esta ação retornará os itens ao estoque.</p>
           </div>
@@ -412,7 +412,7 @@ const Recibos = () => {
                 required
              />
              
-             <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+             <div className="grid grid-cols-2 gap-3 p-4 bg-surface-50 rounded-2xl border border-surface-200">
                 <FormField
                    label="Usuário Admin"
                    value={cancelForm.adminUser}

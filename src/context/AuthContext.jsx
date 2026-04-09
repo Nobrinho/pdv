@@ -161,17 +161,17 @@ export const AuthProvider = ({ children }) => {
       {/* Modal Supervisor Global — fonte única de verdade */}
       {showSupervisorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] animate-fade-in backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-96 max-w-[90%] transform transition-all scale-100 border border-gray-200">
+          <div className="bg-surface-100 rounded-xl shadow-2xl p-8 w-96 max-w-[90%] transform transition-all scale-100 border border-surface-200">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <i className="fas fa-user-shield text-3xl text-red-600"></i>
               </div>
-              <h2 className="text-xl font-bold text-gray-800">
+              <h2 className="text-xl font-bold text-surface-800">
                 {supervisorMode === "route"
                   ? "Acesso Restrito"
                   : "Autorização Necessária"}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-surface-500 mt-1">
                 {supervisorMode === "route"
                   ? "É necessária autorização de administrador."
                   : "Esta ação requer permissão de um administrador."}
@@ -180,11 +180,11 @@ export const AuthProvider = ({ children }) => {
 
             <form onSubmit={handleSupervisorAuth} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                   Usuário Admin
                 </label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-surface-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                   placeholder="Admin"
                   value={adminUser}
                   onChange={(e) => setAdminUser(e.target.value)}
@@ -193,12 +193,12 @@ export const AuthProvider = ({ children }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
                   Senha
                 </label>
                 <input
                   type="password"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full border border-surface-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-red-500 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                   placeholder="••••••"
                   value={adminPass}
                   onChange={(e) => setAdminPass(e.target.value)}
@@ -226,7 +226,7 @@ export const AuthProvider = ({ children }) => {
                 type="button"
                 onClick={closeSupervisorModal}
                 disabled={isAuthLoading}
-                className="w-full bg-gray-100 text-gray-600 py-3 rounded-lg font-medium hover:bg-gray-200 transition"
+                className="w-full bg-surface-200 text-surface-600 py-3 rounded-lg font-medium hover:bg-surface-300 transition"
               >
                 Cancelar
               </button>

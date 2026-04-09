@@ -130,7 +130,7 @@ const Servicos = () => {
       key: "trocador_nome", 
       label: "Responsável",
       format: (val) => val ? (
-        <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px] font-bold border border-gray-200 uppercase">
+        <span className="bg-surface-200 text-surface-800 px-2 py-0.5 rounded text-[10px] font-bold border border-surface-200 uppercase">
           {val}
         </span>
       ) : <span className="text-red-400 text-xs italic">Excluído</span>
@@ -145,27 +145,27 @@ const Servicos = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden bg-gray-50">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden bg-surface-50">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Gestão de Serviços</h1>
-          <p className="text-xs text-gray-500 mt-1">Controle de pagamentos de mão de obra e serviços extras.</p>
+          <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Gestão de Serviços</h1>
+          <p className="text-xs text-surface-500 mt-1">Controle de pagamentos de mão de obra e serviços extras.</p>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
         {/* --- COLUNA ESQUERDA: REGISTRO --- */}
-        <div className="w-full lg:w-80 xl:w-96 bg-white p-6 rounded-2xl shadow-sm h-fit border border-gray-100 shrink-0">
-          <h2 className="text-sm font-black mb-6 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-plus-circle text-blue-600"></i> Novo Registro
+        <div className="w-full lg:w-80 xl:w-96 bg-surface-100 p-6 rounded-2xl shadow-sm h-fit border border-surface-200 shrink-0">
+          <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+            <i className="fas fa-plus-circle text-primary-600"></i> Novo Registro
           </h2>
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
+              <label className="block text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1">
                 Responsável (Trocador)
               </label>
               <select
-                className="w-full border border-gray-300 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition text-sm font-medium"
+                className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-50 focus:ring-2 focus:ring-primary-100 focus:border-primary-400 outline-none transition text-sm font-medium"
                 value={formData.trocadorId}
                 onChange={(e) => setFormData({ ...formData, trocadorId: e.target.value })}
                 required
@@ -196,7 +196,7 @@ const Servicos = () => {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-black text-sm hover:bg-blue-700 transition mt-4 shadow-md active:scale-95 flex justify-center items-center gap-2"
+              className="w-full bg-primary-600 text-white py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition mt-4 shadow-md active:scale-95 flex justify-center items-center gap-2"
             >
               <i className="fas fa-check"></i> REGISTRAR SERVIÇO
             </button>
@@ -205,13 +205,13 @@ const Servicos = () => {
 
         {/* --- COLUNA DIREITA: RELATÓRIO --- */}
         <div className="flex-1 flex flex-col h-full overflow-hidden gap-4">
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
+          <div className="bg-surface-100 p-4 rounded-2xl shadow-sm border border-surface-200 flex flex-col gap-4">
             <div className="flex gap-2 pb-2 overflow-x-auto custom-scrollbar">
               {['weekly', 'monthly', 'yearly'].map(period => (
                 <button
                   key={period}
                   onClick={() => handlePeriodChange(period)}
-                  className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${periodType === period ? "bg-blue-600 text-white shadow-md shadow-blue-100" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
+                  className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${periodType === period ? "bg-primary-600 text-white shadow-md shadow-blue-100" : "bg-surface-200 text-surface-400 hover:bg-surface-300"}`}
                 >
                   {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
                 </button>
@@ -232,9 +232,9 @@ const Servicos = () => {
                 onChange={(val) => { setEndDate(val); setPeriodType("custom"); }}
               />
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block ml-1">Mecânico</label>
+                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">Mecânico</label>
                 <select
-                  className="w-full border border-gray-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-100 outline-none bg-white transition-all"
+                  className="w-full border border-surface-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-100 outline-none bg-surface-100 transition-all"
                   value={selectedMechanicFilter}
                   onChange={(e) => setSelectedMechanicFilter(e.target.value)}
                 >

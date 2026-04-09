@@ -21,3 +21,4 @@ Thumbs.db
 # Arquivos de ambiente local (chaves secretas)
 .env
 .env.local
+.agent

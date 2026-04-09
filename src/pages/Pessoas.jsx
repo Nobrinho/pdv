@@ -137,10 +137,10 @@ const Pessoas = () => {
       label: "Nome do Colaborador", 
       format: (v) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs uppercase border border-blue-100 shadow-sm">
+          <div className="w-8 h-8 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-black text-xs uppercase border border-primary-100 shadow-sm">
             {v.charAt(0)}
           </div>
-          <span className="font-bold text-gray-800">{v}</span>
+          <span className="font-bold text-surface-800">{v}</span>
         </div>
       )
     },
@@ -158,23 +158,23 @@ const Pessoas = () => {
       align: "center",
       format: (_, row) => (
         <div className="flex justify-center gap-1">
-          <button onClick={() => handleEdit(row)} className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><i className="fas fa-edit"></i></button>
-          <button onClick={() => handleDelete(row.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><i className="fas fa-trash"></i></button>
+          <button onClick={() => handleEdit(row)} className="p-2 text-primary-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"><i className="fas fa-edit"></i></button>
+          <button onClick={() => handleDelete(row.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 rounded-lg transition"><i className="fas fa-trash"></i></button>
         </div>
       )
     }
   ];
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50 overflow-hidden">
+    <div className="p-4 md:p-6 h-full flex flex-col bg-surface-50 overflow-hidden">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Gestão da Equipe</h1>
-          <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold opacity-70">Controle de comissões e cargos</p>
+          <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Gestão da Equipe</h1>
+          <p className="text-xs text-surface-500 mt-1 uppercase tracking-widest font-bold opacity-70">Controle de comissões e cargos</p>
         </div>
         <button
           onClick={() => { setEditingId(null); setFormData({ nome: "", cargo_id: "", comissao_fixa: "" }); setShowModal(true); }}
-          className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition shadow-lg active:scale-95 flex items-center gap-2"
+          className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-primary-700 transition shadow-lg active:scale-95 flex items-center gap-2"
         >
           <i className="fas fa-plus"></i> Novo Colaborador
         </button>
@@ -184,12 +184,12 @@ const Pessoas = () => {
         {peopleByRole.map((group) => (
           <div key={group.role} className="flex flex-col gap-3">
              <div className="flex items-center gap-3 ml-2">
-                <div className={`w-2 h-2 rounded-full ${group.role === 'Vendedor' ? 'bg-blue-500' : 'bg-orange-500'}`}></div>
-                <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">{group.role}</h2>
-                <div className="h-px bg-gray-200 grow"></div>
-                <span className="text-[10px] font-black text-gray-400 bg-white px-2 py-0.5 border border-gray-100 rounded-lg">{group.list.length} MEMBROS</span>
+                <div className={`w-2 h-2 rounded-full ${group.role === 'Vendedor' ? 'bg-primary-500' : 'bg-orange-500'}`}></div>
+                <h2 className="text-sm font-black text-surface-800 uppercase tracking-widest">{group.role}</h2>
+                <div className="h-px bg-surface-300 grow"></div>
+                <span className="text-[10px] font-black text-surface-400 bg-surface-100 px-2 py-0.5 border border-surface-200 rounded-lg">{group.list.length} MEMBROS</span>
              </div>
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+             <div className="bg-surface-100 rounded-2xl shadow-sm border border-surface-200 overflow-hidden">
                 <DataTable 
                   columns={getColumns(group.role)} 
                   data={group.list} 
@@ -217,9 +217,9 @@ const Pessoas = () => {
           <FormField label="Nome Completo" placeholder="Ex: Maria Oliveira" value={formData.nome} onChange={(v) => setFormData({...formData, nome: v})} required />
           
           <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Cargo / Função</label>
+            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Cargo / Função</label>
             <select
-              className="w-full border border-gray-300 rounded-xl p-3 bg-white outline-none focus:ring-2 focus:ring-blue-100 transition text-sm font-bold text-gray-700"
+              className="w-full border border-surface-300 rounded-xl p-3 bg-surface-100 outline-none focus:ring-2 focus:ring-primary-100 transition text-sm font-bold text-surface-800"
               value={formData.cargo_id}
               onChange={(e) => setFormData({ ...formData, cargo_id: e.target.value })}
               required
@@ -230,7 +230,7 @@ const Pessoas = () => {
           </div>
 
           {selectedRoleName === "Vendedor" && (
-            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mt-2">
+            <div className="bg-primary-50 p-4 rounded-2xl border border-primary-100 mt-2">
               <FormField 
                 label="Comissão de Vendedor (%)" 
                 type="number" 
@@ -239,23 +239,23 @@ const Pessoas = () => {
                 onChange={(v) => setFormData({...formData, comissao_fixa: v})}
                 icon="fa-percent"
               />
-              <p className="text-[9px] font-bold text-blue-400 uppercase tracking-tight mt-2 ml-1">
+              <p className="text-[9px] font-bold text-primary-400 uppercase tracking-tight mt-2 ml-1">
                 Vazio utiliza a taxa padrão do sistema ({defaultCommission}%).
               </p>
             </div>
           )}
 
-          <div className="flex gap-3 pt-4 border-t border-gray-50 mt-6">
+          <div className="flex gap-3 pt-4 border-t border-surface-50 mt-6">
             <button
               type="button"
               onClick={() => setShowModal(false)}
-              className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-gray-200 transition"
+              className="flex-1 bg-surface-200 text-surface-500 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-surface-300 transition"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-50 active:scale-95 flex items-center justify-center gap-2"
+              className="flex-1 bg-primary-600 text-white py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-primary-700 transition shadow-lg shadow-blue-50 active:scale-95 flex items-center justify-center gap-2"
             >
               <i className="fas fa-save"></i> {editingId ? "Atualizar" : "Salvar"}
             </button>

@@ -4,14 +4,14 @@
 import React from "react";
 
 const presets = {
-  novo:      { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-200",  label: "NOVO" },
-  usado:     { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", label: "USADO" },
-  ok:        { bg: "bg-green-100", text: "text-green-800",  border: "border-green-200",  label: "OK" },
-  cancelada: { bg: "bg-red-100",   text: "text-red-800",    border: "border-red-200",    label: "CANCELADA" },
-  pendente:  { bg: "bg-yellow-100",text: "text-yellow-800", border: "border-yellow-200", label: "PENDENTE" },
-  quitado:   { bg: "bg-green-100", text: "text-green-700",  border: "border-green-200",  label: "QUITADO" },
-  emdia:     { bg: "bg-green-100", text: "text-green-700",  border: "border-green-200",  label: "EM DIA" },
-  devedor:   { bg: "bg-red-100",   text: "text-red-600",    border: "border-red-200",    label: "DEVEDOR" },
+  novo:      { bg: "bg-primary-500/10",   text: "text-primary-600",   border: "border-primary-500/20",  label: "NOVO" },
+  usado:     { bg: "bg-orange-500/10",    text: "text-orange-600",    border: "border-orange-500/20",   label: "USADO" },
+  ok:        { bg: "bg-green-500/10",     text: "text-green-600",     border: "border-green-500/20",    label: "OK" },
+  cancelada: { bg: "bg-red-500/10",       text: "text-red-600",       border: "border-red-500/20",      label: "CANCELADA" },
+  pendente:  { bg: "bg-yellow-500/10",    text: "text-yellow-600",    border: "border-yellow-500/20",   label: "PENDENTE" },
+  quitado:   { bg: "bg-green-500/10",     text: "text-green-600",     border: "border-green-500/20",    label: "QUITADO" },
+  emdia:     { bg: "bg-green-500/10",     text: "text-green-600",     border: "border-green-500/20",    label: "EM DIA" },
+  devedor:   { bg: "bg-red-500/10",       text: "text-red-500",       border: "border-red-500/20",      label: "DEVEDOR" },
 };
 
 /**

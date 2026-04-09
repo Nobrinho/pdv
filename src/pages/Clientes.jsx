@@ -195,9 +195,9 @@ const Clientes = () => {
       bold: true,
       format: (val, row) => (
         <div>
-          <div className="font-bold text-gray-900">{val}</div>
+          <div className="font-bold text-surface-900">{val}</div>
           {row.documento && (
-            <div className="text-[10px] text-gray-400 font-normal">
+            <div className="text-[10px] text-surface-400 font-normal">
               {row.documento}
             </div>
           )}
@@ -210,7 +210,7 @@ const Clientes = () => {
       format: (val) =>
         val ? (
           <span className="flex items-center gap-1.5">
-            <i className="fas fa-phone-alt text-[10px] text-gray-400"></i>
+            <i className="fas fa-phone-alt text-[10px] text-surface-400"></i>
             {val}
           </span>
         ) : (
@@ -236,21 +236,21 @@ const Clientes = () => {
         <div className="flex justify-center gap-2">
           <button
             onClick={() => handleOpenDebt(row)}
-            className="bg-indigo-50 text-indigo-700 p-2 rounded-lg hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
+            className="bg-primary-500/10 text-primary-600 text-indigo-700 p-2 rounded-lg hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
             title="Ver Conta / Pagar"
           >
             <i className="fas fa-file-invoice-dollar text-xs"></i>
           </button>
           <button
             onClick={() => handleEdit(row)}
-            className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition shadow-sm border border-blue-100"
+            className="bg-primary-50 text-primary-600 p-2 rounded-lg hover:bg-primary-100 transition shadow-sm border border-primary-100"
             title="Editar Dados"
           >
             <i className="fas fa-edit text-xs"></i>
           </button>
           <button
             onClick={() => handleDelete(row.id)}
-            className="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-100"
+            className="bg-red-500/10 text-red-500 text-red-500 p-2 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-100"
             title="Excluir"
           >
             <i className="fas fa-trash text-xs"></i>
@@ -261,13 +261,13 @@ const Clientes = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50">
+    <div className="p-4 md:p-6 h-full flex flex-col bg-surface-50">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+          <h1 className="text-xl md:text-2xl font-bold text-surface-800">
             Clientes & Fiado
           </h1>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-surface-500 mt-1">
             Gerencie seu cadastro de clientes e controle de pendências
             financeiras.
           </p>
@@ -277,7 +277,7 @@ const Clientes = () => {
             resetForm();
             setShowModal(true);
           }}
-          className="bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 shadow-md transition-all active:scale-95 flex items-center gap-2 font-bold text-sm"
+          className="bg-primary-600 text-white px-4 py-2.5 rounded-xl hover:bg-primary-700 shadow-md transition-all active:scale-95 flex items-center gap-2 font-bold text-sm"
         >
           <i className="fas fa-user-plus"></i> Novo Cliente
         </button>
@@ -285,7 +285,7 @@ const Clientes = () => {
 
       <div className="flex flex-col gap-4 flex-1 overflow-hidden">
         {/* Busca */}
-        <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-surface-100 p-3 rounded-xl shadow-sm border border-surface-200">
           <FormField
             icon="fa-search"
             placeholder="Buscar por nome, telefone ou documento..."
@@ -317,7 +317,7 @@ const Clientes = () => {
           <div className="flex justify-end gap-3 w-full">
             <button
               onClick={() => setShowModal(false)}
-              className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition font-medium text-sm"
+              className="px-5 py-2.5 bg-surface-200 text-surface-800 rounded-xl hover:bg-surface-300 transition font-medium text-sm"
             >
               Cancelar
             </button>
@@ -332,8 +332,8 @@ const Clientes = () => {
                 !formData.nome.trim() ||
                 (formData.documento && !validarDocumento(formData.documento)) ||
                 (formData.endereco && formData.endereco.trim().length < 4)
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+                  ? "bg-surface-300 text-surface-400 cursor-not-allowed"
+                  : "bg-primary-600 text-white hover:bg-primary-700 active:scale-95"
               }`}
             >
               <i className="fas fa-save mr-2"></i>
@@ -410,8 +410,8 @@ const Clientes = () => {
       >
         <div className="flex flex-col h-[60vh]">
           {selectedClient && (
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center mb-4">
-              <div className="text-sm font-medium text-blue-800 uppercase tracking-wider">
+            <div className="bg-primary-50 p-4 rounded-xl border border-primary-100 flex justify-between items-center mb-4">
+              <div className="text-sm font-medium text-primary-800 uppercase tracking-wider">
                 Saldo Devedor Total
               </div>
               <div className="text-2xl font-black text-red-600">
@@ -472,7 +472,7 @@ const Clientes = () => {
                       <div className="flex items-center gap-2 justify-end">
                         <input
                           type="number"
-                          className="w-24 border border-gray-300 rounded-lg p-1.5 text-xs text-right focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all"
+                          className="w-24 border border-surface-300 rounded-lg p-1.5 text-xs text-right focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                           placeholder="Valor R$"
                           value={paymentValue}
                           onChange={(e) => setPaymentValue(e.target.value)}

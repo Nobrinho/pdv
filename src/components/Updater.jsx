@@ -63,31 +63,31 @@ const Updater = () => {
     return null;
 
   return (
-    <div className="fixed bottom-5 right-5 bg-white p-5 rounded-xl shadow-2xl border border-blue-100 w-80 animate-fade-in z-[9999]">
+    <div className="fixed bottom-5 right-5 bg-surface-100 p-5 rounded-xl shadow-2xl border border-primary-100 w-80 animate-fade-in z-[9999]">
       {/* 1. Nova Versão Encontrada */}
       {status === "available" && (
         <div>
           <div className="flex items-center gap-3 mb-3">
-            <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+            <div className="bg-primary-100 p-2 rounded-full text-primary-600">
               <i className="fas fa-gift"></i>
             </div>
             <div>
-              <h4 className="font-bold text-gray-800 text-sm">
+              <h4 className="font-bold text-surface-800 text-sm">
                 Nova Versão {version}
               </h4>
-              <p className="text-xs text-gray-500">Melhorias disponíveis.</p>
+              <p className="text-xs text-surface-500">Melhorias disponíveis.</p>
             </div>
           </div>
           <div className="flex gap-2 mt-2">
             <button
               onClick={() => setStatus("idle")}
-              className="flex-1 px-3 py-2 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition"
+              className="flex-1 px-3 py-2 text-xs font-medium text-surface-500 hover:bg-surface-200 rounded-lg transition"
             >
               Depois
             </button>
             <button
               onClick={startDownload}
-              className="flex-1 px-3 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm"
+              className="flex-1 px-3 py-2 text-xs font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition shadow-sm"
             >
               Baixar Agora
             </button>
@@ -98,8 +98,8 @@ const Updater = () => {
       {/* 2. Iniciando (Novo Estado) */}
       {status === "starting" && (
         <div className="text-center py-2">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-xs text-gray-500 font-medium">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto mb-2"></div>
+          <p className="text-xs text-surface-500 font-medium">
             Iniciando download...
           </p>
         </div>
@@ -109,14 +109,14 @@ const Updater = () => {
       {status === "downloading" && (
         <div>
           <div className="flex justify-between items-end mb-2">
-            <h4 className="font-bold text-gray-800 text-sm">A Baixar...</h4>
-            <span className="text-xs font-mono text-blue-600 font-bold">
+            <h4 className="font-bold text-surface-800 text-sm">A Baixar...</h4>
+            <span className="text-xs font-mono text-primary-600 font-bold">
               {progress}%
             </span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-surface-200 rounded-full h-2 overflow-hidden">
             <div
-              className="bg-blue-600 h-full transition-all duration-300 ease-out"
+              className="bg-primary-600 h-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
@@ -129,8 +129,8 @@ const Updater = () => {
           <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3 text-xl">
             <i className="fas fa-check"></i>
           </div>
-          <h4 className="font-bold text-gray-800 mb-1">Atualização Pronta!</h4>
-          <p className="text-xs text-gray-500 mb-4">
+          <h4 className="font-bold text-surface-800 mb-1">Atualização Pronta!</h4>
+          <p className="text-xs text-surface-500 mb-4">
             O sistema precisa reiniciar para aplicar.
           </p>
           <button

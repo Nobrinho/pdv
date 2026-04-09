@@ -119,9 +119,9 @@ const Comissoes = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-gray-50">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center">
+        <h1 className="text-xl md:text-2xl font-bold text-surface-800 flex items-center">
           <i className="fas fa-hand-holding-usd mr-3 text-indigo-600"></i>
           Gestor de Comissões
         </h1>
@@ -138,17 +138,17 @@ const Comissoes = () => {
       </div>
 
       {/* FILTROS */}
-      <div className="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col gap-4">
+      <div className="bg-surface-100 p-4 rounded-xl shadow-sm mb-6 border border-surface-200 flex flex-col gap-4">
         <div className="flex gap-2 border-b pb-4 overflow-x-auto">
           <button
             onClick={() => handlePeriodChange("weekly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-indigo-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
           >
             Esta Semana
           </button>
           <button
             onClick={() => handlePeriodChange("monthly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-indigo-600 text-white font-bold" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
           >
             Este Mês
           </button>
@@ -156,10 +156,10 @@ const Comissoes = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Início</label>
+            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Início</label>
             <input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
@@ -168,10 +168,10 @@ const Comissoes = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Fim</label>
+            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Fim</label>
             <input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
@@ -180,9 +180,9 @@ const Comissoes = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Vendedor</label>
+            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Vendedor</label>
             <select
-              className="w-full border rounded p-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full border rounded p-2 text-sm bg-surface-100 focus:ring-2 focus:ring-indigo-500 outline-none"
               value={selectedSeller}
               onChange={(e) => setSelectedSeller(e.target.value)}
             >
@@ -197,9 +197,9 @@ const Comissoes = () => {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status de Repasse</label>
+            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Status de Repasse</label>
             <select
-              className="w-full border           rounded p-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full border           rounded p-2 text-sm bg-surface-100 focus:ring-2 focus:ring-indigo-500 outline-none"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -209,16 +209,16 @@ const Comissoes = () => {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Visualização do Extrato</label>
-            <div className="flex bg-gray-100 rounded-lg p-1 border">
+            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Visualização do Extrato</label>
+            <div className="flex bg-surface-200 rounded-lg p-1 border">
               <button
-                className={`flex-1 text-xs py-1.5 rounded transition ${viewMode === "condensed" ? "bg-white shadow text-indigo-700 font-bold" : "text-gray-500 hover:text-gray-700"}`}
+                className={`flex-1 text-xs py-1.5 rounded transition ${viewMode === "condensed" ? "bg-surface-100 shadow text-indigo-700 font-bold" : "text-surface-500 hover:text-surface-800"}`}
                 onClick={() => setViewMode("condensed")}
               >
                 Condensado
               </button>
               <button
-                 className={`flex-1 text-xs py-1.5 rounded transition ${viewMode === "detailed" ? "bg-white shadow text-indigo-700 font-bold" : "text-gray-500 hover:text-gray-700"}`}
+                 className={`flex-1 text-xs py-1.5 rounded transition ${viewMode === "detailed" ? "bg-surface-100 shadow text-indigo-700 font-bold" : "text-surface-500 hover:text-surface-800"}`}
                  onClick={() => setViewMode("detailed")}
               >
                 Detalhado
@@ -230,49 +230,49 @@ const Comissoes = () => {
 
       {/* KPIs Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-l-4 border-l-orange-500 p-4 flex items-center">
+        <div className="bg-surface-100 rounded-xl shadow-sm border border-l-4 border-l-orange-500 p-4 flex items-center">
           <div className="p-3 bg-orange-100 text-orange-600 rounded-full mr-4">
             <i className="fas fa-exclamation-circle text-xl"></i>
           </div>
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase">Total A Pagar (Pendentes)</p>
+            <p className="text-xs font-bold text-surface-500 uppercase">Total A Pagar (Pendentes)</p>
             <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPagar)}</p>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-l-4 border-l-green-500 p-4 flex items-center">
+        <div className="bg-surface-100 rounded-xl shadow-sm border border-l-4 border-l-green-500 p-4 flex items-center">
           <div className="p-3 bg-green-100 text-green-600 rounded-full mr-4">
             <i className="fas fa-check-circle text-xl"></i>
           </div>
           <div>
-             <p className="text-xs font-bold text-gray-500 uppercase">Total Já Pago</p>
+             <p className="text-xs font-bold text-surface-500 uppercase">Total Já Pago</p>
              <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPago)}</p>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-4 flex items-center border-gray-200">
-           <div className="p-3 bg-gray-100 text-gray-600 rounded-full mr-4">
+        <div className="bg-surface-100 rounded-xl shadow-sm border p-4 flex items-center border-surface-200">
+           <div className="p-3 bg-surface-200 text-surface-600 rounded-full mr-4">
             <i className="fas fa-wallet text-xl"></i>
           </div>
           <div>
-             <p className="text-xs font-bold text-gray-500 uppercase">Comissões do Período</p>
-             <p className="text-2xl font-bold text-gray-700">{formatCurrency(totalAcumulado)}</p>
+             <p className="text-xs font-bold text-surface-500 uppercase">Comissões do Período</p>
+             <p className="text-2xl font-bold text-surface-800">{formatCurrency(totalAcumulado)}</p>
           </div>
         </div>
       </div>
 
       {/* TABELA */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 flex-1 flex flex-col min-h-[400px]">
-        <div className="p-3 bg-gray-50 border-b flex justify-between items-center text-sm">
-          <span className="font-bold text-gray-700">Holerite de Vendas</span>
-          <span className="text-gray-500">{salesDisplay.length} vendas listadas</span>
+      <div className="bg-surface-100 rounded-xl shadow-md overflow-hidden border border-surface-200 flex-1 flex flex-col min-h-[400px]">
+        <div className="p-3 bg-surface-50 border-b flex justify-between items-center text-sm">
+          <span className="font-bold text-surface-800">Holerite de Vendas</span>
+          <span className="text-surface-500">{salesDisplay.length} vendas listadas</span>
         </div>
         <div className="overflow-y-auto flex-1 custom-scrollbar">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+            <thead className="bg-surface-50 sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-3 text-left w-10">
                   <input
                     type="checkbox"
-                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                    className="w-4 h-4 text-indigo-600 rounded border-surface-300 focus:ring-indigo-500 cursor-pointer bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                     onChange={handleSelectAll}
                     checked={
                       salesDisplay.filter((v) => !v.comissao_paga).length > 0 &&
@@ -280,22 +280,22 @@ const Comissoes = () => {
                     }
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Data</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Vendedor</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Fat. Produto</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase">Comissão Gerada</th>
-                <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-surface-500 uppercase">Data</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-surface-500 uppercase">Vendedor</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-surface-500 uppercase">Fat. Produto</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-surface-500 uppercase">Comissão Gerada</th>
+                <th className="px-4 py-3 text-center text-xs font-bold text-surface-500 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {salesDisplay.map((venda) => (
                 <React.Fragment key={venda.id}>
                   {/* Linha Principal (Condensada) */}
-                  <tr className={`hover:bg-gray-50 transition-colors ${selectedIds.includes(venda.id) ? "bg-indigo-50" : ""}`}>
+                  <tr className={`hover:bg-surface-50 transition-colors ${selectedIds.includes(venda.id) ? "bg-primary-500/10 text-primary-600" : ""}`}>
                      <td className="px-4 py-3">
                         <input
                           type="checkbox"
-                          className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer disabled:opacity-30"
+                          className="w-4 h-4 text-indigo-600 rounded border-surface-300 focus:ring-indigo-500 cursor-pointer disabled:opacity-30 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                           disabled={venda.comissao_paga}
                           checked={selectedIds.includes(venda.id)}
                           onChange={() => handleToggleSelectMenu(venda.id)}
@@ -303,7 +303,7 @@ const Comissoes = () => {
                      </td>
                      <td className="px-4 py-3 text-sm">{dayjs(venda.data_venda).format("DD/MM/YY HH:mm")}</td>
                      <td className="px-4 py-3 text-sm font-medium">{venda.vendedor_nome}</td>
-                     <td className="px-4 py-3 text-sm text-right text-gray-600">
+                     <td className="px-4 py-3 text-sm text-right text-surface-600">
                         {formatCurrency(venda.subtotal - venda.desconto_valor)}
                      </td>
                      <td className="px-4 py-3 text-sm text-right font-bold text-indigo-700">
@@ -329,16 +329,16 @@ const Comissoes = () => {
 
                   {/* Detalhamento (Se visionMode for Detailed) */}
                   {viewMode === "detailed" && (
-                    <tr className="bg-gray-50 relative">
+                    <tr className="bg-surface-50 relative">
                        <td colSpan="6" className="p-0 border-b">
                          <div className="pl-14 pr-4 py-3 bg-gradient-to-r from-gray-50 to-white shadow-inner">
-                           <table className="min-w-full text-xs text-gray-500">
+                           <table className="min-w-full text-xs text-surface-500">
                              <thead>
                                 <tr>
-                                  <th className="text-left py-1 text-gray-400">Produto</th>
-                                  <th className="text-center py-1 text-gray-400">Tipo</th>
-                                  <th className="text-right py-1 text-gray-400">Rateio Base(R$)</th>
-                                  <th className="text-right py-1 text-gray-400">Com. Rateada</th>
+                                  <th className="text-left py-1 text-surface-400">Produto</th>
+                                  <th className="text-center py-1 text-surface-400">Tipo</th>
+                                  <th className="text-right py-1 text-surface-400">Rateio Base(R$)</th>
+                                  <th className="text-right py-1 text-surface-400">Com. Rateada</th>
                                 </tr>
                              </thead>
                              <tbody>
@@ -350,7 +350,7 @@ const Comissoes = () => {
                                  const descontoRateio = venda.desconto_valor * ratio;
                                  const liqItem = itemBruto - descontoRateio;
                                  return (
-                                   <tr key={idxi} className="border-t border-dashed border-gray-200">
+                                   <tr key={idxi} className="border-t border-dashed border-surface-200">
                                      <td className="py-1.5">{item.descricao} (x{item.quantidade})</td>
                                      <td className="py-1.5 text-center">{item.tipo ? item.tipo.toUpperCase() : "N/A"}</td>
                                      <td className="py-1.5 text-right font-medium">{formatCurrency(liqItem)}</td>
@@ -371,8 +371,8 @@ const Comissoes = () => {
 
               {salesDisplay.length === 0 && (
                  <tr>
-                   <td colSpan="6" className="text-center py-8 text-gray-500">
-                     <i className="fas fa-inbox text-3xl mb-2 text-gray-300 block"></i>
+                   <td colSpan="6" className="text-center py-8 text-surface-500">
+                     <i className="fas fa-inbox text-3xl mb-2 text-surface-300 block"></i>
                      Nenhuma comissão encontrada para este filtro.
                    </td>
                  </tr>

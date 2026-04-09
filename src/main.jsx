@@ -8,17 +8,20 @@ import { HashRouter } from 'react-router-dom'
 import { AlertProvider } from './context/AlertSystem';
 import { AuthProvider } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AlertProvider>
-        <TenantProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </TenantProvider>
-      </AlertProvider>
+      <ThemeProvider>
+        <AlertProvider>
+          <TenantProvider>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </TenantProvider>
+        </AlertProvider>
+      </ThemeProvider>
     </HashRouter>
   </React.StrictMode>,
 )

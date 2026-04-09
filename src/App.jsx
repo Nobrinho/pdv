@@ -22,6 +22,7 @@ import Comissoes from "./pages/Comissoes";
 import Clientes from "./pages/Clientes";
 import { useAuth } from "./context/AuthContext";
 import { useTenant } from "./context/TenantContext";
+import { useTheme } from "./context/ThemeContext";
 
 // Configuração do Menu (Estática)
 const MENU_ITEMS = [
@@ -97,6 +98,7 @@ function App() {
   const { user, login, logout, hasAccess, requestRouteAccess, unlockedRoutes } =
     useAuth();
   const { tenant } = useTenant();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [appVersion, setAppVersion] = useState("");
 
   const navigate = useNavigate();
@@ -125,14 +127,14 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100 font-sans text-gray-900">
-      <aside className="w-64 bg-gray-800 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-10">
-        <div className="h-16 flex items-center justify-center border-b border-gray-700 bg-gray-900 shadow-md">
-          <i className="fas fa-store text-wl-primary-500 mr-2 text-xl"></i>
+    <div className="flex h-screen overflow-hidden bg-surface-50 font-sans text-surface-800 transition-colors duration-200">
+      <aside className="w-64 bg-surface-100 text-surface-800 flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-10 border-r border-surface-200">
+        <div className="h-16 flex items-center justify-center border-b border-surface-200 bg-surface-100 shadow-sm">
+          <i className="fas fa-store text-primary-500 mr-2 text-xl"></i>
           <span className="text-lg font-bold tracking-wide">{tenant.nome}</span>
         </div>
 
-        <div className="px-4 py-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+        <div className="px-4 py-4 bg-surface-100 border-b border-surface-200 flex items-center justify-between">
           <div className="flex items-center">
             <div
               className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${
@@ -150,7 +152,7 @@ function App() {
               >
                 {user.nome.split(" ")[0]}
               </p>
-              <p className="text-xs text-gray-400 mt-1 capitalize flex items-center">
+              <p className="text-xs text-surface-800 mt-1 capitalize flex items-center opacity-70">
                 <i
                   className={`fas ${
                     user.cargo === "admin"
@@ -164,7 +166,7 @@ function App() {
           </div>
           <button
             onClick={logout}
-            className="text-gray-500 hover:text-red-400 transition"
+            className="text-surface-800 hover:text-red-500 transition opacity-50 hover:opacity-100"
             title="Sair do Sistema"
           >
             <i className="fas fa-sign-out-alt"></i>
@@ -180,18 +182,17 @@ function App() {
               <button
                 key={item.path}
                 onClick={() => handleMenuClick(item.path)}
-                className={`w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 group text-left relative ${
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 group text-left relative overflow-hidden ${
                   isActive
-                    ? "bg-wl-primary text-white shadow-lg"
-                    : "text-gray-400 hover:bg-gray-700 hover:text-white"
+                    ? "bg-primary-500 text-white shadow-md font-bold"
+                    : "text-surface-800 hover:bg-surface-200"
                 }`}
-                style={isActive ? { boxShadow: `0 4px 14px -3px var(--color-primary-900)` } : {}}
               >
                 <i
                   className={`fas ${item.icon} w-6 text-center ${
                     isActive
                       ? "text-white"
-                      : "text-gray-500 group-hover:text-white"
+                      : "text-surface-800 opacity-60 group-hover:opacity-100"
                   }`}
                 ></i>
                 <span className="ml-3 font-medium">{item.label}</span>
@@ -209,23 +210,40 @@ function App() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-700 bg-gray-900 flex justify-between items-center">
-          <p className="text-xs text-gray-500">
-            Versão {appVersion || "..."}
+        <div className="px-4 py-3 border-t border-surface-200 bg-surface-100">
+          <button
+            onClick={toggleDarkMode}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-50 border border-surface-200 hover:bg-surface-200 hover:border-surface-300 transition-colors shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <i className={`fas ${isDarkMode ? 'fa-moon text-indigo-400' : 'fa-sun text-yellow-500'} w-4 text-center`}></i>
+              <span className="text-sm font-bold text-surface-800">
+                {isDarkMode ? 'MoDo Escuro' : 'Modo Claro'}
+              </span>
+            </div>
+            <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${isDarkMode ? 'bg-indigo-500' : 'bg-surface-300'}`}>
+              <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${isDarkMode ? 'translate-x-4' : 'translate-x-0'}`}></div>
+            </div>
+          </button>
+        </div>
+
+        <div className="p-4 border-t border-surface-200 bg-surface-50 flex justify-between items-center">
+          <p className="text-xs text-surface-800 opacity-60 font-medium">
+            Ver {appVersion || "..."}
             {tenant.devNome && (
               <>
-                {" "}by{" "}
+                {" "}—{" "}
                 {tenant.devLink ? (
                   <a
                     href={tenant.devLink}
-                    className="text-wl-primary-400 hover:underline"
+                    className="hover:underline font-bold"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     {tenant.devNome}
                   </a>
                 ) : (
-                  <span className="text-wl-primary-400">{tenant.devNome}</span>
+                  <span className="font-bold">{tenant.devNome}</span>
                 )}
               </>
             )}
@@ -235,7 +253,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-hidden relative flex flex-col bg-gray-50">
+      <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50">
         <Routes>
           <Route path="/" element={hasAccess("/") ? <Dashboard /> : <Navigate to="/vendas" replace />} />
           <Route path="/vendas" element={hasAccess("/vendas") ? <Vendas /> : <Navigate to="/vendas" replace />} />

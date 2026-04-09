@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
@@ -10,7 +9,7 @@ import StatusBadge from "../components/ui/StatusBadge";
 
 const Config = () => {
   const { showAlert, showConfirm } = useAlert();
-  const { tenant, saveTenantBatch } = useTenant();
+  const { tenant, saveTenantBatch, updateTenant } = useTenant();
 
   const [roles, setRoles] = useState([]);
   const [newRole, setNewRole] = useState("");
@@ -31,6 +30,19 @@ const Config = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+
+  const availableThemes = [
+    { id: "default", name: "Azul Padrão", color: "#3B82F6" },
+    { id: "emerald", name: "Esmeralda", color: "#10B981" },
+    { id: "rose", name: "Rosa", color: "#F43F5E" },
+    { id: "amber", name: "Âmbar", color: "#F59E0B" },
+    { id: "violet", name: "Violeta", color: "#8B5CF6" },
+    { id: "cyan", name: "Ciano", color: "#06B6D4" },
+    { id: "fuchsia", name: "Fúcsia", color: "#D946EF" },
+    { id: "orange", name: "Laranja", color: "#F97316" },
+    { id: "teal", name: "Verde Água", color: "#14B8A6" },
+    { id: "slate", name: "Grafite", color: "#64748B" },
+  ];
 
   // --- WHITE LABEL: Estado local da identidade ---
   const [identity, setIdentity] = useState({
@@ -299,7 +311,7 @@ const Config = () => {
 
   const userColumns = [
     { key: "nome", label: "Nome completo", bold: true },
-    { key: "username", label: "Login / Usuário", format: (v) => <span className="font-mono text-gray-500">{v}</span> },
+    { key: "username", label: "Login / Usuário", format: (v) => <span className="font-mono text-surface-500">{v}</span> },
     { 
       key: "cargo", 
       label: "Permissão", 
@@ -320,7 +332,7 @@ const Config = () => {
       format: (_, row) => (
         <button
           onClick={() => handleDeleteUser(row.id)}
-          className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition"
+          className="text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition"
           title="Excluir Usuário"
         >
           <i className="fas fa-trash"></i>
@@ -330,22 +342,22 @@ const Config = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-gray-50 custom-scrollbar">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50 custom-scrollbar">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Painel de Configurações</h1>
-        <p className="text-xs text-gray-500 mt-1">Ajuste taxas, gerencie usuários e personalize a identidade da loja.</p>
+        <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Painel de Configurações</h1>
+        <p className="text-xs text-surface-500 mt-1">Ajuste taxas, gerencie usuários e personalize a identidade da loja.</p>
       </div>
 
       {/* ====== SEÇÃO: IDENTIDADE DA LOJA (WHITE LABEL) ====== */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-        <h2 className="text-sm font-black mb-6 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <i className="fas fa-palette text-wl-primary"></i> Identidade da Loja
+      <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 mb-6">
+        <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+          <i className="fas fa-palette text-primary"></i> Identidade da Loja
         </h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Coluna 1: Dados básicos */}
           <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Dados da Empresa</h3>
+            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">Dados da Empresa</h3>
             <FormField
               label="Nome da Loja *"
               placeholder="Ex: Barba Pneus"
@@ -392,41 +404,41 @@ const Config = () => {
 
           {/* Coluna 2: Cores + Dev */}
           <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Aparência</h3>
+            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">Aparência</h3>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Cor Primária</label>
+                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Cor Primária</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={identity.corPrimaria}
                     onChange={(e) => setIdentity({ ...identity, corPrimaria: e.target.value })}
-                    className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer"
+                    className="w-10 h-10 rounded-lg border border-surface-200 cursor-pointer"
                   />
                   <input
                     type="text"
                     value={identity.corPrimaria}
                     onChange={(e) => setIdentity({ ...identity, corPrimaria: e.target.value })}
-                    className="flex-1 border border-gray-300 rounded-xl p-2 text-sm font-mono font-bold text-gray-600 outline-none"
+                    className="flex-1 border border-surface-300 rounded-xl p-2 text-sm font-mono font-bold text-surface-600 outline-none"
                     maxLength={7}
                   />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Cor Secundária</label>
+                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Cor Secundária</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={identity.corSecundaria}
                     onChange={(e) => setIdentity({ ...identity, corSecundaria: e.target.value })}
-                    className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer"
+                    className="w-10 h-10 rounded-lg border border-surface-200 cursor-pointer"
                   />
                   <input
                     type="text"
                     value={identity.corSecundaria}
                     onChange={(e) => setIdentity({ ...identity, corSecundaria: e.target.value })}
-                    className="flex-1 border border-gray-300 rounded-xl p-2 text-sm font-mono font-bold text-gray-600 outline-none"
+                    className="flex-1 border border-surface-300 rounded-xl p-2 text-sm font-mono font-bold text-surface-600 outline-none"
                     maxLength={7}
                   />
                 </div>
@@ -434,8 +446,8 @@ const Config = () => {
             </div>
 
             {/* Preview de cores */}
-            <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Pré-visualização</p>
+            <div className="p-4 rounded-xl border border-surface-200 bg-surface-50">
+              <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-3">Pré-visualização</p>
               <div className="flex gap-2 mb-3">
                 <div className="h-8 flex-1 rounded-lg" style={{ backgroundColor: identity.corPrimaria }}></div>
                 <div className="h-8 flex-1 rounded-lg" style={{ backgroundColor: identity.corSecundaria }}></div>
@@ -443,8 +455,8 @@ const Config = () => {
               <div className="h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${identity.corPrimaria}, ${identity.corSecundaria})` }}></div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100">
-              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Créditos do Desenvolvedor</h3>
+            <div className="pt-4 border-t border-surface-200">
+              <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-3">Créditos do Desenvolvedor</h3>
               <FormField
                 label="Nome / @usuario"
                 placeholder="Ex: @eminobre"
@@ -466,27 +478,27 @@ const Config = () => {
 
           {/* Coluna 3: Uploads */}
           <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Imagens</h3>
+            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">Imagens</h3>
 
             {/* Logo para Recibo */}
-            <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">
+            <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
+              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
                 Logo do Recibo (Impressora Térmica)
               </label>
-              <p className="text-[9px] text-gray-400 mb-3 leading-relaxed">
+              <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
                 A imagem será automaticamente convertida para <strong>preto e branco</strong>, redimensionada para <strong>200px</strong> de largura e otimizada para impressão térmica.
               </p>
-              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" />
               
               {logoPreview ? (
                 <div className="flex items-center gap-3">
-                  <div className="bg-white border border-gray-200 rounded-lg p-2 flex items-center justify-center" style={{ width: 80, height: 60 }}>
+                  <div className="bg-surface-100 border border-surface-200 rounded-lg p-2 flex items-center justify-center" style={{ width: 80, height: 60 }}>
                     <img src={logoPreview} alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
                   </div>
                   <div className="flex flex-col gap-1">
                     <button
                       onClick={() => logoInputRef.current?.click()}
-                      className="text-xs font-bold text-wl-primary hover:underline"
+                      className="text-xs font-bold text-primary hover:underline"
                     >
                       <i className="fas fa-redo mr-1"></i> Trocar
                     </button>
@@ -501,7 +513,7 @@ const Config = () => {
               ) : (
                 <button
                   onClick={() => logoInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 text-center hover:border-gray-400 transition text-gray-400 hover:text-gray-600"
+                  className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
                 >
                   <i className="fas fa-cloud-upload-alt text-2xl mb-2 block"></i>
                   <span className="text-xs font-bold">Clique para enviar logo</span>
@@ -510,24 +522,24 @@ const Config = () => {
             </div>
 
             {/* Background do Login */}
-            <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">
+            <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
+              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
                 Fundo da Tela de Login
               </label>
-              <p className="text-[9px] text-gray-400 mb-3 leading-relaxed">
+              <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
                 Se nenhuma imagem for enviada, será usado um <strong>gradiente elegante</strong> com as cores primária e secundária.
               </p>
-              <input ref={bgInputRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden" />
+              <input ref={bgInputRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" />
 
               {bgPreview ? (
                 <div>
-                  <div className="w-full h-24 rounded-lg overflow-hidden border border-gray-200 mb-2">
+                  <div className="w-full h-24 rounded-lg overflow-hidden border border-surface-200 mb-2">
                     <img src={bgPreview} alt="Background" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => bgInputRef.current?.click()}
-                      className="flex-1 text-xs font-bold text-wl-primary hover:underline py-1"
+                      className="flex-1 text-xs font-bold text-primary hover:underline py-1"
                     >
                       <i className="fas fa-redo mr-1"></i> Trocar
                     </button>
@@ -542,7 +554,7 @@ const Config = () => {
               ) : (
                 <button
                   onClick={() => bgInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-xl py-6 text-center hover:border-gray-400 transition text-gray-400 hover:text-gray-600"
+                  className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
                 >
                   <i className="fas fa-image text-2xl mb-2 block"></i>
                   <span className="text-xs font-bold">Clique para enviar imagem de fundo</span>
@@ -553,11 +565,11 @@ const Config = () => {
         </div>
 
         {/* Botão Salvar Identidade */}
-        <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+        <div className="mt-8 pt-6 border-t border-surface-200 flex justify-end">
           <button
             onClick={handleSaveIdentity}
             disabled={savingIdentity}
-            className="bg-wl-primary text-white px-8 py-3.5 rounded-xl font-black text-sm hover:bg-wl-primary-700 transition shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
+            className="bg-primary text-white px-8 py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
           >
             {savingIdentity ? (
               <><i className="fas fa-circle-notch fa-spin"></i> SALVANDO...</>
@@ -571,9 +583,9 @@ const Config = () => {
       {/* ====== SEÇÕES EXISTENTES ====== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         {/* Card Comissão */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-          <h2 className="text-sm font-black mb-6 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-percent text-wl-primary"></i> Taxas de Comissão
+        <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
+          <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+            <i className="fas fa-percent text-primary"></i> Taxas de Comissão
           </h2>
 
           <div className="space-y-4 flex-1">
@@ -598,23 +610,49 @@ const Config = () => {
           <button
             onClick={handleSaveCommission}
             disabled={isLoading}
-            className="w-full bg-wl-primary text-white py-3.5 rounded-xl font-black text-sm hover:bg-wl-primary-700 transition mt-6 shadow-md active:scale-95 disabled:opacity-50"
+            className="w-full bg-primary text-white py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition mt-6 shadow-md active:scale-95 disabled:opacity-50"
           >
             {isLoading ? "SALVANDO..." : "ATUALIZAR TAXAS"}
           </button>
         </div>
 
+        {/* Card Temas (Local) */}
+        <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
+          <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+            <i className="fas fa-paint-roller text-primary"></i> Interface Local (Temas)
+          </h2>
+          <p className="text-[11px] text-surface-500 mb-4 tracking-wide">
+            A cor será aplicada instantaneamente apenas neste navegador (via localStorage).
+          </p>
+          <div className="flex flex-wrap gap-3 flex-1">
+            {availableThemes.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  updateTenant("corPrimaria", t.color);
+                  setIdentity({...identity, corPrimaria: t.color});
+                }}
+                title={t.name}
+                className={`w-10 h-10 rounded-full border-2 transition-transform ${identity.corPrimaria.toUpperCase() === t.color.toUpperCase() ? 'border-gray-900 scale-110 shadow-lg' : 'border-transparent shadow-sm hover:scale-105'}`}
+                style={{ backgroundColor: t.color }}
+              >
+                {identity.corPrimaria.toUpperCase() === t.color.toUpperCase() && <i className="fas fa-check text-white text-xs drop-shadow-md"></i>}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Card Impressora e Backup */}
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-             <h2 className="text-sm font-black mb-4 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-               <i className="fas fa-print text-gray-600"></i> Impressão
+          <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
+             <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+               <i className="fas fa-print text-surface-600"></i> Impressão
              </h2>
              <div className="flex gap-2 items-end">
                <div className="flex-1">
-                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block ml-1">Dispositivo Padrão</label>
+                 <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">Dispositivo Padrão</label>
                  <select
-                   className="w-full border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-blue-100 transition text-sm font-medium"
+                   className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-100 outline-none focus:ring-2 focus:ring-primary-100 transition text-sm font-medium"
                    value={selectedPrinter}
                    onChange={(e) => setSelectedPrinter(e.target.value)}
                  >
@@ -622,17 +660,17 @@ const Config = () => {
                    {printers.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
                  </select>
                </div>
-               <button
-                 onClick={handleSavePrinter}
-                 className="bg-gray-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-black transition shadow-md active:scale-95"
-               >
-                 OK
-               </button>
+                <button
+                  onClick={handleSavePrinter}
+                  className="bg-primary px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-primary-700 text-white transition shadow-md active:scale-95"
+                >
+                  OK
+                </button>
              </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grow">
-             <h2 className="text-sm font-black mb-4 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+          <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 grow">
+             <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
                <i className="fas fa-database text-green-600"></i> Manutenção
              </h2>
              <div className="grid grid-cols-2 gap-3">
@@ -642,25 +680,25 @@ const Config = () => {
                >
                  <i className="fas fa-download fa-lg"></i> Backup
                </button>
-               <button
-                 onClick={handleRestore}
-                 className="bg-orange-50 text-orange-600 border border-orange-200 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-100 transition active:scale-95 flex flex-col items-center gap-2"
-               >
-                 <i className="fas fa-upload fa-lg"></i> Restaurar
-               </button>
+                <button
+                  onClick={handleRestore}
+                  className="bg-orange-500/10 text-orange-600 border border-orange-500/20 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-500/20 transition active:scale-95 flex flex-col items-center gap-2"
+                >
+                  <i className="fas fa-upload fa-lg"></i> Restaurar
+                </button>
              </div>
           </div>
         </div>
 
         {/* Card Cargos */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col max-h-[400px]">
-          <h2 className="text-sm font-black mb-4 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+        <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col max-h-[400px]">
+          <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
             <i className="fas fa-id-badge text-purple-600"></i> Gerenciar Cargos
           </h2>
           <form onSubmit={handleAddRole} className="flex gap-2 mb-4">
             <input
               type="text"
-              className="flex-1 border border-gray-300 rounded-xl p-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-100"
+              className="flex-1 border border-surface-300 rounded-xl p-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-100 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               placeholder="Nome do novo cargo..."
               value={newRole}
               onChange={(e) => setNewRole(e.target.value)}
@@ -676,32 +714,32 @@ const Config = () => {
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-purple-200 transition group"
+                className="flex justify-between items-center p-3 bg-surface-50 rounded-xl border border-surface-200 hover:border-purple-500/30 transition group"
               >
-                <span className="text-sm font-bold text-gray-700 uppercase tracking-tight">{role.nome}</span>
+                <span className="text-sm font-bold text-surface-800 uppercase tracking-tight">{role.nome}</span>
                 <button
                   onClick={() => handleDeleteRole(role.id)}
-                  className="text-gray-300 hover:text-red-500 p-1.5 transition"
+                  className="text-surface-300 hover:text-red-500 p-1.5 transition"
                   title="Excluir"
                 >
                   <i className="fas fa-trash-alt text-xs"></i>
                 </button>
               </div>
             ))}
-            {roles.length === 0 && <p className="text-gray-400 text-[10px] text-center mt-10 uppercase tracking-widest font-black opacity-30">Nenhum cargo</p>}
+            {roles.length === 0 && <p className="text-surface-400 text-[10px] text-center mt-10 uppercase tracking-widest font-black opacity-30">Nenhum cargo</p>}
           </div>
         </div>
       </div>
 
       {/* Gestão de Usuários */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-sm font-black mb-6 text-gray-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+      <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
+        <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
           <i className="fas fa-users-cog text-indigo-600"></i> Usuários de Acesso
         </h2>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          <form onSubmit={handleAddUser} className="lg:w-80 xl:w-96 space-y-4 shrink-0 bg-gray-50 p-6 rounded-2xl border border-gray-100">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Novo Acesso</h3>
+          <form onSubmit={handleAddUser} className="lg:w-80 xl:w-96 space-y-4 shrink-0 bg-surface-50 p-6 rounded-2xl border border-surface-200">
+            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4">Novo Acesso</h3>
             <FormField label="Nome Completo" placeholder="Ex: João da Silva" value={newUser.nome} onChange={(v) => setNewUser({...newUser, nome: v})} required />
             <FormField label="Login / Usuário" placeholder="Ex: joao.vendas" value={newUser.username} onChange={(v) => setNewUser({...newUser, username: v})} required />
             
@@ -717,16 +755,16 @@ const Config = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[34px] text-gray-400 hover:text-indigo-600"
+                className="absolute right-3 top-[34px] text-surface-400 hover:text-indigo-600"
               >
                 <i className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"} text-xs`}></i>
               </button>
             </div>
 
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1 block">Permissão</label>
+              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Permissão</label>
               <select
-                className="w-full border border-gray-300 rounded-xl p-2.5 bg-white outline-none focus:ring-2 focus:ring-indigo-100 transition text-sm font-medium"
+                className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-100 outline-none focus:ring-2 focus:ring-indigo-100 transition text-sm font-medium"
                 value={newUser.cargo}
                 onChange={(e) => setNewUser({ ...newUser, cargo: e.target.value })}
               >
@@ -745,7 +783,7 @@ const Config = () => {
           </form>
 
           <div className="flex-1 overflow-hidden flex flex-col">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-4">Usuários com Acesso ao Terminal</h3>
+            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4 ml-4">Usuários com Acesso ao Terminal</h3>
             <DataTable 
               columns={userColumns} 
               data={systemUsers} 

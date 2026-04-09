@@ -35,13 +35,13 @@ const FormField = ({
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       {label && (
-        <label className="block text-xs font-bold text-gray-500 uppercase tracking-tight ml-1">
+        <label className="block text-xs font-bold text-surface-500 uppercase tracking-tight ml-1">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
       <div className="relative group">
         {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 group-focus-within:text-primary-500 transition-colors">
             <i className={`fas ${icon}`}></i>
           </div>
         )}
@@ -55,8 +55,11 @@ const FormField = ({
           className={`
             w-full border rounded-lg p-2.5 outline-none transition-all duration-200 text-sm
             ${icon ? "pl-10" : "pl-3"}
-            ${disabled ? "bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200" : "bg-white border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"}
-            ${error ? "border-red-500 focus:border-red-500 focus:ring-red-100" : ""}
+            ${disabled 
+              ? "bg-surface-50 text-surface-400 cursor-not-allowed border-surface-200" 
+              : "bg-surface-100 border-surface-300 text-surface-800 hover:border-surface-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 placeholder:text-surface-400"
+            }
+            ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}
           `}
           {...props}
         />
