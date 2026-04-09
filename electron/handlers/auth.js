@@ -8,6 +8,18 @@ function register(safeHandle, knex) {
     return (await knex("usuarios").count("id as total").first()).total > 0;
   });
 
+  safeHandle("check-onboarding-status", async () => {
+    const userCount = (await knex("usuarios").count("id as total").first()).total;
+    const storeName = await knex("configuracoes").where("chave", "loja_nome").first();
+    
+    return {
+      onboardingDone: userCount > 0 && !!storeName,
+      hasUsers: userCount > 0,
+      hasStoreConfig: !!storeName
+    };
+  });
+
+
   safeHandle("register-user", async (event, userData) => {
     const { salt, hash } = hashPassword(userData.password);
     const usernameTratado = userData.username.trim();

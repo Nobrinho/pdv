@@ -15,8 +15,12 @@ import Recibos from "./pages/Recibos";
 import Dashboard from "./pages/Dashboard";
 import Config from "./pages/Config";
 import Login from "./pages/Login";
+import Onboarding from "./pages/Onboarding";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
+
 import Updater from "./components/Updater";
+import SyncStatus from "./components/SyncStatus";
+
 import Relatorios from "./pages/Relatorios";
 import Comissoes from "./pages/Comissoes";
 import Clientes from "./pages/Clientes";
@@ -95,7 +99,7 @@ const MENU_ITEMS = [
 ];
 
 function App() {
-  const { user, login, logout, hasAccess, requestRouteAccess, unlockedRoutes } =
+  const { user, login, logout, onboardingRequired, setOnboardingRequired, hasAccess, requestRouteAccess, unlockedRoutes } =
     useAuth();
   const { tenant } = useTenant();
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -133,6 +137,14 @@ function App() {
   const handleMenuClick = (path) => {
     requestRouteAccess(path, navigate);
   };
+
+  if (onboardingRequired === null) {
+    return null; // Aguarda a checagem com o backend (sem tela branca graças à splash nativa)
+  }
+
+  if (onboardingRequired === true || location.pathname === "/onboarding") {
+    return <Onboarding />;
+  }
 
   if (!user) {
     return <Login onLoginSuccess={(userData) => login(userData)} />;
@@ -253,6 +265,9 @@ function App() {
               </div>
             )}
           </button>
+
+          {/* Turso Cloud Sync Status */}
+          <SyncStatus isCollapsed={sidebarCollapsed} />
         </div>
 
         {!sidebarCollapsed && (
@@ -285,6 +300,7 @@ function App() {
           <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
 
           <Route path="*" element={<Navigate to="/" />} />
+
         </Routes>
       </main>
 

@@ -27,6 +27,8 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
+  const [onboardingRequired, setOnboardingRequired] = useState(null); // null = carregando, true = precisa, false = pronto
+
 
   // --- Modal de supervisor ---
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
@@ -39,7 +41,22 @@ export const AuthProvider = ({ children }) => {
 
   const { showAlert } = useAlert();
 
+  // Verificação de onboarding no startup
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const status = await window.api.checkOnboardingStatus();
+        setOnboardingRequired(!status.onboardingDone);
+      } catch (error) {
+        console.error("Erro ao verificar onboarding:", error);
+        setOnboardingRequired(false); // Fallback seguro
+      }
+    };
+    checkOnboarding();
+  }, []);
+
   // --- Auth ---
+
   const login = useCallback((userData) => {
     setUser(userData);
     setUnlockedRoutes([]);
@@ -152,7 +169,10 @@ export const AuthProvider = ({ children }) => {
     withPermission,
     requestRouteAccess,
     unlockedRoutes,
-  }), [user, login, logout, hasAccess, withPermission, requestRouteAccess, unlockedRoutes]);
+    onboardingRequired,
+    setOnboardingRequired,
+  }), [user, login, logout, hasAccess, withPermission, requestRouteAccess, unlockedRoutes, onboardingRequired]);
+
 
   return (
     <AuthContext.Provider value={value}>

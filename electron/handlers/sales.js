@@ -83,6 +83,11 @@ function register(safeHandle, knex) {
       }
 
       await trx.commit();
+      
+      // Sincroniza com a nuvem em background (sem travar a resposta para o usuário)
+      const { syncData } = require("../lib/turso");
+      syncData();
+
       return { success: true, id: saleId };
     } catch (error) {
       await trx.rollback();

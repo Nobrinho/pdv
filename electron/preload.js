@@ -34,12 +34,14 @@ contextBridge.exposeInMainWorld("api", {
   getWeeklySales: () => ipcRenderer.invoke("get-weekly-sales"),
   getLowStock: () => ipcRenderer.invoke("get-low-stock"),
 
-  // --- AUTENTICAÇÃO & USUÁRIOS (O QUE FALTAVA) ---
+  // --- AUTENTICAÇÃO & USUÁRIOS ---
   checkUsersExist: () => ipcRenderer.invoke("check-users-exist"),
+  checkOnboardingStatus: () => ipcRenderer.invoke("check-onboarding-status"),
   registerUser: (data) => ipcRenderer.invoke("register-user", data),
   loginAttempt: (data) => ipcRenderer.invoke("login-attempt", data),
-  getUsers: () => ipcRenderer.invoke("get-users"), // <--- FALTAVA ESTA
-  deleteUser: (id) => ipcRenderer.invoke("delete-user", id), // <--- E ESTA
+  getUsers: () => ipcRenderer.invoke("get-users"),
+  deleteUser: (id) => ipcRenderer.invoke("delete-user", id),
+
 
   // --- BACKUP & IMPRESSÃO ---
   backupDatabase: () => ipcRenderer.invoke("backup-database"),
@@ -88,4 +90,20 @@ contextBridge.exposeInMainWorld("api", {
   findClientByDoc: (doc) => ipcRenderer.invoke("find-client-by-doc", doc),
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
+  // --- SINCRONIZAÇÃO NUVEM ---
+  getSyncStatus: () => ipcRenderer.invoke("get-sync-status"),
+  forceSync: () => ipcRenderer.invoke("force-sync"),
+  getCloudConfig: () => ipcRenderer.invoke("get-cloud-config"),
+  saveCloudConfig: (config) => ipcRenderer.invoke("save-cloud-config", config),
+  onSyncEvent: (callback) => {
+    const subscription = (event, status) => callback(status);
+    ipcRenderer.on("sync-event", subscription);
+    return () => ipcRenderer.removeListener("sync-event", subscription);
+  },
+  onInitStatus: (callback) => {
+    const subscription = (event, status) => callback(status);
+    ipcRenderer.on("init-status", subscription);
+    return () => ipcRenderer.removeListener("init-status", subscription);
+  },
 });
+

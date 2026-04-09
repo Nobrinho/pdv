@@ -37,6 +37,8 @@ function register(safeHandle, knex) {
           data_alteracao: Date.now(),
         });
       }
+      const { syncData } = require("../lib/turso");
+      syncData();
       return { id: product.id, success: true };
     } else {
       if (!product.codigo) product.codigo = "AUTO-" + Date.now();
@@ -49,12 +51,16 @@ function register(safeHandle, knex) {
         tipo_alteracao: "cadastro_inicial",
         data_alteracao: Date.now(),
       });
+      const { syncData } = require("../lib/turso");
+      syncData();
       return { id, success: true };
     }
   });
 
   safeHandle("delete-product", async (event, id) => {
     await knex("produtos").where("id", id).update({ ativo: false });
+    const { syncData } = require("../lib/turso");
+    syncData();
     return { success: true };
   });
 
@@ -161,12 +167,19 @@ function register(safeHandle, knex) {
       }
 
       await trx.commit();
+      const { syncData } = require("../lib/turso");
+      syncData();
+
       return { success: true, ...results };
     } catch (error) {
       await trx.rollback();
       return { success: false, error: error.message };
     }
   });
+
+  // E também no save-product manual
+  // Vou precisar localizar o save-product no arquivo para garantir que sincronize lá também.
+
 
   // === DIALOG DE ARQUIVO ===
   safeHandle("open-file-dialog", async () => {

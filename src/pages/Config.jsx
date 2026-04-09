@@ -6,6 +6,13 @@ import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import StatusBadge from "../components/ui/StatusBadge";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/pt-br";
+
+dayjs.extend(relativeTime);
+dayjs.locale("pt-br");
+
 
 const Config = () => {
   const { showAlert, showConfirm } = useAlert();
@@ -671,7 +678,7 @@ const Config = () => {
 
           <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 grow">
              <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-               <i className="fas fa-database text-green-600"></i> Manutenção
+               <i className="fas fa-database text-green-600"></i> Manutenção Local
              </h2>
              <div className="grid grid-cols-2 gap-3">
                <button
@@ -688,7 +695,11 @@ const Config = () => {
                 </button>
              </div>
           </div>
+
+          {/* NOVO: Turso Cloud Sync Section */}
+          <TursoSyncCard showAlert={showAlert} />
         </div>
+
 
         {/* Card Cargos */}
         <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col max-h-[400px]">
@@ -797,4 +808,153 @@ const Config = () => {
   );
 };
 
+// === COMPONENTE AUXILIAR: TursoSyncCard ===
+const TursoSyncCard = ({ showAlert }) => {
+  const [syncState, setSyncState] = useState({ syncStatus: "idle", lastSync: null });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isTokenVisible, setIsTokenVisible] = useState(false);
+  
+  const [cloudConfig, setCloudConfig] = useState({
+    url: "",
+    authToken: "",
+  });
+
+  useEffect(() => {
+    const init = async () => {
+      // 1. Busca o status de sync
+      const status = await window.api.getSyncStatus();
+      setSyncState(status);
+
+      // 2. Busca a configuração de nuvem atual
+      const config = await window.api.getCloudConfig();
+      if (config) setCloudConfig(config);
+    };
+    init();
+
+    const removeListener = window.api.onSyncEvent((data) => {
+      setSyncState(data);
+      if (data.syncStatus === "success") {
+        setIsSyncing(false);
+        setIsSaving(false);
+      }
+    });
+
+    return () => removeListener && removeListener();
+  }, []);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    const result = await window.api.forceSync();
+    if (result.success) {
+      showAlert("Banco de dados sincronizado com a nuvem!", "Nuvem", "success");
+    } else {
+      showAlert("Erro ao sincronizar: " + result.error, "Falha na Nuvem", "error");
+    }
+    setIsSyncing(false);
+  };
+
+  const handleSaveConfig = async () => {
+    if (!cloudConfig.url || !cloudConfig.authToken) {
+      return showAlert("Preencha a URL e o Token para conectar.", "Atenção", "warning");
+    }
+
+    setIsSaving(true);
+    const result = await window.api.saveCloudConfig(cloudConfig);
+    
+    if (result.success) {
+      showAlert("Configurações salvas e conexão estabelecida!", "Sucesso", "success");
+    } else {
+      showAlert("Erro ao conectar: " + result.error, "Falha", "error");
+    }
+    setIsSaving(false);
+  };
+
+  const getStatusInfo = () => {
+    switch (syncState.syncStatus) {
+      case "syncing": return { color: "text-blue-500", icon: "fa-sync fa-spin", label: "Sincronizando..." };
+      case "success": return { color: "text-green-500", icon: "fa-check-circle", label: "Nuven Conectada" };
+      case "error": return { color: "text-red-500", icon: "fa-exclamation-triangle", label: "Erro de Conexão" };
+      default: return { color: "text-surface-400", icon: "fa-cloud", label: "Modo Offline" };
+    }
+  };
+
+  const info = getStatusInfo();
+
+  return (
+    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
+      <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+        <i className="fas fa-cloud text-blue-500"></i> Sincronização em Nuvem (Turso)
+      </h2>
+      
+      <div className="flex flex-col gap-4">
+        {/* Status Indicator */}
+        <div className="flex items-center justify-between p-3 bg-surface-50 rounded-xl border border-surface-200">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-sm ${info.color}`}>
+              <i className={`fas ${info.icon} text-lg`}></i>
+            </div>
+            <div>
+              <p className={`text-xs font-black uppercase tracking-tight ${info.color}`}>{info.label}</p>
+              <p className="text-[10px] text-surface-500">
+                {syncState.lastSync ? `Última: ${dayjs(syncState.lastSync).format("DD/MM HH:mm")}` : "Nunca sincronizado"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing || !cloudConfig.url}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-30"
+            title="Sincronizar Agora"
+          >
+            <i className={`fas fa-sync ${isSyncing ? "fa-spin" : ""}`}></i>
+          </button>
+        </div>
+
+        {/* Cloud Credentials Form */}
+        <div className="space-y-4 pt-2">
+          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">Configurações de Acesso</h3>
+          
+          <FormField
+            label="URL da Nuvem (Turso)"
+            placeholder="libsql://...turso.io"
+            value={cloudConfig.url}
+            onChange={(v) => setCloudConfig({ ...cloudConfig, url: v })}
+            icon="fa-globe"
+          />
+
+          <div className="relative">
+            <FormField
+              label="Token de Autenticação"
+              type={isTokenVisible ? "text" : "password"}
+              placeholder="Cole o token aqui..."
+              value={cloudConfig.authToken}
+              onChange={(v) => setCloudConfig({ ...cloudConfig, authToken: v })}
+              icon="fa-key"
+            />
+            <button
+              type="button"
+              onClick={() => setIsTokenVisible(!isTokenVisible)}
+              className="absolute right-3 top-[34px] text-surface-400 hover:text-blue-600"
+            >
+              <i className={`fas ${isTokenVisible ? "fa-eye-slash" : "fa-eye"} text-xs`}></i>
+            </button>
+          </div>
+
+          <button
+            onClick={handleSaveConfig}
+            disabled={isSaving}
+            className="w-full bg-surface-800 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-surface-900 transition shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-save"></i>}
+            {isSaving ? "CONFIGURANDO..." : "SALVAR E CONECTAR"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 export default Config;
+
