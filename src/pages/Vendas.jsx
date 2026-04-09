@@ -321,7 +321,7 @@ const Vendas = () => {
   };
 
   return (
-    <div className="flex h-full gap-4 p-4 bg-surface-200">
+    <div className="flex flex-col lg:flex-row h-full gap-4 p-4 bg-surface-200 overflow-y-auto lg:overflow-hidden custom-scrollbar">
       {/* Esquerda: Produtos e Carrinho */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Barra de Busca e Seleção */}
@@ -527,7 +527,7 @@ const Vendas = () => {
       </div>
 
       {/* Direita: Pagamento */}
-      <div className="w-96 flex flex-col gap-4">
+      <div className="w-full lg:w-96 flex flex-col gap-4 shrink-0">
         <div className="bg-surface-100 p-5 rounded-xl shadow-sm border border-surface-200 space-y-4">
           <h2 className="text-sm font-bold text-surface-500 uppercase tracking-wide border-b pb-2">
             Ajustes

@@ -100,6 +100,10 @@ function App() {
   const { tenant } = useTenant();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [appVersion, setAppVersion] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebarCollapsed");
+    return saved === "true";
+  });
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -118,6 +122,14 @@ function App() {
     fetchVersion();
   }, []);
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const newVal = !prev;
+      localStorage.setItem("sidebarCollapsed", String(newVal));
+      return newVal;
+    });
+  };
+
   const handleMenuClick = (path) => {
     requestRouteAccess(path, navigate);
   };
@@ -128,52 +140,59 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50 font-sans text-surface-800 transition-colors duration-200">
-      <aside className="w-64 bg-surface-100 text-surface-800 flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-10 border-r border-surface-200">
-        <div className="h-16 flex items-center justify-center border-b border-surface-200 bg-surface-100 shadow-sm">
-          <i className="fas fa-store text-primary-500 mr-2 text-xl"></i>
-          <span className="text-lg font-bold tracking-wide">{tenant.nome}</span>
+      <aside className={`${sidebarCollapsed ? "w-20" : "w-64"} bg-surface-100 text-surface-800 flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-[60] border-r border-surface-200 relative`}>
+        {/* Toggle Button */}
+        <button
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-20 bg-primary-600 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 z-[70] active:scale-95"
+          style={{ transform: sidebarCollapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          <i className="fas fa-chevron-left text-[10px]"></i>
+        </button>
+
+        <div className={`h-16 flex items-center justify-center border-b border-surface-200 bg-surface-100 shadow-sm overflow-hidden transition-all ${sidebarCollapsed ? "px-0" : "px-4"}`}>
+          <i className="fas fa-store text-primary-500 text-xl"></i>
+          {!sidebarCollapsed && <span className="ml-2 text-lg font-black tracking-tighter truncate animate-fade-in">{tenant.nome}</span>}
         </div>
 
-        <div className="px-4 py-4 bg-surface-100 border-b border-surface-200 flex items-center justify-between">
+        <div className={`py-4 bg-surface-100 border-b border-surface-200 flex items-center transition-all ${sidebarCollapsed ? "px-2 justify-center" : "px-4 justify-between"}`}>
           <div className="flex items-center">
             <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black shadow-sm transition-all ${
                 user.cargo === "admin"
                   ? "bg-purple-600 text-white"
                   : "bg-green-600 text-white"
               }`}
+              title={user.nome}
             >
               {user.nome.charAt(0).toUpperCase()}
             </div>
-            <div className="ml-3 overflow-hidden">
-              <p
-                className="text-sm font-medium leading-none truncate w-32"
-                title={user.nome}
-              >
-                {user.nome.split(" ")[0]}
-              </p>
-              <p className="text-xs text-surface-800 mt-1 capitalize flex items-center opacity-70">
-                <i
-                  className={`fas ${
-                    user.cargo === "admin"
-                      ? "fa-shield-alt text-purple-400"
-                      : "fa-cash-register text-green-400"
-                  } mr-1`}
-                ></i>
-                {user.cargo === "admin" ? "Administrador" : "Caixa"}
-              </p>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="ml-3 overflow-hidden animate-fade-in">
+                <p
+                  className="text-sm font-bold leading-none truncate w-32 text-surface-800"
+                  title={user.nome}
+                >
+                  {user.nome.split(" ")[0]}
+                </p>
+                <p className="text-[10px] text-surface-500 mt-1 capitalize flex items-center font-black">
+                  {user.cargo === "admin" ? "Admin" : "Caixa"}
+                </p>
+              </div>
+            )}
           </div>
-          <button
-            onClick={logout}
-            className="text-surface-800 hover:text-red-500 transition opacity-50 hover:opacity-100"
-            title="Sair do Sistema"
-          >
-            <i className="fas fa-sign-out-alt"></i>
-          </button>
+          {!sidebarCollapsed && (
+            <button
+              onClick={logout}
+              className="text-surface-400 hover:text-red-500 transition px-2 animate-fade-in"
+              title="Sair do Sistema"
+            >
+              <i className="fas fa-power-off text-sm"></i>
+            </button>
+          )}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav className={`flex-1 space-y-1 overflow-y-auto custom-scrollbar transition-all ${sidebarCollapsed ? "px-2 py-4" : "px-3 py-4"}`}>
           {MENU_ITEMS.map((item) => {
             const isActive = location.pathname === item.path;
             const isLocked = !hasAccess(item.path);
@@ -182,75 +201,73 @@ function App() {
               <button
                 key={item.path}
                 onClick={() => handleMenuClick(item.path)}
-                className={`w-full flex items-center px-4 py-3 rounded-lg transition-all duration-200 group text-left relative overflow-hidden ${
+                title={sidebarCollapsed ? item.label : ""}
+                className={`w-full flex items-center rounded-xl transition-all duration-200 group text-left relative overflow-hidden ${
+                  sidebarCollapsed ? "justify-center h-12" : "px-4 py-3"
+                } ${
                   isActive
-                    ? "bg-primary-500 text-white shadow-md font-bold"
-                    : "text-surface-800 hover:bg-surface-200"
+                    ? "bg-primary-600 text-white shadow-lg font-bold"
+                    : "text-surface-600 hover:bg-surface-200"
                 }`}
               >
                 <i
-                  className={`fas ${item.icon} w-6 text-center ${
+                  className={`fas ${item.icon} text-lg w-6 text-center transition-transform group-hover:scale-110 ${
                     isActive
                       ? "text-white"
-                      : "text-surface-800 opacity-60 group-hover:opacity-100"
+                      : "text-surface-500 group-hover:text-primary-600"
                   }`}
                 ></i>
-                <span className="ml-3 font-medium">{item.label}</span>
-                {isLocked && (
-                  <i className="fas fa-lock absolute right-3 text-xs text-gray-600 group-hover:text-red-400 transition-colors"></i>
+                {!sidebarCollapsed && (
+                  <span className="ml-3 text-sm font-bold tracking-tight animate-fade-in">{item.label}</span>
                 )}
-                {!isLocked && item.restricted && user.cargo !== "admin" && (
-                  <i
-                    className="fas fa-unlock absolute right-3 text-xs text-green-500 transition-colors"
-                    title="Liberado temporariamente"
-                  ></i>
+                
+                {!sidebarCollapsed && isLocked && (
+                  <i className="fas fa-lock absolute right-3 text-[10px] text-surface-400"></i>
+                )}
+                
+                {sidebarCollapsed && isLocked && (
+                   <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-surface-100"></div>
                 )}
               </button>
             );
           })}
         </nav>
 
-        <div className="px-4 py-3 border-t border-surface-200 bg-surface-100">
+        <div className={`border-t border-surface-200 bg-surface-100 transition-all ${sidebarCollapsed ? "p-4" : "px-4 py-3"}`}>
           <button
             onClick={toggleDarkMode}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-50 border border-surface-200 hover:bg-surface-200 hover:border-surface-300 transition-colors shadow-sm"
+            title={sidebarCollapsed ? (isDarkMode ? 'Modo Claro' : 'Modo Escuro') : ""}
+            className={`w-full flex items-center rounded-xl bg-surface-50 border border-surface-200 hover:bg-surface-200 transition-all shadow-sm ${sidebarCollapsed ? "justify-center h-10" : "px-3 py-2.5 justify-between"}`}
           >
-            <div className="flex items-center gap-3">
+            <div className={`flex items-center ${sidebarCollapsed ? "" : "gap-3"}`}>
               <i className={`fas ${isDarkMode ? 'fa-moon text-indigo-400' : 'fa-sun text-yellow-500'} w-4 text-center`}></i>
-              <span className="text-sm font-bold text-surface-800">
-                {isDarkMode ? 'MoDo Escuro' : 'Modo Claro'}
-              </span>
+              {!sidebarCollapsed && (
+                <span className="text-[11px] font-black uppercase tracking-widest text-surface-800">
+                  {isDarkMode ? 'Noite' : 'Dia'}
+                </span>
+              )}
             </div>
-            <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${isDarkMode ? 'bg-indigo-500' : 'bg-surface-300'}`}>
-              <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${isDarkMode ? 'translate-x-4' : 'translate-x-0'}`}></div>
-            </div>
+            {!sidebarCollapsed && (
+              <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${isDarkMode ? 'bg-indigo-500' : 'bg-surface-300'}`}>
+                <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${isDarkMode ? 'translate-x-4' : 'translate-x-0'}`}></div>
+              </div>
+            )}
           </button>
         </div>
 
-        <div className="p-4 border-t border-surface-200 bg-surface-50 flex justify-between items-center">
-          <p className="text-xs text-surface-800 opacity-60 font-medium">
-            Ver {appVersion || "..."}
-            {tenant.devNome && (
-              <>
-                {" "}—{" "}
-                {tenant.devLink ? (
-                  <a
-                    href={tenant.devLink}
-                    className="hover:underline font-bold"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {tenant.devNome}
-                  </a>
-                ) : (
-                  <span className="font-bold">{tenant.devNome}</span>
-                )}
-              </>
-            )}
-          </p>
-
-          <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-        </div>
+        {!sidebarCollapsed && (
+          <div className="p-4 border-t border-surface-200 bg-surface-50 flex justify-between items-center animate-fade-in">
+            <p className="text-[9px] text-surface-500 font-black uppercase tracking-widest leading-none">
+              v{appVersion || "..."}
+              {tenant.devNome && (
+                <span className="block mt-1 opacity-60">
+                  — {tenant.devNome}
+                </span>
+              )}
+            </p>
+            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+          </div>
+        )}
       </aside>
 
       <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50">

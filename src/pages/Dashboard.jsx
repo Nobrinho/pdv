@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
+import { useTheme } from "../context/ThemeContext";
 import StatCard from "../components/ui/StatCard";
 import {
   Chart as ChartJS,
@@ -24,6 +25,7 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     faturamento: 0,
@@ -86,9 +88,16 @@ const Dashboard = () => {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { display: false },
+      legend: { 
+        display: false,
+        labels: { color: isDarkMode ? "#9ca3af" : "#4b5563" }
+      },
       tooltip: {
-        backgroundColor: "#1f2937",
+        backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+        titleColor: isDarkMode ? "#ffffff" : "#111827",
+        bodyColor: isDarkMode ? "#d1d5db" : "#374151",
+        borderColor: isDarkMode ? "#374151" : "#e5e7eb",
+        borderWidth: 1,
         padding: 12,
         titleFont: { size: 14, weight: "bold" },
         bodyFont: { size: 13 },
@@ -98,9 +107,18 @@ const Dashboard = () => {
       }
     },
     scales: { 
+      x: {
+        grid: { color: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" },
+        ticks: { color: isDarkMode ? "#9ca3af" : "#4b5563", font: { weight: 'bold', size: 10 } }
+      },
       y: { 
         beginAtZero: true,
-        ticks: { callback: (value) => formatCurrency(value) }
+        grid: { color: isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" },
+        ticks: { 
+          color: isDarkMode ? "#9ca3af" : "#4b5563",
+          callback: (value) => formatCurrency(value),
+          font: { size: 10 }
+        }
       } 
     },
   };
