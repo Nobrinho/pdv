@@ -2,8 +2,7 @@ const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 const { knex, dbPath, isDev } = require("./lib/db");
 const { safeHandle } = require("./lib/safeHandle");
-const { initTurso, syncData, getSyncStatus, setOnSyncChange, reinitTurso } = require("./lib/turso");
-const { getCloudConfig, saveCloudConfig } = require("./lib/cloudConfig");
+
 
 let mainWindow;
 let splashWindow;
@@ -36,16 +35,7 @@ async function initDb() {
     await knex.migrate.latest();
     console.log("✅ Migrações concluídas.");
 
-    const config = getCloudConfig();
-    initTurso(dbPath, config);
-    
-    setOnSyncChange((status) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("sync-event", status);
-      }
-    });
 
-    await syncData();
     console.log("✅ Sincronização e Banco prontos.");
     return true;
   } catch (err) {
@@ -93,14 +83,7 @@ function createWindow() {
 
 // 4. Registro de Handlers IPC
 function registerIpcHandlers() {
-  safeHandle("get-sync-status", async () => getSyncStatus());
-  safeHandle("force-sync", async () => await syncData());
-  safeHandle("get-cloud-config", async () => getCloudConfig());
-  safeHandle("save-cloud-config", async (event, config) => {
-    const result = saveCloudConfig(config);
-    if (result.success) return await reinitTurso(dbPath, config);
-    return result;
-  });
+
 }
 
 // 5. Ciclo de Vida do App

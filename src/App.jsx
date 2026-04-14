@@ -19,7 +19,6 @@ import Onboarding from "./pages/Onboarding";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
 
 import Updater from "./components/Updater";
-import SyncStatus from "./components/SyncStatus";
 
 import Relatorios from "./pages/Relatorios";
 import Comissoes from "./pages/Comissoes";
@@ -266,8 +265,6 @@ function App() {
             )}
           </button>
 
-          {/* Turso Cloud Sync Status */}
-          <SyncStatus isCollapsed={sidebarCollapsed} />
         </div>
 
         {!sidebarCollapsed && (

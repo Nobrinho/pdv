@@ -90,20 +90,6 @@ contextBridge.exposeInMainWorld("api", {
   findClientByDoc: (doc) => ipcRenderer.invoke("find-client-by-doc", doc),
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
-  // --- SINCRONIZAÇÃO NUVEM ---
-  getSyncStatus: () => ipcRenderer.invoke("get-sync-status"),
-  forceSync: () => ipcRenderer.invoke("force-sync"),
-  getCloudConfig: () => ipcRenderer.invoke("get-cloud-config"),
-  saveCloudConfig: (config) => ipcRenderer.invoke("save-cloud-config", config),
-  onSyncEvent: (callback) => {
-    const subscription = (event, status) => callback(status);
-    ipcRenderer.on("sync-event", subscription);
-    return () => ipcRenderer.removeListener("sync-event", subscription);
-  },
-  onInitStatus: (callback) => {
-    const subscription = (event, status) => callback(status);
-    ipcRenderer.on("init-status", subscription);
-    return () => ipcRenderer.removeListener("init-status", subscription);
-  },
+
 });
 
