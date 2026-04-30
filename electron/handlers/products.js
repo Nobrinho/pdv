@@ -68,13 +68,34 @@ function register(safeHandle, knex) {
     const page = filters.page || 1;
     const limit = filters.limit || 200;
     const offset = (page - 1) * limit;
+    const startDate = filters.startDate;
+    const endDate = filters.endDate;
 
     const query = knex("historico_produtos")
       .join("produtos", "historico_produtos.produto_id", "produtos.id")
       .select("historico_produtos.*", "produtos.descricao", "produtos.codigo")
       .orderBy("historico_produtos.data_alteracao", "desc");
 
-    const countResult = await knex("historico_produtos").count("id as total").first();
+    if (startDate) {
+      const startTs = new Date(`${startDate}T00:00:00`).getTime();
+      query.where("historico_produtos.data_alteracao", ">=", startTs);
+    }
+    if (endDate) {
+      const endTs = new Date(`${endDate}T23:59:59.999`).getTime();
+      query.where("historico_produtos.data_alteracao", "<=", endTs);
+    }
+
+    const countQuery = knex("historico_produtos");
+    if (startDate) {
+      const startTs = new Date(`${startDate}T00:00:00`).getTime();
+      countQuery.where("historico_produtos.data_alteracao", ">=", startTs);
+    }
+    if (endDate) {
+      const endTs = new Date(`${endDate}T23:59:59.999`).getTime();
+      countQuery.where("historico_produtos.data_alteracao", "<=", endTs);
+    }
+
+    const countResult = await countQuery.count("id as total").first();
     const total = countResult.total;
 
     const data = await query.limit(limit).offset(offset);

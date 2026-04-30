@@ -23,6 +23,8 @@ const Produtos = () => {
   // Filtros e Ordenação
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("descricao");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
   // Estados de Dados (Formulários)
   const [formData, setFormData] = useState({
@@ -95,6 +97,16 @@ const Produtos = () => {
 
     return result;
   }, [products, searchTerm, sortBy]);
+
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / PAGE_SIZE);
+  const paginatedProducts = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredAndSortedProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredAndSortedProducts, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, sortBy]);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -479,13 +491,36 @@ const Produtos = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         <DataTable 
           columns={columns} 
-          data={filteredAndSortedProducts} 
+          data={paginatedProducts} 
           loading={loading}
           emptyMessage="Nenhum produto em estoque."
         />
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+            <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+              Pag {page} de {totalPages} • {filteredAndSortedProducts.length} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* --- MODAL DE PRODUTO --- */}

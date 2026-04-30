@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { jsPDF } from "jspdf";
@@ -13,6 +13,8 @@ dayjs.locale("pt-br");
 
 const Relatorios = () => {
   const { showAlert } = useAlert();
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
   const {
     allPeople,
@@ -34,6 +36,16 @@ const Relatorios = () => {
     setPeriodType,
     handlePeriodChange,
   } = useReportData();
+
+  const totalPages = Math.ceil(filteredSales.length / PAGE_SIZE);
+  const paginatedSales = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredSales.slice(start, start + PAGE_SIZE);
+  }, [filteredSales, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate, selectedSeller, selectedPayment, periodType]);
 
   const exportPDF = () => {
     try {
@@ -380,7 +392,7 @@ const Relatorios = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredSales.map((v) => (
+                {paginatedSales.map((v) => (
                   <tr
                     key={v.id}
                     className={`hover:bg-surface-50 ${v.cancelada ? "bg-red-500/10 text-red-500 text-red-400" : ""}`}
@@ -412,7 +424,7 @@ const Relatorios = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredSales.length === 0 && (
+                {paginatedSales.length === 0 && (
                   <tr>
                     <td colSpan="5" className="p-8 text-center text-surface-400">
                       Nenhuma venda neste período.
@@ -422,6 +434,29 @@ const Relatorios = () => {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+                Pag {page} de {totalPages} • {filteredSales.length} total
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Direita: Resumos */}

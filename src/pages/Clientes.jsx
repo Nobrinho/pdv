@@ -21,6 +21,8 @@ const Clientes = () => {
   const [clients, setClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
   // Modal Cadastro
   const [showModal, setShowModal] = useState(false);
@@ -73,6 +75,16 @@ const Clientes = () => {
       );
     });
   }, [searchTerm, clients]);
+
+  const totalPages = Math.ceil(filteredClients.length / PAGE_SIZE);
+  const paginatedClients = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredClients.slice(start, start + PAGE_SIZE);
+  }, [filteredClients, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   // --- CRUD ---
   const handleSubmit = async (e) => {
@@ -296,13 +308,36 @@ const Clientes = () => {
         </div>
 
         {/* Lista */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
           <DataTable
             columns={columns}
-            data={filteredClients}
+            data={paginatedClients}
             loading={loading}
             emptyMessage="Nenhum cliente encontrado."
           />
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+                Pag {page} de {totalPages} • {filteredClients.length} total
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

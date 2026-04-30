@@ -32,7 +32,12 @@ const HistoricoPrecos = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await api.products.history({ page, limit: LIMIT });
+      const result = await api.products.history({
+        page,
+        limit: LIMIT,
+        startDate,
+        endDate,
+      });
       setHistory(result.data || []);
       setTotalPages(result.totalPages || 0);
       setTotalRecords(result.total || 0);
@@ -41,7 +46,7 @@ const HistoricoPrecos = () => {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, startDate, endDate]);
 
   useEffect(() => {
     loadData();
@@ -49,6 +54,7 @@ const HistoricoPrecos = () => {
 
   const handlePeriodChange = (type) => {
     setPeriodType(type);
+    setPage(1);
     const now = dayjs();
 
     if (type === "weekly") {
@@ -68,7 +74,9 @@ const HistoricoPrecos = () => {
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
       result = result.filter(
-        (h) => h.descricao.toLowerCase().includes(lower) || h.codigo.toLowerCase().includes(lower)
+        (h) =>
+          (h.descricao || "").toLowerCase().includes(lower) ||
+          (h.codigo || "").toLowerCase().includes(lower)
       );
     }
     return result;
@@ -220,11 +228,11 @@ const HistoricoPrecos = () => {
           <div className="flex gap-2">
              <div className="flex-1">
                 <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">De</label>
-                <input type="date" className="w-full border border-surface-200 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary-100 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPeriodType("custom"); }} />
+                <input type="date" className="w-full border border-surface-200 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary-100 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPeriodType("custom"); setPage(1); }} />
              </div>
              <div className="flex-1">
                 <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">Até</label>
-                <input type="date" className="w-full border border-surface-200 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary-100 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPeriodType("custom"); }} />
+                <input type="date" className="w-full border border-surface-200 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary-100 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPeriodType("custom"); setPage(1); }} />
              </div>
           </div>
           <div className="lg:col-span-2">

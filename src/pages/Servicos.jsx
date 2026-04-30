@@ -7,6 +7,7 @@ import { formatCurrency } from "../utils/format";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import StatCard from "../components/ui/StatCard";
+import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Servicos = () => {
   const { showAlert } = useAlert();
@@ -15,6 +16,10 @@ const Servicos = () => {
   const [services, setServices] = useState([]);
   const [mechanics, setMechanics] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const LIMIT = 100;
 
   // Estado do Formulário (Registro)
   const [formData, setFormData] = useState({
@@ -36,19 +41,26 @@ const Servicos = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const startTimestamp = startDate
-        ? dayjs(startDate).startOf("day").valueOf()
-        : undefined;
-      const endTimestamp = endDate
-        ? dayjs(endDate).endOf("day").valueOf()
-        : undefined;
+      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
+        startDate,
+        endDate,
+      );
 
       const [servicesData, peopleData] = await Promise.all([
-        api.services.list({ startDate: startTimestamp, endDate: endTimestamp }),
+        api.services.list({
+          page,
+          limit: LIMIT,
+          startDate: startTimestamp,
+          endDate: endTimestamp,
+          trocadorId: selectedMechanicFilter && selectedMechanicFilter !== "all" ? selectedMechanicFilter : undefined,
+        }),
         api.people.list()
       ]);
 
-      setServices(servicesData.sort((a, b) => b.data_servico - a.data_servico));
+      const servicesList = Array.isArray(servicesData) ? servicesData : (servicesData?.data || []);
+      setServices(servicesList.sort((a, b) => b.data_servico - a.data_servico));
+      setTotalPages(Array.isArray(servicesData) ? 0 : (servicesData?.totalPages || 0));
+      setTotalRecords(Array.isArray(servicesData) ? servicesList.length : (servicesData?.total || 0));
       setMechanics(peopleData.filter((p) => p.cargo_nome === "Trocador"));
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -56,7 +68,7 @@ const Servicos = () => {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate, showAlert]);
+  }, [startDate, endDate, selectedMechanicFilter, showAlert, page]);
 
   useEffect(() => {
     loadData();
@@ -91,26 +103,17 @@ const Servicos = () => {
 
   const handlePeriodChange = (type) => {
     setPeriodType(type);
-    const now = dayjs();
-    if (type === "weekly") {
-      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
-    } else if (type === "monthly") {
-      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
-    } else if (type === "yearly") {
-      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
+    setPage(1);
+    const range = getPeriodRange(type);
+    if (range) {
+      setStartDate(range.startDate);
+      setEndDate(range.endDate);
     }
   };
 
   const filteredServices = useMemo(() => {
-    let result = services;
-    if (selectedMechanicFilter && selectedMechanicFilter !== "all") {
-      result = result.filter((s) => s.trocador_id === parseInt(selectedMechanicFilter));
-    }
-    return result;
-  }, [services, selectedMechanicFilter]);
+    return services;
+  }, [services]);
 
   const reportSummary = useMemo(() => {
     const totalValue = filteredServices.reduce((acc, curr) => acc + curr.valor, 0);
@@ -223,20 +226,20 @@ const Servicos = () => {
                 label="Início"
                 type="date"
                 value={startDate}
-                onChange={(val) => { setStartDate(val); setPeriodType("custom"); }}
+                onChange={(val) => { setStartDate(val); setPeriodType("custom"); setPage(1); }}
               />
               <FormField
                 label="Fim"
                 type="date"
                 value={endDate}
-                onChange={(val) => { setEndDate(val); setPeriodType("custom"); }}
+                onChange={(val) => { setEndDate(val); setPeriodType("custom"); setPage(1); }}
               />
               <div>
                 <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">Mecânico</label>
                 <select
                   className="w-full border border-surface-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-100 outline-none bg-surface-100 transition-all"
                   value={selectedMechanicFilter}
-                  onChange={(e) => setSelectedMechanicFilter(e.target.value)}
+                  onChange={(e) => { setSelectedMechanicFilter(e.target.value); setPage(1); }}
                 >
                   <option value="all">Todos os Profissionais</option>
                   {mechanics.map((m) => (
@@ -270,6 +273,29 @@ const Servicos = () => {
               loading={loading}
               emptyMessage="Nenhum serviço registrado para este período."
             />
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+                <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+                  Pag {page} de {totalPages} • {totalRecords} total
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                  >
+                    Próximo
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -96,6 +96,11 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("get-sales", async (event, filters = {}) => {
+    const page = filters.page ? parseInt(filters.page, 10) : null;
+    const limit = filters.limit ? parseInt(filters.limit, 10) : null;
+    const hasPagination = Number.isInteger(page) && Number.isInteger(limit) && page > 0 && limit > 0;
+    const offset = hasPagination ? (page - 1) * limit : 0;
+
     const query = knex("vendas")
       .leftJoin("pessoas as vendedor", "vendas.vendedor_id", "vendedor.id")
       .leftJoin("pessoas as trocador", "vendas.trocador_id", "trocador.id")
@@ -120,7 +125,27 @@ function register(safeHandle, knex) {
     if (filters.sellerId) {
       query.where("vendas.vendedor_id", filters.sellerId);
     }
-    if (filters.limit) {
+    if (filters.clientId) {
+      query.where("vendas.cliente_id", filters.clientId);
+    }
+
+    const countQuery = knex("vendas");
+    if (filters.startDate) {
+      countQuery.where("vendas.data_venda", ">=", filters.startDate);
+    }
+    if (filters.endDate) {
+      countQuery.where("vendas.data_venda", "<=", filters.endDate);
+    }
+    if (filters.sellerId) {
+      countQuery.where("vendas.vendedor_id", filters.sellerId);
+    }
+    if (filters.clientId) {
+      countQuery.where("vendas.cliente_id", filters.clientId);
+    }
+
+    if (hasPagination) {
+      query.limit(limit).offset(offset);
+    } else if (filters.limit) {
       query.limit(filters.limit);
     }
 
@@ -164,7 +189,20 @@ function register(safeHandle, knex) {
       };
     });
 
-    return vendasProcessadas;
+    if (!hasPagination) {
+      return vendasProcessadas;
+    }
+
+    const countResult = await countQuery.count("id as total").first();
+    const total = Number(countResult?.total || 0);
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: vendasProcessadas,
+      total,
+      page,
+      totalPages,
+    };
   });
 
   safeHandle("get-sale-items", async (event, id) => {

@@ -9,6 +9,7 @@ import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
+import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Recibos = () => {
   const { showAlert } = useAlert();
@@ -17,6 +18,10 @@ const Recibos = () => {
   const [sellers, setSellers] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const LIMIT = 100;
 
   // Filtros de Data e Período
   const [periodType, setPeriodType] = useState("weekly");
@@ -47,20 +52,28 @@ const Recibos = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const startTimestamp = filters.startDate 
-        ? dayjs(filters.startDate).startOf("day").valueOf() 
-        : undefined;
-      const endTimestamp = filters.endDate 
-        ? dayjs(filters.endDate).endOf("day").valueOf() 
-        : undefined;
+      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
+        filters.startDate,
+        filters.endDate,
+      );
 
       const [salesData, peopleData, clientsData] = await Promise.all([
-        api.sales.list({ startDate: startTimestamp, endDate: endTimestamp }),
+        api.sales.list({
+          page,
+          limit: LIMIT,
+          startDate: startTimestamp,
+          endDate: endTimestamp,
+          sellerId: filters.sellerId && filters.sellerId !== "all" ? filters.sellerId : undefined,
+          clientId: filters.clientId && filters.clientId !== "all" ? filters.clientId : undefined,
+        }),
         api.people.list(),
         api.clients.list()
       ]);
 
-      setSales(salesData.sort((a, b) => b.data_venda - a.data_venda));
+      const salesList = Array.isArray(salesData) ? salesData : (salesData?.data || []);
+      setSales(salesList.sort((a, b) => b.data_venda - a.data_venda));
+      setTotalPages(Array.isArray(salesData) ? 0 : (salesData?.totalPages || 0));
+      setTotalRecords(Array.isArray(salesData) ? salesList.length : (salesData?.total || 0));
       setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
       setClients(clientsData || []);
     } catch (error) {
@@ -69,7 +82,7 @@ const Recibos = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters.startDate, filters.endDate, showAlert]);
+  }, [filters.startDate, filters.endDate, filters.sellerId, filters.clientId, showAlert, page]);
 
   useEffect(() => {
     loadData();
@@ -77,34 +90,15 @@ const Recibos = () => {
 
   const handlePeriodChange = (type) => {
     setPeriodType(type);
-    const now = dayjs();
-    let newStart = filters.startDate;
-    let newEnd = filters.endDate;
-
-    if (type === "weekly") {
-      newStart = now.startOf("week").format("YYYY-MM-DD");
-      newEnd = now.endOf("week").format("YYYY-MM-DD");
-    } else if (type === "monthly") {
-      newStart = now.startOf("month").format("YYYY-MM-DD");
-      newEnd = now.endOf("month").format("YYYY-MM-DD");
-    } else if (type === "yearly") {
-      newStart = now.startOf("year").format("YYYY-MM-DD");
-      newEnd = now.endOf("year").format("YYYY-MM-DD");
-    }
-
-    setFilters((prev) => ({ ...prev, startDate: newStart, endDate: newEnd }));
+    setPage(1);
+    const range = getPeriodRange(type);
+    if (!range) return;
+    setFilters((prev) => ({ ...prev, startDate: range.startDate, endDate: range.endDate }));
   };
 
   const filteredSales = useMemo(() => {
-    let result = sales;
-    if (filters.sellerId && filters.sellerId !== "all") {
-      result = result.filter((s) => s.vendedor_id === parseInt(filters.sellerId));
-    }
-    if (filters.clientId && filters.clientId !== "all") {
-      result = result.filter((s) => s.cliente_id === parseInt(filters.clientId));
-    }
-    return result;
-  }, [sales, filters.sellerId, filters.clientId]);
+    return sales;
+  }, [sales]);
 
   const filteredClientsList = useMemo(() => {
     if (!clientSearchTerm) return [];
@@ -120,6 +114,7 @@ const Recibos = () => {
       setFilters({ ...filters, clientId: "" });
       setClientSearchTerm("");
     }
+    setPage(1);
     setShowClientResults(false);
   };
 
@@ -280,15 +275,15 @@ const Recibos = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <FormField label="Início" type="date" value={filters.startDate} onChange={(v) => { setFilters({ ...filters, startDate: v }); setPeriodType("custom"); }} />
-          <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); }} />
+          <FormField label="Início" type="date" value={filters.startDate} onChange={(v) => { setFilters({ ...filters, startDate: v }); setPeriodType("custom"); setPage(1); }} />
+          <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); setPage(1); }} />
           
           <div>
             <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Vendedor</label>
             <select
               className="w-full border border-surface-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-100 outline-none bg-surface-100 transition-all"
               value={filters.sellerId}
-              onChange={(e) => setFilters({ ...filters, sellerId: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, sellerId: e.target.value }); setPage(1); }}
             >
               <option value="all">Todos os Vendedores</option>
               {sellers.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
@@ -305,6 +300,7 @@ const Recibos = () => {
                 onChange={(e) => {
                   setClientSearchTerm(e.target.value);
                   if (filters.clientId) setFilters({ ...filters, clientId: "" });
+                  setPage(1);
                   setShowClientResults(true);
                 }}
                 onFocus={() => setShowClientResults(true)}
@@ -340,6 +336,29 @@ const Recibos = () => {
           loading={loading}
           emptyMessage="Nenhuma venda encontrada para o filtro selecionado."
         />
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+            <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+              Pag {page} de {totalPages} • {totalRecords} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal de Recibo */}

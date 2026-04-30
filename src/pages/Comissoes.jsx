@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { useAlert } from "../context/AlertSystem";
@@ -30,6 +30,8 @@ const Comissoes = () => {
   const [viewMode, setViewMode] = useState("condensed"); // 'condensed', 'detailed'
   const [selectedIds, setSelectedIds] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
   // Derivação de dados filtrados
   const salesDisplay = useMemo(() => {
@@ -45,6 +47,16 @@ const Comissoes = () => {
 
     return sales;
   }, [filteredSales, statusFilter]);
+
+  const totalPages = Math.ceil(salesDisplay.length / PAGE_SIZE);
+  const paginatedSalesDisplay = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return salesDisplay.slice(start, start + PAGE_SIZE);
+  }, [salesDisplay, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, startDate, endDate, selectedSeller, periodType, viewMode]);
 
   // KPIs
   const { totalPagar, totalPago, totalAcumulado } = useMemo(() => {
@@ -288,7 +300,7 @@ const Comissoes = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {salesDisplay.map((venda) => (
+              {paginatedSalesDisplay.map((venda) => (
                 <React.Fragment key={venda.id}>
                   {/* Linha Principal (Condensada) */}
                   <tr className={`hover:bg-surface-50 transition-colors ${selectedIds.includes(venda.id) ? "bg-primary-500/10 text-primary-600" : ""}`}>
@@ -380,6 +392,29 @@ const Comissoes = () => {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+            <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+              Pag {page} de {totalPages} • {salesDisplay.length} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
