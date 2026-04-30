@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useState, useEffect, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
 import dayjs from "dayjs";
@@ -35,6 +35,9 @@ const Vendas = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [lastSale, setLastSale] = useState(null);
+  const [isFinishingSale, setIsFinishingSale] = useState(false);
+  const [isSavingClient, setIsSavingClient] = useState(false);
+  const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
 
   // --- CPF RECIBO ---
   const [optsCpfReceipt, setOptsCpfReceipt] = useState(false);
@@ -42,6 +45,10 @@ const Vendas = () => {
   const [receiptName, setReceiptName] = useState("");
   const [receiptClientFound, setReceiptClientFound] = useState(null); // cliente já existente encontrado pelo doc
   const [receiptSearching, setReceiptSearching] = useState(false);
+  const hasValidReceiptDocument = (client) => {
+    const doc = (client?.documento || "").toString().trim();
+    return !!doc && validarDocumento(doc);
+  };
 
   // Auto-busca quando CPF (11 dígitos) ou CNPJ (14 dígitos) está completo
   const handleReceiptCpfChange = async (rawValue) => {
@@ -137,6 +144,7 @@ const Vendas = () => {
   // --- CADASTRO RÁPIDO ---
   const handleSaveNewClient = async (e) => {
     e.preventDefault();
+    if (isSavingClient) return;
     if (!newClientData.nome || !newClientData.telefone) {
       return showAlert(
         "Nome e Telefone são obrigatórios!",
@@ -148,6 +156,7 @@ const Vendas = () => {
       return showAlert("CPF/CNPJ inválido. Verifique o documento.", "Atenção", "error");
     }
     try {
+      setIsSavingClient(true);
       const result = await api.clients.save(newClientData);
       if (result.success) {
         showAlert("Cliente cadastrado com sucesso!", "Sucesso", "success");
@@ -165,11 +174,14 @@ const Vendas = () => {
     } catch (err) {
       console.error(err);
       showAlert("Erro técnico ao salvar cliente.", "Erro", "error");
+    } finally {
+      setIsSavingClient(false);
     }
   };
 
   // --- FINALIZAR ---
   const handleFinishSale = async () => {
+    if (isFinishingSale) return;
     if (cart.length === 0) return showAlert("Carrinho vazio!", "Erro", "error");
     if (!selectedSeller)
       return showAlert("Selecione um vendedor!", "Erro", "error");
@@ -200,7 +212,7 @@ const Vendas = () => {
     const temFiado = payments.some((p) => p.metodo === "Fiado");
     if (temFiado && !selectedClient) {
       return showAlert(
-        "Para vendas 'Fiado', é OBRIGATÓRIO selecionar um cliente.",
+        "Para vendas 'Fiado', É OBRIGATÓRIO selecionar um cliente.",
         "Cliente Necessário",
         "error",
       );
@@ -211,19 +223,19 @@ const Vendas = () => {
 
     // --- CPF NO RECIBO LOGIC ---
     if (optsCpfReceipt) {
-      if (finalClientId && finalClientObj?.documento) {
-        // Cliente selecionado já tem documento, segue normal
-      } else if (finalClientId && !finalClientObj?.documento) {
+      if (finalClientId && hasValidReceiptDocument(finalClientObj)) {
+        // Cliente selecionado já tem documento válido, segue normal
+      } else if (finalClientId && !hasValidReceiptDocument(finalClientObj)) {
         if (!receiptCpf) return showAlert("Informe o CPF/CNPJ para o recibo.", "Aviso", "warning");
         if (!validarDocumento(receiptCpf)) return showAlert("Documento inválido.", "Aviso", "error");
-        const res = await api.clients.save({ id: finalClientId, ...finalClientObj, documento: receiptCpf });
+        const res = await api.clients.save({ id: finalClientId, documento: receiptCpf });
         if (res.success) {
           finalClientObj = { ...finalClientObj, documento: receiptCpf };
         } else {
           return showAlert("Erro ao salvar documento do cliente.", "Erro", "error");
         }
       } else {
-        // Sem cliente selecionado — usar o fluxo de auto-busca
+        // Sem cliente selecionado â€” usar o fluxo de auto-busca
         if (!receiptCpf) return showAlert("Informe o CPF/CNPJ para o recibo.", "Aviso", "warning");
         if (!validarDocumento(receiptCpf)) return showAlert("Documento inválido.", "Aviso", "error");
 
@@ -232,7 +244,7 @@ const Vendas = () => {
           finalClientId = receiptClientFound.id;
           finalClientObj = receiptClientFound;
         } else {
-          // Cliente novo — precisa de nome
+          // Cliente novo â€” precisa de nome
           if (!receiptName) return showAlert("Informe o nome do cliente para o recibo.", "Aviso", "warning");
           try {
             const res = await api.clients.save({ nome: receiptName, documento: receiptCpf });
@@ -264,6 +276,7 @@ const Vendas = () => {
     };
 
     try {
+      setIsFinishingSale(true);
       const result = await api.sales.create(saleData);
 
       if (result.success) {
@@ -304,20 +317,27 @@ const Vendas = () => {
       }
     } catch (err) {
       showAlert("Erro técnico.", "Erro", "error");
+    } finally {
+      setIsFinishingSale(false);
     }
   };
 
   const handleSilentPrint = async () => {
+    if (isPrintingReceipt) return;
     const receiptElement = document.getElementById("cupom-fiscal");
     if (!receiptElement)
       return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
-    const result = await api.print.silent(
-      receiptElement.outerHTML,
-      await api.config.get("impressora_padrao"),
-    );
-    if (result.success)
-      showAlert("Enviado para impressão.", "Sucesso", "success");
-    else showAlert("Erro na impressão: " + result.error, "Erro", "error");
+    try {
+      setIsPrintingReceipt(true);
+      const result = await api.print.silent(
+        receiptElement.outerHTML,
+        await api.config.get("impressora_padrao"),
+      );
+      if (result.success) showAlert("Enviado para impressão.", "Sucesso", "success");
+      else showAlert("Erro na impressão: " + result.error, "Erro", "error");
+    } finally {
+      setIsPrintingReceipt(false);
+    }
   };
 
   return (
@@ -728,11 +748,12 @@ const Vendas = () => {
               </label>
               {optsCpfReceipt && (
                 <div className="mt-2 space-y-2 p-3 bg-primary-500/10 rounded-lg border border-primary-500/20">
-                  {selectedClient && clients.find(c => c.id == selectedClient)?.documento ? (
+                  {selectedClient && hasValidReceiptDocument(clients.find(c => c.id == selectedClient)) ? (
                     <p className="text-xs text-primary-600 font-medium"><i className="fas fa-check-circle mr-1"></i> Cliente já possui CPF/CNPJ cadastrado.</p>
                   ) : selectedClient ? (
                     <div>
                       <input className="w-full border border-surface-300 rounded p-1.5 text-sm bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none" placeholder="Digite o CPF/CNPJ" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
+                      <p className="text-[11px] text-surface-500 mt-1">Cliente selecionado não possui CPF/CNPJ válido. Informe abaixo para atualizar o cadastro e imprimir no recibo.</p>
                     </div>
                   ) : (
                     <>
@@ -768,10 +789,10 @@ const Vendas = () => {
             </div>
             <button
               onClick={handleFinishSale}
-              disabled={totals.remaining > 0.01}
-              className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${totals.remaining > 0.01 ? "bg-surface-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
+              disabled={totals.remaining > 0.01 || isFinishingSale}
+              className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${totals.remaining > 0.01 || isFinishingSale ? "bg-surface-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
             >
-              CONCLUIR VENDA
+              {isFinishingSale ? "A GUARDAR..." : "CONCLUIR VENDA"}
             </button>
           </div>
         </div>
@@ -856,9 +877,10 @@ const Vendas = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded font-bold hover:bg-primary-700 shadow-md"
+                  disabled={isSavingClient}
+                  className={`px-4 py-2 rounded font-bold shadow-md ${isSavingClient ? "bg-surface-400 text-white cursor-not-allowed" : "bg-primary-600 text-white hover:bg-primary-700"}`}
                 >
-                  Salvar e Selecionar
+                  {isSavingClient ? "SALVANDO..." : "Salvar e Selecionar"}
                 </button>
               </div>
             </form>
@@ -875,9 +897,11 @@ const Vendas = () => {
             <div className="mt-4 flex gap-2 pt-2 border-t border-surface-300">
               <button
                 onClick={handleSilentPrint}
-                className="flex-1 bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow active:scale-95 transition-transform flex items-center justify-center"
+                disabled={isPrintingReceipt}
+                className={`flex-1 py-3 rounded-lg font-bold shadow transition-transform flex items-center justify-center ${isPrintingReceipt ? "bg-surface-400 text-white cursor-not-allowed" : "bg-primary-600 text-white hover:bg-primary-700 active:scale-95"}`}
               >
-                <i className="fas fa-print mr-2"></i> Imprimir
+                <i className={`fas mr-2 ${isPrintingReceipt ? "fa-circle-notch fa-spin" : "fa-print"}`}></i>
+                {isPrintingReceipt ? "Imprimindo..." : "Imprimir"}
               </button>
               <button
                 onClick={() => setShowReceipt(false)}
@@ -894,3 +918,10 @@ const Vendas = () => {
 };
 
 export default Vendas;
+
+
+
+
+
+
+

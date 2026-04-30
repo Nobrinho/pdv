@@ -2,6 +2,31 @@
  * Handlers de Clientes e Contas a Receber (Fiado)
  */
 function register(safeHandle, knex) {
+  const sanitizeClientPayload = (client = {}, { forUpdate = false } = {}) => {
+    const payload = {};
+    const allowedFields = [
+      "nome",
+      "telefone",
+      "documento",
+      "endereco",
+      "observacoes",
+      "limite_credito",
+      "ativo",
+    ];
+
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(client, field)) {
+        payload[field] = client[field];
+      }
+    }
+
+    if (!forUpdate && !Object.prototype.hasOwnProperty.call(payload, "ativo")) {
+      payload.ativo = true;
+    }
+
+    return payload;
+  };
+
   safeHandle("get-clients", async () => {
     const clientes = await knex("clientes")
       .leftJoin(
@@ -21,7 +46,6 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("save-client", async (event, client) => {
-    // Proteção contra CPF/CNPJ duplicado
     if (client.documento) {
       if (client.id) {
         const existing = await knex("clientes")
@@ -30,7 +54,7 @@ function register(safeHandle, knex) {
           .whereNot("id", client.id)
           .first();
         if (existing) {
-          return { success: false, error: "CPF/CNPJ já cadastrado para outro cliente." };
+          return { success: false, error: "CPF/CNPJ ja cadastrado para outro cliente." };
         }
       } else {
         const existing = await knex("clientes")
@@ -38,21 +62,22 @@ function register(safeHandle, knex) {
           .where("ativo", true)
           .first();
         if (existing) {
-          return { success: false, error: "CPF/CNPJ já cadastrado para outro cliente." };
+          return { success: false, error: "CPF/CNPJ ja cadastrado para outro cliente." };
         }
       }
     }
 
     if (client.id) {
-      await knex("clientes").where("id", client.id).update(client);
+      const payload = sanitizeClientPayload(client, { forUpdate: true });
+      await knex("clientes").where("id", client.id).update(payload);
       return { success: true };
-    } else {
-      const [id] = await knex("clientes").insert({ ...client, ativo: true });
-      return { success: true, id };
     }
+
+    const payload = sanitizeClientPayload(client, { forUpdate: false });
+    const [id] = await knex("clientes").insert(payload);
+    return { success: true, id };
   });
 
-  // MELHORIA: Busca por SQL em vez de full table scan
   safeHandle("find-client-by-doc", async (event, documento) => {
     const clean = documento ? documento.replace(/\D/g, "") : "";
     if (!clean) return { success: false, client: null };
@@ -71,8 +96,9 @@ function register(safeHandle, knex) {
       .whereNot("status", "PAGO")
       .first();
 
-    if (dividas)
-      return { success: false, error: "Cliente possui débitos pendentes." };
+    if (dividas) {
+      return { success: false, error: "Cliente possui debitos pendentes." };
+    }
 
     await knex("clientes").where("id", id).update({ ativo: false });
     return { success: true };
@@ -86,12 +112,22 @@ function register(safeHandle, knex) {
 
   safeHandle("pay-debt", async (event, { contaId, valorPago }) => {
     const conta = await knex("contas_receber").where("id", contaId).first();
-    if (!conta) throw new Error("Conta não encontrada");
+    if (!conta) throw new Error("Conta nao encontrada");
 
-    const novoValorPago = conta.valor_pago + valorPago;
+    const valor = Number(valorPago);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      return { success: false, error: "Valor de pagamento invalido." };
+    }
+
+    const saldoDevedor = Number(conta.valor_total) - Number(conta.valor_pago);
+    if (valor - saldoDevedor > 0.0001) {
+      return { success: false, error: "Valor maior que o saldo devedor." };
+    }
+
+    const novoValorPago = Number(conta.valor_pago) + valor;
     let novoStatus = conta.status;
 
-    if (novoValorPago >= conta.valor_total) {
+    if (novoValorPago >= Number(conta.valor_total)) {
       novoStatus = "PAGO";
     } else if (novoValorPago > 0) {
       novoStatus = "PARCIAL";
