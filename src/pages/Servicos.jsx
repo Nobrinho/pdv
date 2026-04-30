@@ -76,13 +76,13 @@ const Servicos = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.trocadorId || !formData.descricao || !formData.valor) {
+    if (!formData.trocadorId || !formData.valor) {
       return showAlert("Preencha todos os campos obrigatórios!", "Atenção", "warning");
     }
 
     const serviceData = {
       trocador_id: parseInt(formData.trocadorId),
-      descricao: formData.descricao,
+      descricao: (formData.descricao || "").trim(),
       valor: parseFloat(formData.valor),
       forma_pagamento: "Saída",
     };
@@ -185,7 +185,6 @@ const Servicos = () => {
               placeholder="Ex: Troca de óleo, Regulagem..."
               value={formData.descricao}
               onChange={(val) => setFormData({ ...formData, descricao: val })}
-              required
             />
 
             <FormField

@@ -112,4 +112,10 @@ export const api = {
     quitAndInstall: () => safeCall(window.api.quitAndInstall),
     openFileDialog: () => safeCall(window.api.openFileDialog),
   },
+
+  // --- EVENTOS ---
+  events: {
+    log: (payload) => safeCall(window.api.logEvent, payload),
+    list: (filters) => safeCall(window.api.getEventLogs, filters),
+  },
 };

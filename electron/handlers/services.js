@@ -2,6 +2,7 @@
  * Handlers de Serviços Avulsos
  */
 function register(safeHandle, knex) {
+  const { logEvent } = require("../lib/eventLogger");
   safeHandle("get-services", async (event, filters = {}) => {
     const page = filters.page ? parseInt(filters.page, 10) : null;
     const limit = filters.limit ? parseInt(filters.limit, 10) : null;
@@ -61,6 +62,16 @@ function register(safeHandle, knex) {
     const [id] = await knex("servicos_avulsos").insert({
       ...data,
       data_servico: Date.now(),
+    });
+    await logEvent(knex, {
+      event_category: "domain_action",
+      event_type: "service.created",
+      entity_type: "servico",
+      entity_id: id,
+      severity: "info",
+      message: `Serviço #${id} registrado`,
+      payload: { valor: data?.valor, trocador_id: data?.trocador_id || null },
+      source: "handler",
     });
     return { success: true, id };
   });

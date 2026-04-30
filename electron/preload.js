@@ -91,5 +91,9 @@ contextBridge.exposeInMainWorld("api", {
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
 
+  // --- EVENT LOGS ---
+  logEvent: (payload) => ipcRenderer.invoke("log-event", payload),
+  getEventLogs: (filters) => ipcRenderer.invoke("get-event-logs", filters),
+
 });
 

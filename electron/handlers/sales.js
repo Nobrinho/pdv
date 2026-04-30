@@ -2,6 +2,7 @@
  * Handlers de Vendas (criação, listagem, itens, cancelamento)
  */
 const { carregarTaxas, calcularComissaoVenda } = require("../services/commission");
+const { logEvent } = require("../lib/eventLogger");
 
 function register(safeHandle, knex) {
   safeHandle("create-sale", async (event, saleData) => {
@@ -83,14 +84,30 @@ function register(safeHandle, knex) {
       }
 
       await trx.commit();
+      await logEvent(knex, {
+        event_category: "domain_action",
+        event_type: "sale.created",
+        entity_type: "venda",
+        entity_id: saleId,
+        severity: "info",
+        message: `Venda #${saleId} criada`,
+        payload: { total_final: saleData.total_final, itens: saleData.itens?.length || 0 },
+        source: "handler",
+      });
       
       // Sincroniza com a nuvem em background (sem travar a resposta para o usuário)
-      const { syncData } = require("../lib/turso");
-      syncData();
-
       return { success: true, id: saleId };
     } catch (error) {
       await trx.rollback();
+      await logEvent(knex, {
+        event_category: "error",
+        event_type: "sale.create_failed",
+        entity_type: "venda",
+        severity: "error",
+        message: error.message,
+        payload: { total_final: saleData?.total_final || null },
+        source: "handler",
+      });
       return { success: false, error: error.message };
     }
   });
@@ -233,9 +250,28 @@ function register(safeHandle, knex) {
         .update({ status: "CANCELADO" });
 
       await trx.commit();
+      await logEvent(knex, {
+        event_category: "domain_action",
+        event_type: "sale.canceled",
+        entity_type: "venda",
+        entity_id: vendaId,
+        severity: "warning",
+        message: `Venda #${vendaId} cancelada`,
+        payload: { motivo },
+        source: "handler",
+      });
       return { success: true };
     } catch (error) {
       await trx.rollback();
+      await logEvent(knex, {
+        event_category: "error",
+        event_type: "sale.cancel_failed",
+        entity_type: "venda",
+        entity_id: vendaId,
+        severity: "error",
+        message: error.message,
+        source: "handler",
+      });
       return { success: false, error: error.message };
     }
   });
@@ -248,6 +284,15 @@ function register(safeHandle, knex) {
         comissao_paga: true,
         data_pagamento_comissao: Date.now(),
       });
+    await logEvent(knex, {
+      event_category: "domain_action",
+      event_type: "commission.paid_batch",
+      entity_type: "venda",
+      severity: "info",
+      message: `${vendaIds.length} comissão(ões) baixadas`,
+      payload: { ids: vendaIds },
+      source: "handler",
+    });
     return { success: true };
   });
 }

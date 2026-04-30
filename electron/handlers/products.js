@@ -2,6 +2,7 @@
  * Handlers de Produtos (CRUD + Histórico)
  */
 function register(safeHandle, knex) {
+  const { logEvent } = require("../lib/eventLogger");
   safeHandle("get-products", async () => {
     return await knex("produtos").where("ativo", true).select("*");
   });
@@ -37,8 +38,15 @@ function register(safeHandle, knex) {
           data_alteracao: Date.now(),
         });
       }
-      const { syncData } = require("../lib/turso");
-      syncData();
+      await logEvent(knex, {
+        event_category: "domain_action",
+        event_type: "product.updated",
+        entity_type: "produto",
+        entity_id: product.id,
+        severity: "info",
+        message: `Produto #${product.id} atualizado`,
+        source: "handler",
+      });
       return { id: product.id, success: true };
     } else {
       if (!product.codigo) product.codigo = "AUTO-" + Date.now();
@@ -51,16 +59,30 @@ function register(safeHandle, knex) {
         tipo_alteracao: "cadastro_inicial",
         data_alteracao: Date.now(),
       });
-      const { syncData } = require("../lib/turso");
-      syncData();
+      await logEvent(knex, {
+        event_category: "domain_action",
+        event_type: "product.created",
+        entity_type: "produto",
+        entity_id: id,
+        severity: "info",
+        message: `Produto #${id} criado`,
+        source: "handler",
+      });
       return { id, success: true };
     }
   });
 
   safeHandle("delete-product", async (event, id) => {
     await knex("produtos").where("id", id).update({ ativo: false });
-    const { syncData } = require("../lib/turso");
-    syncData();
+    await logEvent(knex, {
+      event_category: "domain_action",
+      event_type: "product.deleted",
+      entity_type: "produto",
+      entity_id: id,
+      severity: "warning",
+      message: `Produto #${id} excluído (inativado)`,
+      source: "handler",
+    });
     return { success: true };
   });
 
@@ -188,12 +210,27 @@ function register(safeHandle, knex) {
       }
 
       await trx.commit();
-      const { syncData } = require("../lib/turso");
-      syncData();
+      await logEvent(knex, {
+        event_category: "domain_action",
+        event_type: "product.import_batch",
+        entity_type: "produto",
+        severity: "info",
+        message: "Importação de produtos concluída",
+        payload: results,
+        source: "handler",
+      });
 
       return { success: true, ...results };
     } catch (error) {
       await trx.rollback();
+      await logEvent(knex, {
+        event_category: "error",
+        event_type: "product.import_batch_failed",
+        entity_type: "produto",
+        severity: "error",
+        message: error.message,
+        source: "handler",
+      });
       return { success: false, error: error.message };
     }
   });

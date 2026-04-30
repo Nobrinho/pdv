@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Routes,
   Route,
@@ -17,6 +17,7 @@ import Config from "./pages/Config";
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
 import HistoricoPrecos from "./pages/HistoricoPrecos";
+import EventLogs from "./pages/EventLogs";
 
 import Updater from "./components/Updater";
 
@@ -95,6 +96,12 @@ const MENU_ITEMS = [
     icon: "fa-cog",
     restricted: true,
   },
+  {
+    path: "/logs",
+    label: "Logs de Eventos",
+    icon: "fa-clipboard-list",
+    restricted: true,
+  },
 ];
 
 function App() {
@@ -110,6 +117,9 @@ function App() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const lastLoggedPathRef = useRef("");
+
+  const sessionIdRef = useRef(null);
 
   // Buscar a versão assim que o componente montar
   useEffect(() => {
@@ -125,6 +135,19 @@ function App() {
     fetchVersion();
   }, []);
 
+  useEffect(() => {
+    if (!sessionIdRef.current) {
+      const existing = sessionStorage.getItem("pdv_session_id");
+      if (existing) {
+        sessionIdRef.current = existing;
+      } else {
+        const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        sessionStorage.setItem("pdv_session_id", newId);
+        sessionIdRef.current = newId;
+      }
+    }
+  }, []);
+
   const toggleSidebar = () => {
     setSidebarCollapsed(prev => {
       const newVal = !prev;
@@ -134,8 +157,46 @@ function App() {
   };
 
   const handleMenuClick = (path) => {
+    if (user) {
+      window.api?.logEvent?.({
+        occurred_at_ms: Date.now(),
+        event_category: "ui_click",
+        event_type: "menu.click",
+        screen: location.pathname,
+        component: "SidebarMenu",
+        action: "click",
+        target_id: path,
+        user_id: user.id,
+        user_name: user.nome,
+        session_id: sessionIdRef.current,
+        severity: "info",
+        message: `Clique no menu ${path}`,
+        source: "ui",
+      });
+    }
     requestRouteAccess(path, navigate);
   };
+
+  useEffect(() => {
+    if (!user) return;
+    if (lastLoggedPathRef.current === location.pathname) return;
+    lastLoggedPathRef.current = location.pathname;
+
+    window.api?.logEvent?.({
+      occurred_at_ms: Date.now(),
+      event_category: "navigation",
+      event_type: "route.enter",
+      screen: location.pathname,
+      component: "AppRouter",
+      action: "enter",
+      user_id: user.id,
+      user_name: user.nome,
+      session_id: sessionIdRef.current,
+      severity: "info",
+      message: `Navegou para ${location.pathname}`,
+      source: "ui",
+    });
+  }, [location.pathname, user]);
 
   if (onboardingRequired === null) {
     return null; // Aguarda a checagem com o backend (sem tela branca graças à splash nativa)
@@ -295,6 +356,7 @@ function App() {
           <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
           <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
           <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
+          <Route path="/logs" element={hasAccess("/logs") ? <EventLogs /> : <Navigate to="/vendas" replace />} />
 
           <Route path="*" element={<Navigate to="/" />} />
 
