@@ -37,6 +37,13 @@ const Config = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+  const [isAddingRole, setIsAddingRole] = useState(false);
+  const [deletingRoleId, setDeletingRoleId] = useState(null);
+  const [isSavingPrinter, setIsSavingPrinter] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
+  const [isBackupRunning, setIsBackupRunning] = useState(false);
+  const [isRestoreRunning, setIsRestoreRunning] = useState(false);
 
   const availableThemes = [
     { id: "default", name: "Azul Padrão", color: "#3B82F6" },
@@ -152,33 +159,46 @@ const Config = () => {
 
   const handleAddRole = async (e) => {
     if (e) e.preventDefault();
+    if (isAddingRole) return;
     if (!newRole.trim()) return;
 
-    const result = await api.auth.saveRole(newRole.trim());
-    if (result.success) {
-      setNewRole("");
-      loadData();
-      showAlert("Cargo adicionado!", "Sucesso", "success");
-    } else {
-      showAlert("Erro ao criar cargo: " + result.error, "Erro", "error");
+    try {
+      setIsAddingRole(true);
+      const result = await api.auth.saveRole(newRole.trim());
+      if (result.success) {
+        setNewRole("");
+        loadData();
+        showAlert("Cargo adicionado!", "Sucesso", "success");
+      } else {
+        showAlert("Erro ao criar cargo: " + result.error, "Erro", "error");
+      }
+    } finally {
+      setIsAddingRole(false);
     }
   };
 
   const handleDeleteRole = async (id) => {
     const confirmed = await showConfirm("Tem a certeza que deseja excluir este cargo?");
     if (confirmed) {
-      const result = await api.auth.deleteRole(id);
-      if (result.success) {
-        loadData();
-        showAlert("Cargo excluído.", "Sucesso", "success");
-      } else {
-        showAlert("Erro: " + result.error, "Erro", "error");
+      try {
+        setDeletingRoleId(id);
+        const result = await api.auth.deleteRole(id);
+        if (result.success) {
+          loadData();
+          showAlert("Cargo excluido.", "Sucesso", "success");
+        } else {
+          showAlert("Erro: " + result.error, "Erro", "error");
+        }
+      } finally {
+        setDeletingRoleId(null);
       }
     }
   };
 
   const handleBackup = async () => {
+    if (isBackupRunning) return;
     try {
+      setIsBackupRunning(true);
       const result = await api.config.backup();
       if (result.success) {
         showAlert("Backup realizado com sucesso!", "Dados Seguros", "success");
@@ -187,66 +207,83 @@ const Config = () => {
       }
     } catch (error) {
       showAlert("Erro ao tentar realizar backup.", "Erro", "error");
+    } finally {
+      setIsBackupRunning(false);
     }
   };
 
   const handleRestore = async () => {
+    if (isRestoreRunning) return;
     try {
+      setIsRestoreRunning(true);
       await api.config.restore();
     } catch (error) {
       showAlert("Erro ao tentar restaurar backup.", "Erro", "error");
+    } finally {
+      setIsRestoreRunning(false);
     }
   };
 
   const handleSavePrinter = async () => {
+    if (isSavingPrinter) return;
     try {
+      setIsSavingPrinter(true);
       const result = await api.config.save("impressora_padrao", selectedPrinter);
       if (result.success) {
-        showAlert("Impressora padrão salva com sucesso!", "Configuração", "success");
+        showAlert("Impressora padrao salva com sucesso!", "Configuracao", "success");
       } else {
         showAlert("Erro ao salvar impressora.", "Erro", "error");
       }
     } catch (error) {
-      showAlert("Erro técnico ao salvar impressora.", "Erro", "error");
+      showAlert("Erro tecnico ao salvar impressora.", "Erro", "error");
+    } finally {
+      setIsSavingPrinter(false);
     }
   };
 
   const handleAddUser = async (e) => {
     if (e) e.preventDefault();
+    if (isAddingUser) return;
     if (!newUser.nome || !newUser.username || !newUser.password) {
-      return showAlert("Preencha todos os campos.", "Atenção", "warning");
+      return showAlert("Preencha todos os campos.", "Atencao", "warning");
     }
     if (newUser.password.length < 4) {
       return showAlert("A senha deve ter pelo menos 4 caracteres.", "Senha Fraca", "warning");
     }
 
     try {
+      setIsAddingUser(true);
       const result = await api.auth.register(newUser);
       if (result.success) {
-        showAlert("Usuário criado com sucesso!", "Sucesso", "success");
+        showAlert("Usuario criado com sucesso!", "Sucesso", "success");
         setNewUser({ nome: "", username: "", password: "", cargo: "vendedor" });
         loadData();
       } else {
-        showAlert("Erro ao criar usuário: " + result.error, "Erro", "error");
+        showAlert("Erro ao criar usuario: " + result.error, "Erro", "error");
       }
     } catch (error) {
-      showAlert("Erro técnico ao registrar usuário.", "Erro", "error");
+      showAlert("Erro tecnico ao registrar usuario.", "Erro", "error");
+    } finally {
+      setIsAddingUser(false);
     }
   };
 
   const handleDeleteUser = async (id) => {
-    const confirmed = await showConfirm("Tem a certeza que deseja excluir este usuário?");
+    const confirmed = await showConfirm("Tem a certeza que deseja excluir este usuario?");
     if (confirmed) {
       try {
+        setDeletingUserId(id);
         const result = await api.auth.deleteUser(id);
         if (result.success) {
           loadData();
-          showAlert("Usuário removido.", "Sucesso", "success");
+          showAlert("Usuario removido.", "Sucesso", "success");
         } else {
           showAlert("Erro: " + result.error, "Erro", "error");
         }
       } catch (error) {
-        showAlert("Erro ao tentar remover usuário.", "Erro", "error");
+        showAlert("Erro ao tentar remover usuario.", "Erro", "error");
+      } finally {
+        setDeletingUserId(null);
       }
     }
   };
@@ -342,7 +379,7 @@ const Config = () => {
           className="text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition"
           title="Excluir Usuário"
         >
-          <i className="fas fa-trash"></i>
+          <i className={`fas ${deletingUserId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i>
         </button>
       )
     }
@@ -579,7 +616,8 @@ const Config = () => {
                </div>
                 <button
                   onClick={handleSavePrinter}
-                  className="bg-primary px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-primary-700 text-white transition shadow-md active:scale-95"
+                  disabled={isSavingPrinter}
+                  className="bg-primary px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-primary-700 text-white transition shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   OK
                 </button>
@@ -595,13 +633,13 @@ const Config = () => {
                  onClick={handleBackup}
                  className="bg-green-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition shadow-md active:scale-95 flex flex-col items-center gap-2"
                >
-                 <i className="fas fa-download fa-lg"></i> Backup
+                 <i className={`fas fa-lg ${isBackupRunning ? "fa-circle-notch fa-spin" : "fa-download"}`}></i> {isBackupRunning ? "Executando" : "Backup"}
                </button>
                 <button
                   onClick={handleRestore}
                   className="bg-orange-500/10 text-orange-600 border border-orange-500/20 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-500/20 transition active:scale-95 flex flex-col items-center gap-2"
                 >
-                  <i className="fas fa-upload fa-lg"></i> Restaurar
+                  <i className={`fas fa-lg ${isRestoreRunning ? "fa-circle-notch fa-spin" : "fa-upload"}`}></i> {isRestoreRunning ? "Restaurando" : "Restaurar"}
                 </button>
              </div>
           </div>
@@ -642,7 +680,7 @@ const Config = () => {
                   className="text-surface-300 hover:text-red-500 p-1.5 transition"
                   title="Excluir"
                 >
-                  <i className="fas fa-trash-alt text-xs"></i>
+                  <i className={`fas text-xs ${deletingRoleId === role.id ? "fa-spinner fa-spin" : "fa-trash-alt"}`}></i>
                 </button>
               </div>
             ))}

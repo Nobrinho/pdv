@@ -15,6 +15,9 @@ const Produtos = () => {
   const { withPermission } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [isUpdatingStock, setIsUpdatingStock] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState(null);
 
   // Modais
   const [showProductModal, setShowProductModal] = useState(false);
@@ -110,6 +113,7 @@ const Produtos = () => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (isSavingProduct) return;
 
     const productToSave = {
       ...formData,
@@ -119,8 +123,15 @@ const Produtos = () => {
     };
 
     if (editingId) productToSave.id = editingId;
+    if (!String(productToSave.descricao || "").trim()) {
+      return showAlert("Descricao obrigatoria.", "Atencao", "warning");
+    }
+    if (Number(productToSave.custo) < 0 || Number(productToSave.preco_venda) < 0 || Number(productToSave.estoque_atual) < 0) {
+      return showAlert("Custo, preco e estoque nao podem ser negativos.", "Atencao", "warning");
+    }
 
     try {
+      setIsSavingProduct(true);
       const result = await api.products.save(productToSave);
 
       if (result.success) {
@@ -133,6 +144,8 @@ const Produtos = () => {
       }
     } catch (error) {
       showAlert("Erro técnico ao salvar produto.", "Erro", "error");
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
@@ -169,6 +182,7 @@ const Produtos = () => {
 
   const handleStockSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (isUpdatingStock) return;
     const qtdAdicionar = parseInt(stockData.quantidade_adicionar);
 
     if (isNaN(qtdAdicionar) || qtdAdicionar <= 0) {
@@ -176,6 +190,7 @@ const Produtos = () => {
     }
 
     try {
+      setIsUpdatingStock(true);
       const product = products.find((p) => p.id === stockData.id);
       const updatedProduct = {
         ...product,
@@ -188,6 +203,8 @@ const Produtos = () => {
       showAlert("Estoque atualizado!", "Sucesso", "success");
     } catch (error) {
       showAlert("Erro ao atualizar estoque.", "Erro", "error");
+    } finally {
+      setIsUpdatingStock(false);
     }
   };
 
@@ -195,6 +212,7 @@ const Produtos = () => {
     const confirmou = await showConfirm("Tem a certeza que deseja excluir este produto?");
     if (confirmou) {
       try {
+        setDeletingProductId(id);
         const result = await api.products.delete(id);
         if (result.success) {
           loadProducts();
@@ -204,6 +222,8 @@ const Produtos = () => {
         }
       } catch (error) {
         showAlert("Erro técnico ao excluir.", "Erro", "error");
+      } finally {
+        setDeletingProductId(null);
       }
     }
   };
@@ -435,10 +455,11 @@ const Produtos = () => {
           </button>
           <button
             onClick={() => withPermission(() => handleDelete(row.id))}
-            className="text-white bg-red-500 hover:bg-red-600 p-2 rounded-lg transition shadow-sm active:scale-90"
+            disabled={deletingProductId === row.id}
+            className="text-white bg-red-500 hover:bg-red-600 p-2 rounded-lg transition shadow-sm active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Excluir"
           >
-            <i className="fas fa-trash text-xs"></i>
+            <i className={`fas text-xs ${deletingProductId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i>
           </button>
         </div>
       )
@@ -540,10 +561,11 @@ const Produtos = () => {
             </button>
             <button
               onClick={handleSubmit}
-              className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-bold text-sm shadow-md active:scale-95"
+              disabled={isSavingProduct}
+              className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-bold text-sm shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <i className="fas fa-save mr-2"></i>
-              {editingId ? "Atualizar" : "Salvar"}
+              <i className={`fas mr-2 ${isSavingProduct ? "fa-circle-notch fa-spin" : "fa-save"}`}></i>
+              {isSavingProduct ? "SALVANDO..." : (editingId ? "Atualizar" : "Salvar")}
             </button>
           </div>
         }
@@ -647,9 +669,10 @@ const Produtos = () => {
             </button>
             <button
               onClick={handleStockSubmit}
-              className="flex-[2] px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-black text-sm shadow-md active:scale-95 transition-all"
+              disabled={isUpdatingStock}
+              className="flex-[2] px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-black text-sm shadow-md active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Confirmar Entrada
+              {isUpdatingStock ? "ATUALIZANDO..." : "Confirmar Entrada"}
             </button>
           </div>
         }

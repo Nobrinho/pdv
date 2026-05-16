@@ -42,6 +42,9 @@ const Recibos = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [saleToCancel, setSaleToCancel] = useState(null);
+  const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
+  const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
+  const [isCancellingSale, setIsCancellingSale] = useState(false);
   
   const [cancelForm, setCancelForm] = useState({
     adminUser: "",
@@ -50,6 +53,17 @@ const Recibos = () => {
   });
 
   const loadData = useCallback(async () => {
+    if (
+      filters.startDate &&
+      filters.endDate &&
+      dayjs(filters.startDate).isAfter(dayjs(filters.endDate))
+    ) {
+      setSales([]);
+      setTotalPages(0);
+      setTotalRecords(0);
+      return showAlert("Data inicial não pode ser maior que a data final.", "Filtro inválido", "warning");
+    }
+
     try {
       setLoading(true);
       const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
@@ -119,27 +133,35 @@ const Recibos = () => {
   };
 
   const handleViewReceipt = async (sale) => {
+    if (isLoadingReceipt) return;
     try {
+      setIsLoadingReceipt(true);
       const items = await api.sales.items(sale.id);
       setSelectedSale(sale);
       setSaleItems(items);
       setShowReceiptModal(true);
     } catch (error) {
       showAlert("Erro ao carregar itens da venda.", "Erro", "error");
+    } finally {
+      setIsLoadingReceipt(false);
     }
   };
 
   const handleSilentPrint = async () => {
+    if (isPrintingReceipt) return;
     const receiptElement = document.getElementById("cupom-fiscal-wrapper");
     if (!receiptElement) return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
     
     try {
+      setIsPrintingReceipt(true);
       const printerName = await api.config.get("impressora_padrao");
       const result = await api.print.silent(receiptElement.outerHTML, printerName);
       if (result.success) showAlert("Enviado para impressão.", "Sucesso", "success");
       else showAlert("Erro na impressão: " + result.error, "Erro", "error");
     } catch (error) {
       showAlert("Erro ao tentar imprimir.", "Erro", "error");
+    } finally {
+      setIsPrintingReceipt(false);
     }
   };
 
@@ -151,6 +173,7 @@ const Recibos = () => {
   };
 
   const handleSubmitCancel = async (e) => {
+    if (isCancellingSale) return;
     if (e) e.preventDefault();
     if (cancelForm.reason.trim().length < 10) {
       return showAlert("O motivo deve ter no mínimo 10 caracteres.", "Atenção", "warning");
@@ -160,6 +183,7 @@ const Recibos = () => {
     }
 
     try {
+      setIsCancellingSale(true);
       const authResult = await api.auth.login({
         username: cancelForm.adminUser,
         password: cancelForm.adminPass,
@@ -184,6 +208,8 @@ const Recibos = () => {
       }
     } catch (err) {
       showAlert("Erro técnico ao processar cancelamento.", "Erro", "error");
+    } finally {
+      setIsCancellingSale(false);
     }
   };
 
@@ -235,15 +261,17 @@ const Recibos = () => {
         <div className="flex justify-center gap-2">
           <button
             onClick={() => handleViewReceipt(row)}
-            className="text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition active:scale-90"
+            disabled={isLoadingReceipt}
+            className="text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Ver Recibo"
           >
-            <i className="fas fa-eye"></i>
+            <i className={`fas ${isLoadingReceipt ? "fa-spinner fa-spin" : "fa-eye"}`}></i>
           </button>
           {!row.cancelada && (
             <button
               onClick={() => initiateCancel(row)}
-              className="text-red-500 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition active:scale-90"
+              disabled={isCancellingSale}
+              className="text-red-500 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Cancelar Venda"
             >
               <i className="fas fa-ban"></i>
@@ -378,9 +406,11 @@ const Recibos = () => {
             </button>
             <button
               onClick={handleSilentPrint}
-              className="flex-[2] px-4 py-2.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 shadow-md active:scale-95"
+              disabled={isPrintingReceipt}
+              className="flex-[2] px-4 py-2.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <i className="fas fa-print mr-2"></i> Reimprimir Recibo
+              <i className={`fas mr-2 ${isPrintingReceipt ? "fa-circle-notch fa-spin" : "fa-print"}`}></i>
+              {isPrintingReceipt ? "Imprimindo..." : "Reimprimir Recibo"}
             </button>
           </div>
         }
@@ -409,9 +439,10 @@ const Recibos = () => {
             </button>
             <button
               onClick={handleSubmitCancel}
-              className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 shadow-md active:scale-95"
+              disabled={isCancellingSale}
+              className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              CONFIRMAR CANCELAMENTO
+              {isCancellingSale ? "CANCELANDO..." : "CONFIRMAR CANCELAMENTO"}
             </button>
           </div>
         }

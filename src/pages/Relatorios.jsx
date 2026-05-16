@@ -14,6 +14,7 @@ dayjs.locale("pt-br");
 const Relatorios = () => {
   const { showAlert } = useAlert();
   const [page, setPage] = useState(1);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const PAGE_SIZE = 100;
 
   const {
@@ -36,6 +37,10 @@ const Relatorios = () => {
     setPeriodType,
     handlePeriodChange,
   } = useReportData();
+  const hasInvalidDateRange =
+    startDate &&
+    endDate &&
+    dayjs(startDate).isAfter(dayjs(endDate));
 
   const totalPages = Math.ceil(filteredSales.length / PAGE_SIZE);
   const paginatedSales = useMemo(() => {
@@ -48,7 +53,12 @@ const Relatorios = () => {
   }, [startDate, endDate, selectedSeller, selectedPayment, periodType]);
 
   const exportPDF = () => {
+    if (isExportingPdf) return;
+    if (hasInvalidDateRange) {
+      return showAlert("Data inicial nao pode ser maior que a data final.", "Filtro invalido", "warning");
+    }
     try {
+      setIsExportingPdf(true);
       const doc = new jsPDF();
       doc.setFontSize(18);
       doc.text("Relatório Gerencial", 14, 20);
@@ -165,6 +175,8 @@ const Relatorios = () => {
     } catch (error) {
       console.error(error);
       showAlert("Erro ao gerar PDF.", "Erro", "error");
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -184,14 +196,21 @@ const Relatorios = () => {
         </h1>
         <button
           onClick={exportPDF}
-          className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 shadow-md flex items-center justify-center gap-2 transition active:scale-95"
+          disabled={isExportingPdf || hasInvalidDateRange}
+          className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 shadow-md flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <i className="fas fa-file-pdf"></i> Exportar PDF
+          <i className={`fas ${isExportingPdf ? "fa-circle-notch fa-spin" : "fa-file-pdf"}`}></i>
+          {isExportingPdf ? "Exportando..." : "Exportar PDF"}
         </button>
       </div>
 
       {/* --- BARRA DE FILTROS APRIMORADA --- */}
       <div className="bg-surface-100 p-4 rounded-xl shadow-sm mb-6 border border-surface-200 flex flex-col gap-4">
+        {hasInvalidDateRange && (
+          <div className="bg-yellow-500/10 text-yellow-700 border border-yellow-500/20 rounded-lg p-2.5 text-xs font-semibold">
+            Data inicial nao pode ser maior que a data final.
+          </div>
+        )}
         {/* Filtros Rápidos */}
         <div className="flex gap-2 border-b pb-4 overflow-x-auto">
           <button

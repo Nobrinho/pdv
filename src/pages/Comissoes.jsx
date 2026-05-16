@@ -32,6 +32,10 @@ const Comissoes = () => {
   const [processing, setProcessing] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
+  const hasInvalidDateRange =
+    startDate &&
+    endDate &&
+    dayjs(startDate).isAfter(dayjs(endDate));
 
   // Derivação de dados filtrados
   const salesDisplay = useMemo(() => {
@@ -85,6 +89,7 @@ const Comissoes = () => {
   };
 
   const handleSelectAll = (e) => {
+    if (hasInvalidDateRange) return;
     if (e.target.checked) {
       setSelectedIds(
         salesDisplay.filter((v) => !v.comissao_paga).map((v) => v.id)
@@ -95,6 +100,9 @@ const Comissoes = () => {
   };
 
   const handlePaySelected = async () => {
+    if (hasInvalidDateRange) {
+      return showAlert("Data inicial nao pode ser maior que a data final.", "Filtro invalido", "warning");
+    }
     if (selectedIds.length === 0) {
       return showAlert("Selecione ao menos uma comissão para baixar.", "Aviso", "warning");
     }
@@ -140,7 +148,7 @@ const Comissoes = () => {
         {selectedIds.length > 0 && (
           <button
             onClick={handlePaySelected}
-            disabled={processing}
+            disabled={processing || hasInvalidDateRange}
             className="w-full sm:w-auto bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 shadow-md flex items-center justify-center gap-2 font-bold transition active:scale-95 disabled:opacity-50"
           >
             <i className={`fas ${processing ? "fa-spinner fa-spin" : "fa-check-double"}`}></i>
@@ -151,6 +159,11 @@ const Comissoes = () => {
 
       {/* FILTROS */}
       <div className="bg-surface-100 p-4 rounded-xl shadow-sm mb-6 border border-surface-200 flex flex-col gap-4">
+        {hasInvalidDateRange && (
+          <div className="bg-yellow-500/10 text-yellow-700 border border-yellow-500/20 rounded-lg p-2.5 text-xs font-semibold">
+            Data inicial nao pode ser maior que a data final.
+          </div>
+        )}
         <div className="flex gap-2 border-b pb-4 overflow-x-auto">
           <button
             onClick={() => handlePeriodChange("weekly")}
@@ -286,6 +299,7 @@ const Comissoes = () => {
                     type="checkbox"
                     className="w-4 h-4 text-indigo-600 rounded border-surface-300 focus:ring-indigo-500 cursor-pointer bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                     onChange={handleSelectAll}
+                    disabled={hasInvalidDateRange}
                     checked={
                       salesDisplay.filter((v) => !v.comissao_paga).length > 0 &&
                       selectedIds.length === salesDisplay.filter((v) => !v.comissao_paga).length

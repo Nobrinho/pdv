@@ -19,6 +19,7 @@ const Servicos = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [isSavingService, setIsSavingService] = useState(false);
   const LIMIT = 100;
 
   // Estado do Formulário (Registro)
@@ -39,6 +40,13 @@ const Servicos = () => {
   const [selectedMechanicFilter, setSelectedMechanicFilter] = useState("all");
 
   const loadData = useCallback(async () => {
+    if (startDate && endDate && dayjs(startDate).isAfter(dayjs(endDate))) {
+      setServices([]);
+      setTotalPages(0);
+      setTotalRecords(0);
+      return showAlert("Data inicial não pode ser maior que a data final.", "Filtro inválido", "warning");
+    }
+
     try {
       setLoading(true);
       const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
@@ -76,18 +84,24 @@ const Servicos = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+    if (isSavingService) return;
     if (!formData.trocadorId || !formData.valor) {
       return showAlert("Preencha todos os campos obrigatórios!", "Atenção", "warning");
+    }
+    const normalizedValue = Number(formData.valor);
+    if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) {
+      return showAlert("Informe um valor maior que zero.", "Valor invalido", "warning");
     }
 
     const serviceData = {
       trocador_id: parseInt(formData.trocadorId),
       descricao: (formData.descricao || "").trim(),
-      valor: parseFloat(formData.valor),
+      valor: normalizedValue,
       forma_pagamento: "Saída",
     };
 
     try {
+      setIsSavingService(true);
       const result = await api.services.create(serviceData);
       if (result.success) {
         showAlert("Serviço registrado com sucesso!", "Sucesso", "success");
@@ -98,6 +112,8 @@ const Servicos = () => {
       }
     } catch (err) {
       showAlert("Erro técnico ao salvar.", "Erro", "error");
+    } finally {
+      setIsSavingService(false);
     }
   };
 
@@ -192,15 +208,23 @@ const Servicos = () => {
               type="number"
               icon="fa-hand-holding-dollar"
               value={formData.valor}
-              onChange={(val) => setFormData({ ...formData, valor: val })}
+              onChange={(val) => {
+                const next = String(val ?? "").replace(",", ".");
+                if (next.includes("-")) return;
+                setFormData({ ...formData, valor: next });
+              }}
+              min="0.01"
+              step="0.01"
               required
             />
 
             <button
               type="submit"
-              className="w-full bg-primary-600 text-white py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition mt-4 shadow-md active:scale-95 flex justify-center items-center gap-2"
+              disabled={isSavingService}
+              className={`w-full py-3.5 rounded-xl font-black text-sm transition mt-4 shadow-md active:scale-95 flex justify-center items-center gap-2 ${isSavingService ? "bg-surface-400 text-white cursor-not-allowed" : "bg-primary-600 text-white hover:bg-primary-700"}`}
             >
-              <i className="fas fa-check"></i> REGISTRAR SERVIÇO
+              <i className={`fas ${isSavingService ? "fa-circle-notch fa-spin" : "fa-check"}`}></i>
+              {isSavingService ? "SALVANDO..." : "REGISTRAR SERVIÇO"}
             </button>
           </form>
         </div>

@@ -21,6 +21,8 @@ const Pessoas = () => {
   });
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isSavingPerson, setIsSavingPerson] = useState(false);
+  const [deletingPersonId, setDeletingPersonId] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -57,6 +59,13 @@ const Pessoas = () => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (isSavingPerson) return;
+    if (!String(formData.nome || "").trim()) {
+      return showAlert("Nome obrigatorio.", "Atencao", "warning");
+    }
+    if (!formData.cargo_id) {
+      return showAlert("Selecione um cargo.", "Atencao", "warning");
+    }
 
     const isVendedor = selectedRoleName === "Vendedor";
 
@@ -69,6 +78,7 @@ const Pessoas = () => {
     if (editingId) personToSave.id = editingId;
 
     try {
+      setIsSavingPerson(true);
       const result = await api.people.save(personToSave);
       if (result.success) {
         setShowModal(false);
@@ -81,6 +91,8 @@ const Pessoas = () => {
       }
     } catch (error) {
       showAlert("Erro técnico ao salvar colaborador.", "Erro", "error");
+    } finally {
+      setIsSavingPerson(false);
     }
   };
 
@@ -88,6 +100,7 @@ const Pessoas = () => {
     const confirmou = await showConfirm("Tem a certeza que deseja excluir este colaborador?");
     if (confirmou) {
       try {
+        setDeletingPersonId(id);
         const result = await api.people.delete(id);
         if (result.success) {
           loadData();
@@ -97,6 +110,8 @@ const Pessoas = () => {
         }
       } catch (error) {
         showAlert("Erro técnico ao remover colaborador.", "Erro", "error");
+      } finally {
+        setDeletingPersonId(null);
       }
     }
   };
@@ -159,7 +174,7 @@ const Pessoas = () => {
       format: (_, row) => (
         <div className="flex justify-center gap-1">
           <button onClick={() => handleEdit(row)} className="p-2 text-primary-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"><i className="fas fa-edit"></i></button>
-          <button onClick={() => handleDelete(row.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 rounded-lg transition"><i className="fas fa-trash"></i></button>
+          <button onClick={() => handleDelete(row.id)} disabled={deletingPersonId === row.id} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><i className={`fas ${deletingPersonId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i></button>
         </div>
       )
     }

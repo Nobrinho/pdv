@@ -3,6 +3,30 @@
  */
 function register(safeHandle, knex) {
   const { logEvent } = require("../lib/eventLogger");
+  const sanitizeProductPayload = (product = {}, { forUpdate = false } = {}) => {
+    const payload = {};
+    const allowedFields = [
+      "codigo",
+      "descricao",
+      "custo",
+      "preco_venda",
+      "estoque_atual",
+      "tipo",
+      "ativo",
+    ];
+
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(product, field)) {
+        payload[field] = product[field];
+      }
+    }
+
+    if (!forUpdate && !Object.prototype.hasOwnProperty.call(payload, "ativo")) {
+      payload.ativo = true;
+    }
+
+    return payload;
+  };
   safeHandle("get-products", async () => {
     return await knex("produtos").where("ativo", true).select("*");
   });
@@ -20,20 +44,44 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("save-product", async (event, product) => {
+    const precoVenda = Number(product?.preco_venda ?? 0);
+    const custo = Number(product?.custo ?? 0);
+    const estoque = Number(product?.estoque_atual ?? 0);
+
+    if (!product?.descricao || !String(product.descricao).trim()) {
+      return { success: false, error: "Descricao obrigatoria." };
+    }
+    if (!Number.isFinite(precoVenda) || precoVenda < 0) {
+      return { success: false, error: "Preco de venda invalido." };
+    }
+    if (!Number.isFinite(custo) || custo < 0) {
+      return { success: false, error: "Custo invalido." };
+    }
+    if (!Number.isFinite(estoque) || estoque < 0) {
+      return { success: false, error: "Estoque invalido." };
+    }
+
     if (product.id) {
       const atual = await knex("produtos").where("id", product.id).first();
-      await knex("produtos").where("id", product.id).update(product);
+      const payload = sanitizeProductPayload(product, { forUpdate: true });
+      await knex("produtos").where("id", product.id).update(payload);
+      const nextPrice = Object.prototype.hasOwnProperty.call(payload, "preco_venda")
+        ? parseFloat(payload.preco_venda)
+        : parseFloat(atual.preco_venda);
+      const nextStock = Object.prototype.hasOwnProperty.call(payload, "estoque_atual")
+        ? parseInt(payload.estoque_atual)
+        : parseInt(atual.estoque_atual);
 
       if (
-        parseFloat(atual.preco_venda) !== parseFloat(product.preco_venda) ||
-        parseInt(atual.estoque_atual) !== parseInt(product.estoque_atual)
+        parseFloat(atual.preco_venda) !== nextPrice ||
+        parseInt(atual.estoque_atual) !== nextStock
       ) {
         await knex("historico_produtos").insert({
           produto_id: product.id,
           preco_antigo: atual.preco_venda,
-          preco_novo: product.preco_venda,
+          preco_novo: nextPrice,
           estoque_antigo: atual.estoque_atual,
-          estoque_novo: product.estoque_atual,
+          estoque_novo: nextStock,
           tipo_alteracao: "atualizacao",
           data_alteracao: Date.now(),
         });
@@ -50,12 +98,13 @@ function register(safeHandle, knex) {
       return { id: product.id, success: true };
     } else {
       if (!product.codigo) product.codigo = "AUTO-" + Date.now();
-      const [id] = await knex("produtos").insert({ ...product, ativo: true });
+      const payload = sanitizeProductPayload(product, { forUpdate: false });
+      const [id] = await knex("produtos").insert(payload);
 
       await knex("historico_produtos").insert({
         produto_id: id,
-        preco_novo: product.preco_venda,
-        estoque_novo: product.estoque_atual,
+        preco_novo: payload.preco_venda,
+        estoque_novo: payload.estoque_atual,
         tipo_alteracao: "cadastro_inicial",
         data_alteracao: Date.now(),
       });

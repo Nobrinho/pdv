@@ -21,6 +21,9 @@ const Clientes = () => {
   const [clients, setClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSavingClient, setIsSavingClient] = useState(false);
+  const [deletingClientId, setDeletingClientId] = useState(null);
+  const [payingDebtId, setPayingDebtId] = useState(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 
@@ -89,6 +92,7 @@ const Clientes = () => {
   // --- CRUD ---
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (isSavingClient) return;
     if (!formData.nome.trim())
       return showAlert("Nome é obrigatório.", "Atenção", "warning");
 
@@ -102,6 +106,7 @@ const Clientes = () => {
     if (editingId) clientToSave.id = editingId;
 
     try {
+      setIsSavingClient(true);
       const result = await api.clients.save(clientToSave);
 
       if (result.success) {
@@ -118,6 +123,8 @@ const Clientes = () => {
       }
     } catch (error) {
       showAlert("Erro técnico ao salvar.", "Erro", "error");
+    } finally {
+      setIsSavingClient(false);
     }
   };
 
@@ -173,6 +180,7 @@ const Clientes = () => {
   };
 
   const handlePayDebt = async (debtId, saldoDevedor) => {
+    if (payingDebtId) return;
     if (!paymentValue || parseFloat(paymentValue) <= 0)
       return showAlert("Digite um valor válido.");
 
@@ -181,6 +189,7 @@ const Clientes = () => {
       return showAlert("Valor maior que a dívida.", "Aviso", "warning");
 
     try {
+      setPayingDebtId(debtId);
       const result = await api.clients.payDebt({
         contaId: debtId,
         valorPago: valorPagar,
@@ -197,6 +206,8 @@ const Clientes = () => {
       }
     } catch (error) {
       showAlert("Erro ao processar pagamento.", "Erro", "error");
+    } finally {
+      setPayingDebtId(null);
     }
   };
 
@@ -262,10 +273,11 @@ const Clientes = () => {
           </button>
           <button
             onClick={() => handleDelete(row.id)}
-            className="bg-red-500/10 text-red-500 text-red-500 p-2 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-100"
+            disabled={deletingClientId === row.id}
+            className="bg-red-500/10 text-red-500 text-red-500 p-2 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Excluir"
           >
-            <i className="fas fa-trash text-xs"></i>
+            <i className={`fas text-xs ${deletingClientId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i>
           </button>
         </div>
       ),
@@ -372,7 +384,7 @@ const Clientes = () => {
               }`}
             >
               <i className="fas fa-save mr-2"></i>
-              {editingId ? "Atualizar" : "Salvar Cliente"}
+              {isSavingClient ? "SALVANDO..." : (editingId ? "Atualizar" : "Salvar Cliente")}
             </button>
           </div>
         }
@@ -518,10 +530,11 @@ const Clientes = () => {
                         />
                         <button
                           onClick={() => handlePayDebt(row.id, restante)}
-                          className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition shadow-sm active:scale-90"
+                          disabled={payingDebtId === row.id}
+                          className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition shadow-sm active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Pagar"
                         >
-                          <i className="fas fa-check text-xs"></i>
+                          <i className={`fas text-xs ${payingDebtId === row.id ? "fa-circle-notch fa-spin" : "fa-check"}`}></i>
                         </button>
                       </div>
                     );

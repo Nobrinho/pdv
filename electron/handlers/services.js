@@ -59,8 +59,21 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("create-service", async (event, data) => {
+    const valor = Number(data?.valor);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      return { success: false, error: "Valor invalido. Informe um valor maior que zero." };
+    }
+
+    const trocadorId = Number(data?.trocador_id);
+    if (!Number.isInteger(trocadorId) || trocadorId <= 0) {
+      return { success: false, error: "Responsavel invalido." };
+    }
+
     const [id] = await knex("servicos_avulsos").insert({
-      ...data,
+      trocador_id: trocadorId,
+      descricao: (data?.descricao || "").trim(),
+      valor,
+      forma_pagamento: data?.forma_pagamento || "Saida",
       data_servico: Date.now(),
     });
     await logEvent(knex, {
