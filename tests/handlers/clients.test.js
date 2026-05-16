@@ -102,6 +102,45 @@ async function buscarClientePorDoc(db, documento) {
   return { success: true, client: found || null };
 }
 
+async function pagarDivida(db, { contaId, valorPago }) {
+  const valor = Number(valorPago);
+  if (!Number.isFinite(valor) || valor <= 0) {
+    return { success: false, error: "Valor de pagamento invalido." };
+  }
+
+  const trx = await db.transaction();
+  try {
+    const conta = await trx("contas_receber").where("id", contaId).first();
+    if (!conta) throw new Error("Conta nao encontrada");
+
+    const saldoDevedor = Number(conta.valor_total) - Number(conta.valor_pago);
+    if (valor - saldoDevedor > 0.0001) {
+      await trx.rollback();
+      return { success: false, error: "Valor maior que o saldo devedor." };
+    }
+
+    const novoValorPago = Number(conta.valor_pago) + valor;
+    let novoStatus = conta.status;
+
+    if (novoValorPago >= Number(conta.valor_total)) {
+      novoStatus = "PAGO";
+    } else if (novoValorPago > 0) {
+      novoStatus = "PARCIAL";
+    }
+
+    await trx("contas_receber").where("id", contaId).update({
+      valor_pago: novoValorPago,
+      status: novoStatus,
+    });
+
+    await trx.commit();
+    return { success: true };
+  } catch (error) {
+    await trx.rollback();
+    return { success: false, error: error.message };
+  }
+}
+
 // ============================
 // Testes
 // ============================
@@ -195,5 +234,59 @@ describe("Clientes - Busca por Documento", () => {
     expect(result.success).toBe(true);
     expect(result.client).toBeDefined();
     expect(result.client.nome).toBe("Maria");
+  });
+});
+
+describe("Clientes - Pagamento de divida", () => {
+  it("registra pagamento parcial mantendo saldo aberto", async () => {
+    const [contaId] = await db("contas_receber").insert({
+      cliente_id: 1,
+      descricao: "Venda #1",
+      valor_total: 100,
+      valor_pago: 0,
+      status: "PENDENTE",
+    });
+
+    const result = await pagarDivida(db, { contaId, valorPago: 40 });
+    const conta = await db("contas_receber").where("id", contaId).first();
+
+    expect(result.success).toBe(true);
+    expect(Number(conta.valor_pago)).toBe(40);
+    expect(conta.status).toBe("PARCIAL");
+  });
+
+  it("registra pagamento total e marca como pago", async () => {
+    const [contaId] = await db("contas_receber").insert({
+      cliente_id: 1,
+      descricao: "Venda #2",
+      valor_total: 100,
+      valor_pago: 40,
+      status: "PARCIAL",
+    });
+
+    const result = await pagarDivida(db, { contaId, valorPago: 60 });
+    const conta = await db("contas_receber").where("id", contaId).first();
+
+    expect(result.success).toBe(true);
+    expect(Number(conta.valor_pago)).toBe(100);
+    expect(conta.status).toBe("PAGO");
+  });
+
+  it("rejeita pagamento maior que o saldo sem alterar a conta", async () => {
+    const [contaId] = await db("contas_receber").insert({
+      cliente_id: 1,
+      descricao: "Venda #3",
+      valor_total: 100,
+      valor_pago: 40,
+      status: "PARCIAL",
+    });
+
+    const result = await pagarDivida(db, { contaId, valorPago: 70 });
+    const conta = await db("contas_receber").where("id", contaId).first();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("maior que o saldo");
+    expect(Number(conta.valor_pago)).toBe(40);
+    expect(conta.status).toBe("PARCIAL");
   });
 });

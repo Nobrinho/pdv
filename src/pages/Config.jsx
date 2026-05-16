@@ -3,9 +3,9 @@ import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
 import { processLogoForThermal, processBackgroundImage } from "../context/TenantContext";
 import { api } from "../services/api";
-import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
-import StatusBadge from "../components/ui/StatusBadge";
+import RoleManager from "../components/config/RoleManager";
+import UserManager from "../components/config/UserManager";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/pt-br";
@@ -353,38 +353,6 @@ const Config = () => {
     }
   };
 
-  const userColumns = [
-    { key: "nome", label: "Nome completo", bold: true },
-    { key: "username", label: "Login / Usuário", format: (v) => <span className="font-mono text-surface-500">{v}</span> },
-    { 
-      key: "cargo", 
-      label: "Permissão", 
-      align: "center",
-      format: (v) => {
-        let type = "success";
-        let label = "Vendedor";
-        if (v === "admin") { type = "secondary"; label = "Administrador"; }
-        else if (v === "caixa") { type = "warning"; label = "Caixa"; }
-        else if (v) { label = v.charAt(0).toUpperCase() + v.slice(1); }
-        return <StatusBadge type={type} label={label} />;
-      }
-    },
-    {
-      key: "actions",
-      label: "Ação",
-      align: "center",
-      format: (_, row) => (
-        <button
-          onClick={() => handleDeleteUser(row.id)}
-          className="text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition"
-          title="Excluir Usuário"
-        >
-          <i className={`fas ${deletingUserId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i>
-        </button>
-      )
-    }
-  ];
-
   return (
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50 custom-scrollbar">
       <div className="mb-6">
@@ -648,109 +616,27 @@ const Config = () => {
         </div>
 
 
-        {/* Card Cargos */}
-        <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col max-h-[400px]">
-          <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-id-badge text-purple-600"></i> Gerenciar Cargos
-          </h2>
-          <form onSubmit={handleAddRole} className="flex gap-2 mb-4">
-            <input
-              type="text"
-              className="flex-1 border border-surface-300 rounded-xl p-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-100 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-              placeholder="Nome do novo cargo..."
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="bg-purple-600 text-white px-4 py-2 rounded-xl font-black hover:bg-purple-700 transition shadow-sm active:scale-90"
-            >
-              +
-            </button>
-          </form>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-            {roles.map((role) => (
-              <div
-                key={role.id}
-                className="flex justify-between items-center p-3 bg-surface-50 rounded-xl border border-surface-200 hover:border-purple-500/30 transition group"
-              >
-                <span className="text-sm font-bold text-surface-800 uppercase tracking-tight">{role.nome}</span>
-                <button
-                  onClick={() => handleDeleteRole(role.id)}
-                  className="text-surface-300 hover:text-red-500 p-1.5 transition"
-                  title="Excluir"
-                >
-                  <i className={`fas text-xs ${deletingRoleId === role.id ? "fa-spinner fa-spin" : "fa-trash-alt"}`}></i>
-                </button>
-              </div>
-            ))}
-            {roles.length === 0 && <p className="text-surface-400 text-[10px] text-center mt-10 uppercase tracking-widest font-black opacity-30">Nenhum cargo</p>}
-          </div>
-        </div>
+        <RoleManager
+          roles={roles}
+          newRole={newRole}
+          onNewRoleChange={setNewRole}
+          onAddRole={handleAddRole}
+          onDeleteRole={handleDeleteRole}
+          deletingRoleId={deletingRoleId}
+        />
       </div>
 
-      {/* Gestão de Usuários */}
-      <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
-        <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <i className="fas fa-users-cog text-indigo-600"></i> Usuários de Acesso
-        </h2>
-
-        <div className="flex flex-col lg:flex-row gap-8">
-          <form onSubmit={handleAddUser} className="lg:w-80 xl:w-96 space-y-4 shrink-0 bg-surface-50 p-6 rounded-2xl border border-surface-200">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4">Novo Acesso</h3>
-            <FormField label="Nome Completo" placeholder="Ex: João da Silva" value={newUser.nome} onChange={(v) => setNewUser({...newUser, nome: v})} required />
-            <FormField label="Login / Usuário" placeholder="Ex: joao.vendas" value={newUser.username} onChange={(v) => setNewUser({...newUser, username: v})} required />
-            
-            <div className="relative">
-              <FormField 
-                label="Senha Secura" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="******" 
-                value={newUser.password} 
-                onChange={(v) => setNewUser({...newUser, password: v})} 
-                required 
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[34px] text-surface-400 hover:text-indigo-600"
-              >
-                <i className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"} text-xs`}></i>
-              </button>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Permissão</label>
-              <select
-                className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-100 outline-none focus:ring-2 focus:ring-indigo-100 transition text-sm font-medium"
-                value={newUser.cargo}
-                onChange={(e) => setNewUser({ ...newUser, cargo: e.target.value })}
-              >
-                <option value="vendedor">Vendedor (Básico)</option>
-                <option value="caixa">Caixa (Restrito)</option>
-                <option value="admin">Administrador (Total)</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-black text-sm hover:bg-indigo-700 transition mt-4 shadow-md active:scale-95 flex items-center justify-center gap-2"
-            >
-              <i className="fas fa-user-plus"></i> CRIAR USUÁRIO
-            </button>
-          </form>
-
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4 ml-4">Usuários com Acesso ao Terminal</h3>
-            <DataTable 
-              columns={userColumns} 
-              data={systemUsers} 
-              loading={loadingData} 
-              emptyMessage="Nenhum usuário de acesso cadastrado."
-            />
-          </div>
-        </div>
-      </div>
+      <UserManager
+        users={systemUsers}
+        loading={loadingData}
+        newUser={newUser}
+        onNewUserChange={setNewUser}
+        onAddUser={handleAddUser}
+        onDeleteUser={handleDeleteUser}
+        showPassword={showPassword}
+        onTogglePassword={() => setShowPassword(!showPassword)}
+        deletingUserId={deletingUserId}
+      />
     </div>
   );
 };

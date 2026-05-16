@@ -3,6 +3,7 @@
  */
 const { carregarTaxas, calcularComissaoVenda } = require("../services/commission");
 const { logEvent } = require("../lib/eventLogger");
+const { requireAdmin } = require("../lib/authSession");
 
 const toCents = (value) => Math.round((Number(value) || 0) * 100);
 const fromCents = (cents) => Number((cents / 100).toFixed(2));
@@ -27,11 +28,12 @@ const normalizeSaleTotals = (saleData) => {
   };
 };
 
-function register(safeHandle, knex) {
+function register(safeHandle, knex, authSession) {
   safeHandle("create-sale", async (event, saleData) => {
     const trx = await knex.transaction();
     try {
-      if (!saleData?.vendedor_id) {
+      const vendedorId = Number(saleData?.vendedor_id);
+      if (!Number.isInteger(vendedorId) || vendedorId <= 0) {
         throw new Error("Venda invalida: vendedor nao informado.");
       }
       if (!Array.isArray(saleData.itens) || saleData.itens.length === 0) {
@@ -51,6 +53,29 @@ function register(safeHandle, knex) {
 
       if (discountCents > subtotalCents) {
         throw new Error("Desconto invalido: maior que o subtotal das pecas.");
+      }
+      if (laborCents > 0 && !saleData.trocador_id) {
+        throw new Error("Venda invalida: responsavel pela mao de obra nao informado.");
+      }
+
+      const vendedor = await trx("pessoas")
+        .where({ id: vendedorId, ativo: true })
+        .first();
+      if (!vendedor) {
+        throw new Error("Venda invalida: vendedor nao encontrado ou inativo.");
+      }
+
+      const trocadorId = saleData.trocador_id ? Number(saleData.trocador_id) : null;
+      if (trocadorId !== null) {
+        if (!Number.isInteger(trocadorId) || trocadorId <= 0) {
+          throw new Error("Venda invalida: responsavel pela mao de obra invalido.");
+        }
+        const trocador = await trx("pessoas")
+          .where({ id: trocadorId, ativo: true })
+          .first();
+        if (!trocador) {
+          throw new Error("Venda invalida: responsavel pela mao de obra nao encontrado ou inativo.");
+        }
       }
 
       const paymentRows = saleData.pagamentos.map((p) => ({
@@ -75,19 +100,47 @@ function register(safeHandle, knex) {
         paymentRows.length > 1 ? "Multiplos" : paymentRows[0].metodo;
 
       // Verificar estoque antes de decrementar.
+      const normalizedItems = [];
       for (const item of saleData.itens) {
-        const produto = await trx("produtos").where("id", item.id).first();
+        const produtoId = Number(item?.id);
+        const quantidade = Number(item?.qty);
+        const precoUnitario = Number(item?.preco_venda);
+        const custoUnitario = Number(item?.custo);
+
+        if (!Number.isInteger(produtoId) || produtoId <= 0) {
+          throw new Error("Item invalido: produto nao informado.");
+        }
+        if (!Number.isInteger(quantidade) || quantidade <= 0) {
+          throw new Error("Item invalido: quantidade deve ser maior que zero.");
+        }
+        if (!Number.isFinite(precoUnitario) || precoUnitario < 0) {
+          throw new Error("Item invalido: preco de venda invalido.");
+        }
+        if (!Number.isFinite(custoUnitario) || custoUnitario < 0) {
+          throw new Error("Item invalido: custo invalido.");
+        }
+
+        const produto = await trx("produtos").where("id", produtoId).first();
         if (!produto) throw new Error(`Produto #${item.id} nao encontrado.`);
-        if (produto.estoque_atual < item.qty) {
+        if (produto.ativo === false || produto.ativo === 0) {
+          throw new Error(`Produto #${produtoId} esta inativo.`);
+        }
+        if (produto.estoque_atual < quantidade) {
           throw new Error(
-            `Estoque insuficiente: "${produto.descricao}" tem ${produto.estoque_atual} unidades, pedido: ${item.qty}`,
+            `Estoque insuficiente: "${produto.descricao}" tem ${produto.estoque_atual} unidades, pedido: ${quantidade}`,
           );
         }
+        normalizedItems.push({
+          id: produtoId,
+          qty: quantidade,
+          preco_venda: precoUnitario,
+          custo: custoUnitario,
+        });
       }
 
       const [saleId] = await trx("vendas").insert({
-        vendedor_id: saleData.vendedor_id,
-        trocador_id: saleData.trocador_id || null,
+        vendedor_id: vendedorId,
+        trocador_id: trocadorId,
         cliente_id: saleData.cliente_id || null,
         subtotal: fromCents(subtotalCents),
         mao_de_obra: fromCents(laborCents),
@@ -99,7 +152,7 @@ function register(safeHandle, knex) {
         data_venda: Date.now(),
       });
 
-      const items = saleData.itens.map((item) => ({
+      const items = normalizedItems.map((item) => ({
         venda_id: saleId,
         produto_id: item.id,
         quantidade: item.qty,
@@ -268,8 +321,19 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("cancel-sale", async (event, { vendaId, motivo }) => {
+    const authError = await requireAdmin(event, knex, authSession);
+    if (authError) return authError;
+
     const trx = await knex.transaction();
     try {
+      const venda = await trx("vendas").where("id", vendaId).first();
+      if (!venda) {
+        throw new Error("Venda nao encontrada.");
+      }
+      if (venda.cancelada === true || venda.cancelada === 1) {
+        throw new Error("Venda ja cancelada.");
+      }
+
       const itens = await trx("venda_itens").where("venda_id", vendaId);
       for (const item of itens) {
         await trx("produtos")
@@ -314,6 +378,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("pay-commissions", async (event, vendaIds) => {
+    const authError = await requireAdmin(event, knex, authSession);
+    if (authError) return authError;
+
     if (!vendaIds || vendaIds.length === 0) return { success: true };
     await knex("vendas")
       .whereIn("id", vendaIds)

@@ -62,12 +62,18 @@ export const api = {
   // --- AUTENTICAÇÃO ---
   auth: {
     checkExist: () => safeCall(window.api.checkUsersExist),
+    checkOnboarding: () => safeCall(window.api.checkOnboardingStatus),
     register: (d) => safeCall(window.api.registerUser, d),
     login: (username, password) => {
       // Aceita tanto objeto quanto argumentos separados para flexibilidade
       const data = typeof username === "object" ? username : { username, password };
       return safeCall(window.api.loginAttempt, data);
     },
+    verifyAdmin: (username, password) => {
+      const data = typeof username === "object" ? username : { username, password };
+      return safeCall(window.api.verifyAdmin, data);
+    },
+    logout: () => safeCall(window.api.logoutSession),
     getRoles: () => safeCall(window.api.getRoles),
     listUsers: () => safeCall(window.api.getUsers),
     deleteUser: (id) => safeCall(window.api.deleteUser, id),
@@ -111,6 +117,10 @@ export const api = {
     downloadUpdate: () => safeCall(window.api.downloadUpdate),
     quitAndInstall: () => safeCall(window.api.quitAndInstall),
     openFileDialog: () => safeCall(window.api.openFileDialog),
+    onUpdateAvailable: (callback) => window.api.onUpdateAvailable(callback),
+    onUpdateProgress: (callback) => window.api.onUpdateProgress(callback),
+    onUpdateDownloaded: (callback) => window.api.onUpdateDownloaded(callback),
+    onUpdateError: (callback) => window.api.onUpdateError(callback),
   },
 
   // --- EVENTOS ---

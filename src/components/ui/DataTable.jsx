@@ -12,6 +12,7 @@ const DataTable = ({
   columns = [],
   data = [],
   emptyMessage = "Nenhum registro encontrado.",
+  error = "",
   loading = false,
   onRowClick,
 }) => {
@@ -40,6 +41,15 @@ const DataTable = ({
                   <div className="flex justify-center flex-col items-center gap-2">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                     <span className="text-xs text-surface-400 font-medium">Carregando dados...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={columns.length} className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center gap-2 text-red-600">
+                    <i className="fas fa-triangle-exclamation text-xl"></i>
+                    <span className="text-sm font-semibold">{error}</span>
                   </div>
                 </td>
               </tr>

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef } from "react";
+import React, { Suspense, lazy, useState, useEffect, useRef } from "react";
 import {
   Routes,
   Route,
@@ -7,26 +7,36 @@ import {
   useLocation,
   Navigate,
 } from "react-router-dom";
-import Produtos from "./pages/Produtos";
-import Pessoas from "./pages/Pessoas";
-import Vendas from "./pages/Vendas";
-import Servicos from "./pages/Servicos";
-import Recibos from "./pages/Recibos";
-import Dashboard from "./pages/Dashboard";
-import Config from "./pages/Config";
-import Login from "./pages/Login";
-import Onboarding from "./pages/Onboarding";
-import HistoricoPrecos from "./pages/HistoricoPrecos";
-import EventLogs from "./pages/EventLogs";
-
 import Updater from "./components/Updater";
 
-import Relatorios from "./pages/Relatorios";
-import Comissoes from "./pages/Comissoes";
-import Clientes from "./pages/Clientes";
 import { useAuth } from "./context/AuthContext";
 import { useTenant } from "./context/TenantContext";
 import { useTheme } from "./context/ThemeContext";
+import { api } from "./services/api";
+
+const Produtos = lazy(() => import("./pages/Produtos"));
+const Pessoas = lazy(() => import("./pages/Pessoas"));
+const Vendas = lazy(() => import("./pages/Vendas"));
+const Servicos = lazy(() => import("./pages/Servicos"));
+const Recibos = lazy(() => import("./pages/Recibos"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Config = lazy(() => import("./pages/Config"));
+const Login = lazy(() => import("./pages/Login"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const HistoricoPrecos = lazy(() => import("./pages/HistoricoPrecos"));
+const EventLogs = lazy(() => import("./pages/EventLogs"));
+const Relatorios = lazy(() => import("./pages/Relatorios"));
+const Comissoes = lazy(() => import("./pages/Comissoes"));
+const Clientes = lazy(() => import("./pages/Clientes"));
+
+const PageFallback = () => (
+  <div className="flex h-full items-center justify-center bg-surface-50 text-surface-500">
+    <div className="flex flex-col items-center gap-3">
+      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
+      <span className="text-xs font-bold uppercase tracking-widest">Carregando...</span>
+    </div>
+  </div>
+);
 
 // Configuração do Menu (Estática)
 const MENU_ITEMS = [
@@ -125,7 +135,7 @@ function App() {
   useEffect(() => {
     const fetchVersion = async () => {
       try {
-        const ver = await window.api.getAppVersion();
+        const ver = await api.system.version();
         setAppVersion(ver);
       } catch (error) {
         console.error("Erro ao obter versão", error);
@@ -158,7 +168,7 @@ function App() {
 
   const handleMenuClick = (path) => {
     if (user) {
-      window.api?.logEvent?.({
+      api.events.log({
         occurred_at_ms: Date.now(),
         event_category: "ui_click",
         event_type: "menu.click",
@@ -172,7 +182,7 @@ function App() {
         severity: "info",
         message: `Clique no menu ${path}`,
         source: "ui",
-      });
+      }).catch(() => {});
     }
     requestRouteAccess(path, navigate);
   };
@@ -182,7 +192,7 @@ function App() {
     if (lastLoggedPathRef.current === location.pathname) return;
     lastLoggedPathRef.current = location.pathname;
 
-    window.api?.logEvent?.({
+    api.events.log({
       occurred_at_ms: Date.now(),
       event_category: "navigation",
       event_type: "route.enter",
@@ -195,7 +205,7 @@ function App() {
       severity: "info",
       message: `Navegou para ${location.pathname}`,
       source: "ui",
-    });
+    }).catch(() => {});
   }, [location.pathname, user]);
 
   if (onboardingRequired === null) {
@@ -203,11 +213,19 @@ function App() {
   }
 
   if (onboardingRequired === true || location.pathname === "/onboarding") {
-    return <Onboarding />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <Onboarding />
+      </Suspense>
+    );
   }
 
   if (!user) {
-    return <Login onLoginSuccess={(userData) => login(userData)} />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <Login onLoginSuccess={(userData) => login(userData)} />
+      </Suspense>
+    );
   }
 
   return (
@@ -344,23 +362,25 @@ function App() {
       </aside>
 
       <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50">
-        <Routes>
-          <Route path="/" element={hasAccess("/") ? <Dashboard /> : <Navigate to="/vendas" replace />} />
-          <Route path="/vendas" element={hasAccess("/vendas") ? <Vendas /> : <Navigate to="/vendas" replace />} />
-          <Route path="/servicos" element={hasAccess("/servicos") ? <Servicos /> : <Navigate to="/vendas" replace />} />
-          <Route path="/recibos" element={hasAccess("/recibos") ? <Recibos /> : <Navigate to="/vendas" replace />} />
-          <Route path="/historico" element={hasAccess("/historico") ? <HistoricoPrecos /> : <Navigate to="/vendas" replace />} />
-          <Route path="/produtos" element={hasAccess("/produtos") ? <Produtos /> : <Navigate to="/vendas" replace />} />
-          <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
-          <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
-          <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
-          <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
-          <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
-          <Route path="/logs" element={hasAccess("/logs") ? <EventLogs /> : <Navigate to="/vendas" replace />} />
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            <Route path="/" element={hasAccess("/") ? <Dashboard /> : <Navigate to="/vendas" replace />} />
+            <Route path="/vendas" element={hasAccess("/vendas") ? <Vendas /> : <Navigate to="/vendas" replace />} />
+            <Route path="/servicos" element={hasAccess("/servicos") ? <Servicos /> : <Navigate to="/vendas" replace />} />
+            <Route path="/recibos" element={hasAccess("/recibos") ? <Recibos /> : <Navigate to="/vendas" replace />} />
+            <Route path="/historico" element={hasAccess("/historico") ? <HistoricoPrecos /> : <Navigate to="/vendas" replace />} />
+            <Route path="/produtos" element={hasAccess("/produtos") ? <Produtos /> : <Navigate to="/vendas" replace />} />
+            <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
+            <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
+            <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
+            <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
+            <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
+            <Route path="/logs" element={hasAccess("/logs") ? <EventLogs /> : <Navigate to="/vendas" replace />} />
 
-          <Route path="*" element={<Navigate to="/" />} />
+            <Route path="*" element={<Navigate to="/" />} />
 
-        </Routes>
+          </Routes>
+        </Suspense>
       </main>
 
       {/* Auto Updater Component */}

@@ -6,6 +6,7 @@
 // =============================================================
 import React, { createContext, useState, useContext, useRef, useEffect, useMemo, useCallback } from "react";
 import { useAlert } from "./AlertSystem";
+import { api } from "../services/api";
 
 // Definição de permissões por cargo
 const PERMISSOES_CAIXA = [
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkOnboarding = async () => {
       try {
-        const status = await window.api.checkOnboardingStatus();
+        const status = await api.auth.checkOnboarding();
         setOnboardingRequired(!status.onboardingDone);
       } catch (error) {
         console.error("Erro ao verificar onboarding:", error);
@@ -63,6 +64,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
+    api.auth.logout().catch(() => {});
     setUser(null);
     setUnlockedRoutes([]);
   }, []);
@@ -134,7 +136,7 @@ export const AuthProvider = ({ children }) => {
 
     setIsAuthLoading(true);
     try {
-      const result = await window.api.loginAttempt({
+      const result = await api.auth.verifyAdmin({
         username: adminUser,
         password: adminPass,
       });

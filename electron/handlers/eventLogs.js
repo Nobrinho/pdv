@@ -10,8 +10,13 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("get-event-logs", async (event, filters = {}) => {
-    const page = filters.page ? parseInt(filters.page, 10) : 1;
-    const limit = filters.limit ? parseInt(filters.limit, 10) : 100;
+    const parsedPage = filters.page ? parseInt(filters.page, 10) : 1;
+    const parsedLimit = filters.limit ? parseInt(filters.limit, 10) : 100;
+    const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit =
+      Number.isInteger(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, 500)
+        : 100;
     const offset = (page - 1) * limit;
 
     const query = knex("event_logs").select("*").orderBy("occurred_at_ms", "desc");

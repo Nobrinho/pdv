@@ -184,7 +184,7 @@ const Recibos = () => {
 
     try {
       setIsCancellingSale(true);
-      const authResult = await api.auth.login({
+      const authResult = await api.auth.verifyAdmin({
         username: cancelForm.adminUser,
         password: cancelForm.adminPass,
       });

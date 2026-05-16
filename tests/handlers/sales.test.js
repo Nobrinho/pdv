@@ -202,6 +202,14 @@ async function criarVenda(db, saleData) {
 async function cancelarVenda(db, vendaId, motivo) {
   const trx = await db.transaction();
   try {
+    const venda = await trx("vendas").where("id", vendaId).first();
+    if (!venda) {
+      throw new Error("Venda nao encontrada.");
+    }
+    if (venda.cancelada === true || venda.cancelada === 1) {
+      throw new Error("Venda ja cancelada.");
+    }
+
     const itens = await trx("venda_itens").where("venda_id", vendaId);
     for (const item of itens) {
       await trx("produtos")
@@ -346,6 +354,19 @@ describe("Vendas - Fluxo Completo", () => {
     const result = await cancelarVenda(db, id, "Teste de cancelamento");
 
     expect(result.success).toBe(true);
+
+    const produto = await db("produtos").where("id", 1).first();
+    expect(produto.estoque_atual).toBe(10);
+  });
+
+  it("cancelar venda duas vezes nao devolve estoque novamente", async () => {
+    const { id } = await criarVenda(db, vendaSimples());
+    const firstCancel = await cancelarVenda(db, id, "Teste de cancelamento");
+    const secondCancel = await cancelarVenda(db, id, "Tentativa duplicada");
+
+    expect(firstCancel.success).toBe(true);
+    expect(secondCancel.success).toBe(false);
+    expect(secondCancel.error).toContain("ja cancelada");
 
     const produto = await db("produtos").where("id", 1).first();
     expect(produto.estoque_atual).toBe(10);

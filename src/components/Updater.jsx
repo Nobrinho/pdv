@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
 import { useAlert } from '../context/AlertSystem';
+import { api } from "../services/api";
 
 const Updater = () => {
   // Estados: idle, checking, available, starting, downloading, ready, error
@@ -11,27 +12,25 @@ const Updater = () => {
 
 
   useEffect(() => {
-    if (window.api && window.api.checkForUpdates) {
-      window.api.checkForUpdates();
-    }
+    api.system.checkUpdates();
 
     // Listeners
-    window.api.onUpdateAvailable((ver) => {
+    api.system.onUpdateAvailable((ver) => {
       setVersion(ver);
       setStatus("available");
     });
 
-    window.api.onUpdateProgress((percent) => {
+    api.system.onUpdateProgress((percent) => {
       // Só muda para downloading se já não estiver (evita flickering)
       setStatus("downloading");
       setProgress(Math.round(percent));
     });
 
-    window.api.onUpdateDownloaded(() => {
+    api.system.onUpdateDownloaded(() => {
       setStatus("ready");
     });
 
-    window.api.onUpdateError((err) => {
+    api.system.onUpdateError((err) => {
       console.error("Erro update:", err);
       // Opcional: mostrar erro se desejar, ou apenas resetar para idle
       // setStatus('error');
@@ -43,7 +42,7 @@ const Updater = () => {
     setStatus("starting");
 
     // 2. Chama o backend
-    const result = await window.api.downloadUpdate();
+    const result = await api.system.downloadUpdate();
 
     // 3. Se falhar no início (antes de começar o progresso)
     if (!result || !result.success) {
@@ -56,7 +55,7 @@ const Updater = () => {
   };
 
   const installNow = () => {
-    window.api.quitAndInstall();
+    api.system.quitAndInstall();
   };
 
   if (status === "idle" || status === "checking" || status === "error")

@@ -3,6 +3,21 @@
  */
 const { BrowserWindow } = require("electron");
 
+function sanitizeReceiptHtml(contentHtml = "") {
+  return String(contentHtml)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<object[\s\S]*?>[\s\S]*?<\/object>/gi, "")
+    .replace(/<embed[\s\S]*?>/gi, "")
+    .replace(/<link[\s\S]*?>/gi, "")
+    .replace(/<meta[\s\S]*?>/gi, "")
+    .replace(/\son\w+="[^"]*"/gi, "")
+    .replace(/\son\w+='[^']*'/gi, "")
+    .replace(/\son\w+=\S+/gi, "")
+    .replace(/\s(src|href)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
 function register(safeHandle, knex, mainWindow) {
   safeHandle("get-printers", async () => {
     return mainWindow.webContents.getPrintersAsync();
@@ -17,11 +32,17 @@ function register(safeHandle, knex, mainWindow) {
       if (!exists) return { success: false, error: "Impressora não encontrada." };
     }
 
+    const safeContentHtml = sanitizeReceiptHtml(contentHtml);
+
     let printWindow = new BrowserWindow({
       show: false,
       width: 300,
       height: 600,
-      webPreferences: { nodeIntegration: false },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+      },
     });
 
     const fullHtml = `
@@ -64,7 +85,7 @@ function register(safeHandle, knex, mainWindow) {
           </style>
       </head>
       <body>
-          ${contentHtml}
+          ${safeContentHtml}
       </body>
       </html>
     `;
@@ -105,4 +126,4 @@ function register(safeHandle, knex, mainWindow) {
   });
 }
 
-module.exports = { register };
+module.exports = { register, sanitizeReceiptHtml };

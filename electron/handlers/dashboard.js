@@ -91,7 +91,7 @@ function register(safeHandle, knex) {
       .where("cancelada", 0)
       .select(
         knex.raw("CAST((data_venda / 86400000) AS INTEGER) as day_key"),
-        knex.raw("SUM(total_final - mao_de_obra) as total"),
+        knex.raw("SUM(total_final - COALESCE(mao_de_obra, 0)) as total"),
       )
       .groupByRaw("CAST((data_venda / 86400000) AS INTEGER)");
 

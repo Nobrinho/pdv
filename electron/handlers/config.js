@@ -3,10 +3,27 @@
  */
 const fs = require("fs");
 const { dialog } = require("electron");
+const { requireAdmin } = require("../lib/authSession");
 
-function register(safeHandle, knex, mainWindow) {
-  const { dbPath } = require("../lib/db");
+const ALLOWED_CONFIG_KEYS = new Set([
+  "loja_nome",
+  "loja_subtitulo",
+  "loja_endereco",
+  "loja_cidade",
+  "loja_telefone",
+  "loja_documento",
+  "loja_logo_base64",
+  "loja_bg_base64",
+  "cor_primaria",
+  "cor_secundaria",
+  "dev_nome",
+  "dev_link",
+  "comissao_padrao",
+  "comissao_usados",
+  "impressora_padrao",
+]);
 
+function register(safeHandle, knex, mainWindow, authSession) {
   safeHandle("get-config", async (event, k) => {
     return (await knex("configuracoes").where("chave", k).first())?.valor;
   });
@@ -19,6 +36,12 @@ function register(safeHandle, knex, mainWindow) {
   });
 
   safeHandle("save-config", async (event, k, v) => {
+    if (!ALLOWED_CONFIG_KEYS.has(k)) {
+      return { success: false, error: "Configuracao nao permitida." };
+    }
+    const authError = await requireAdmin(event, knex, authSession, { allowBootstrap: true });
+    if (authError) return authError;
+
     const ex = await knex("configuracoes").where("chave", k).first();
     ex
       ? await knex("configuracoes").where("chave", k).update({ valor: v })
@@ -26,7 +49,11 @@ function register(safeHandle, knex, mainWindow) {
     return { success: true };
   });
 
-  safeHandle("backup-database", async () => {
+  safeHandle("backup-database", async (event) => {
+    const authError = await requireAdmin(event, knex, authSession);
+    if (authError) return authError;
+
+    const { dbPath } = require("../lib/db");
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
       defaultPath: `backup_${Date.now()}.sqlite3`,
     });
@@ -35,8 +62,12 @@ function register(safeHandle, knex, mainWindow) {
     return { success: true };
   });
 
-  safeHandle("restore-database", async () => {
+  safeHandle("restore-database", async (event) => {
+    const authError = await requireAdmin(event, knex, authSession);
+    if (authError) return authError;
+
     const { app } = require("electron");
+    const { dbPath } = require("../lib/db");
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       properties: ["openFile"],
       filters: [{ extensions: ["sqlite3"] }],

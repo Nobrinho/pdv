@@ -69,6 +69,13 @@ function register(safeHandle, knex) {
       return { success: false, error: "Responsavel invalido." };
     }
 
+    const trocador = await knex("pessoas")
+      .where({ id: trocadorId, ativo: true })
+      .first();
+    if (!trocador) {
+      return { success: false, error: "Responsavel nao encontrado ou inativo." };
+    }
+
     const [id] = await knex("servicos_avulsos").insert({
       trocador_id: trocadorId,
       descricao: (data?.descricao || "").trim(),

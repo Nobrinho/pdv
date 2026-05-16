@@ -2,10 +2,12 @@ const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 const { knex, dbPath, isDev } = require("./lib/db");
 const { safeHandle } = require("./lib/safeHandle");
+const { createAuthSession } = require("./lib/authSession");
 
 
 let mainWindow;
 let splashWindow;
+const authSession = createAuthSession();
 
 // 1. Janela Splash (Instantânea e leve)
 function createSplashWindow() {
@@ -99,14 +101,14 @@ app.whenReady().then(async () => {
     createWindow(); // Cria janela, mas ela fica em background
     
     // Registrar todos os handlers modulares
-    require("./handlers/products").register(safeHandle, knex);
-    require("./handlers/people").register(safeHandle, knex);
-    require("./handlers/sales").register(safeHandle, knex);
-    require("./handlers/clients").register(safeHandle, knex);
+    require("./handlers/products").register(safeHandle, knex, authSession);
+    require("./handlers/people").register(safeHandle, knex, authSession);
+    require("./handlers/sales").register(safeHandle, knex, authSession);
+    require("./handlers/clients").register(safeHandle, knex, authSession);
     require("./handlers/services").register(safeHandle, knex);
     require("./handlers/dashboard").register(safeHandle, knex);
-    require("./handlers/auth").register(safeHandle, knex);
-    require("./handlers/config").register(safeHandle, knex, mainWindow);
+    require("./handlers/auth").register(safeHandle, knex, authSession);
+    require("./handlers/config").register(safeHandle, knex, mainWindow, authSession);
     require("./handlers/print").register(safeHandle, knex, mainWindow);
     require("./handlers/update").register(safeHandle, knex, mainWindow, isDev);
     require("./handlers/eventLogs").register(safeHandle, knex);

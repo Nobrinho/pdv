@@ -13,6 +13,11 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
 
   if (!sale || !items) return null;
 
+  const toNumber = (value) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  };
+
   const styles = {
     container: {
       backgroundColor: "#fff",
@@ -56,16 +61,17 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
     },
   };
 
-  const subtotal = sale.subtotal || 0;
-  const acrescimo = sale.acrescimo_valor || sale.acrescimo || 0;
-  const desconto = sale.desconto_valor || 0;
-  const total = sale.total_final || 0;
+  const subtotal = toNumber(sale.subtotal);
+  const acrescimo = toNumber(sale.acrescimo_valor ?? sale.acrescimo);
+  const desconto = toNumber(sale.desconto_valor);
+  const total = toNumber(sale.total_final);
   const data = sale.data_venda || new Date();
   const clienteObj = sale.cliente || null;
   const clienteNome = clienteObj?.nome || sale.cliente_nome || null;
   const clienteDocumento = clienteObj?.documento || sale.cliente_documento || null;
   const clienteTelefone = clienteObj?.telefone || sale.cliente_telefone || null;
   const listaPagamentos = sale.lista_pagamentos || sale.pagamentos || [];
+  const isCanceled = sale.cancelada === true || sale.cancelada === 1;
 
   return (
     <div id="cupom-fiscal" style={styles.container}>
@@ -151,17 +157,17 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
           {items.map((item, idx) => (
             <tr key={idx}>
               <td style={styles.tdItem}>
-                {item.qty || item.quantidade} x{" "}
+                {toNumber(item.qty ?? item.quantidade)} x{" "}
                 {item.descricao || "Produto sem descrição"}
                 <br />
                 <span style={styles.textSmall}>
-                  Unit: {(item.preco_venda || item.preco_unitario).toFixed(2)}
+                  Unit: {toNumber(item.preco_venda ?? item.preco_unitario).toFixed(2)}
                 </span>
               </td>
               <td style={styles.tdTotal}>
                 {(
-                  (item.qty || item.quantidade) *
-                  (item.preco_venda || item.preco_unitario)
+                  toNumber(item.qty ?? item.quantidade) *
+                  toNumber(item.preco_venda ?? item.preco_unitario)
                 ).toFixed(2)}
               </td>
             </tr>
@@ -216,7 +222,7 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
               <span>
                 {p.metodo} {p.detalhes && `(${p.detalhes})`}
               </span>
-              <span>{Number(p.valor).toFixed(2)}</span>
+              <span>{toNumber(p.valor).toFixed(2)}</span>
             </div>
           ))
         ) : (
@@ -237,7 +243,7 @@ const CupomFiscal = ({ sale, items }: CupomFiscalProps) => {
         <p>Obrigado pela preferência!</p>
       </div>
 
-      {sale.cancelada === 1 && (
+      {isCanceled && (
         <div style={styles.cancelado}>VENDA CANCELADA</div>
       )}
     </div>

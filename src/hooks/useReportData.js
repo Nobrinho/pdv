@@ -77,16 +77,19 @@ const useReportData = () => {
       setLoading(true);
       const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
 
-      const salesResult = await api.sales.list({
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      const servicesResult = await api.services.list({
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      const people = await api.people.list();
-      const configComissao = await api.config.get("comissao_padrao");
+      const [salesResult, servicesResult, people, configComissao] =
+        await Promise.all([
+          api.sales.list({
+            startDate: startTimestamp,
+            endDate: endTimestamp,
+          }),
+          api.services.list({
+            startDate: startTimestamp,
+            endDate: endTimestamp,
+          }),
+          api.people.list(),
+          api.config.get("comissao_padrao"),
+        ]);
 
       const sales = Array.isArray(salesResult) ? salesResult : salesResult?.data || [];
       const services = Array.isArray(servicesResult) ? servicesResult : servicesResult?.data || [];
@@ -122,12 +125,8 @@ const useReportData = () => {
   }, [startDate, endDate, showAlert]);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
     if (startDate && endDate) loadData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, loadData]);
 
   // --- PERIOD CHANGE ---
   const handlePeriodChange = useCallback((type) => {

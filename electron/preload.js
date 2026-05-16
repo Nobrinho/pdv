@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld("api", {
   checkOnboardingStatus: () => ipcRenderer.invoke("check-onboarding-status"),
   registerUser: (data) => ipcRenderer.invoke("register-user", data),
   loginAttempt: (data) => ipcRenderer.invoke("login-attempt", data),
+  verifyAdmin: (data) => ipcRenderer.invoke("verify-admin", data),
+  logoutSession: () => ipcRenderer.invoke("logout-session"),
   getUsers: () => ipcRenderer.invoke("get-users"),
   deleteUser: (id) => ipcRenderer.invoke("delete-user", id),
 

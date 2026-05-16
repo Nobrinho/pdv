@@ -1,7 +1,9 @@
 /**
  * Handlers de Produtos (CRUD + Histórico)
  */
-function register(safeHandle, knex) {
+const { requireAdmin } = require("../lib/authSession");
+
+function register(safeHandle, knex, authSession) {
   const { logEvent } = require("../lib/eventLogger");
   const sanitizeProductPayload = (product = {}, { forUpdate = false } = {}) => {
     const payload = {};
@@ -27,6 +29,20 @@ function register(safeHandle, knex) {
 
     return payload;
   };
+  const normalizeBatchNumber = (value, fallback, { integer = false } = {}) => {
+    const hasValue = value !== null && value !== undefined && value !== "";
+    const normalized = Number(hasValue ? value : fallback);
+
+    if (!Number.isFinite(normalized) || normalized < 0) {
+      return null;
+    }
+    if (integer && !Number.isInteger(normalized)) {
+      return null;
+    }
+
+    return integer ? Math.trunc(normalized) : normalized;
+  };
+
   safeHandle("get-products", async () => {
     return await knex("produtos").where("ativo", true).select("*");
   });
@@ -44,6 +60,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("save-product", async (event, product) => {
+    const authError = await requireAdmin(event, knex, authSession);
+    if (authError) return authError;
+
     const precoVenda = Number(product?.preco_venda ?? 0);
     const custo = Number(product?.custo ?? 0);
     const estoque = Number(product?.estoque_atual ?? 0);
@@ -63,6 +82,9 @@ function register(safeHandle, knex) {
 
     if (product.id) {
       const atual = await knex("produtos").where("id", product.id).first();
+      if (!atual) {
+        return { success: false, error: "Produto nao encontrado." };
+      }
       const payload = sanitizeProductPayload(product, { forUpdate: true });
       await knex("produtos").where("id", product.id).update(payload);
       const nextPrice = Object.prototype.hasOwnProperty.call(payload, "preco_venda")
@@ -122,6 +144,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("delete-product", async (event, id) => {
+    const authError = await requireAdmin(event, knex, authSession);
+    if (authError) return authError;
+
     await knex("produtos").where("id", id).update({ ativo: false });
     await logEvent(knex, {
       event_category: "domain_action",
@@ -176,6 +201,9 @@ function register(safeHandle, knex) {
 
   // === IMPORTAÇÃO EM LOTE ===
   safeHandle("import-products-batch", async (event, { products, conflictMode }) => {
+    const authError = await requireAdmin(event, knex, authSession);
+    if (authError) return authError;
+
     // conflictMode: "skip" | "update"
     const trx = await knex.transaction();
     const results = { created: 0, updated: 0, skipped: 0, errors: [] };
@@ -204,12 +232,28 @@ function register(safeHandle, knex) {
           }
 
           if (existing) {
+            const custo = normalizeBatchNumber(product.custo, existing.custo);
+            const precoVenda = normalizeBatchNumber(
+              product.preco_venda,
+              existing.preco_venda,
+            );
+            const estoqueAtual = normalizeBatchNumber(
+              product.estoque_atual,
+              existing.estoque_atual,
+              { integer: true },
+            );
+
+            if (custo === null || precoVenda === null || estoqueAtual === null) {
+              results.errors.push({ row: index + 1, error: "Valores numericos invalidos" });
+              continue;
+            }
+
             // Atualizar produto existente
             const updates = {
               descricao: safeDesc,
-              custo: parseFloat(product.custo || existing.custo),
-              preco_venda: parseFloat(product.preco_venda || existing.preco_venda),
-              estoque_atual: parseInt(product.estoque_atual ?? existing.estoque_atual),
+              custo,
+              preco_venda: precoVenda,
+              estoque_atual: estoqueAtual,
               tipo: product.tipo || existing.tipo,
               ativo: true,
             };
@@ -232,22 +276,33 @@ function register(safeHandle, knex) {
             }
             results.updated++;
           } else {
+            const custo = normalizeBatchNumber(product.custo, 0);
+            const precoVenda = normalizeBatchNumber(product.preco_venda, 0);
+            const estoqueAtual = normalizeBatchNumber(product.estoque_atual, 0, {
+              integer: true,
+            });
+
+            if (custo === null || precoVenda === null || estoqueAtual === null) {
+              results.errors.push({ row: index + 1, error: "Valores numericos invalidos" });
+              continue;
+            }
+
             // Criar novo produto
             const codigo = safeCod || ("AUTO-" + Date.now() + "-" + index);
             const [id] = await trx("produtos").insert({
               codigo,
               descricao: safeDesc,
-              custo: parseFloat(product.custo || 0),
-              preco_venda: parseFloat(product.preco_venda || 0),
-              estoque_atual: parseInt(product.estoque_atual || 0),
+              custo,
+              preco_venda: precoVenda,
+              estoque_atual: estoqueAtual,
               tipo: product.tipo || "novo",
               ativo: true,
             });
 
             await trx("historico_produtos").insert({
               produto_id: id,
-              preco_novo: parseFloat(product.preco_venda || 0),
-              estoque_novo: parseInt(product.estoque_atual || 0),
+              preco_novo: precoVenda,
+              estoque_novo: estoqueAtual,
               tipo_alteracao: "cadastro_lote",
               data_alteracao: Date.now(),
             });
@@ -283,10 +338,6 @@ function register(safeHandle, knex) {
       return { success: false, error: error.message };
     }
   });
-
-  // E também no save-product manual
-  // Vou precisar localizar o save-product no arquivo para garantir que sincronize lá também.
-
 
   // === DIALOG DE ARQUIVO ===
   safeHandle("open-file-dialog", async () => {
