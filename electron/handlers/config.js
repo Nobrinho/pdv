@@ -77,6 +77,25 @@ function register(safeHandle, knex, mainWindow, authSession) {
     app.relaunch();
     app.exit(0);
   });
+
+  safeHandle("save-generated-file", async (event, options = {}) => {
+    const { defaultPath = `arquivo_${Date.now()}`, filters = [], dataBase64 = "" } = options;
+    if (!dataBase64 || typeof dataBase64 !== "string") {
+      return { success: false, error: "Arquivo gerado invalido." };
+    }
+
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      defaultPath,
+      filters,
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
+
+    await fs.promises.writeFile(filePath, Buffer.from(dataBase64, "base64"));
+    return { success: true, filePath };
+  });
 }
 
 module.exports = { register };

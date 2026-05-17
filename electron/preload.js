@@ -18,6 +18,14 @@ contextBridge.exposeInMainWorld("api", {
   createSale: (saleData) => ipcRenderer.invoke("create-sale", saleData),
   getSales: (filters) => ipcRenderer.invoke("get-sales", filters),
   getSaleItems: (vendaId) => ipcRenderer.invoke("get-sale-items", vendaId),
+  createBudget: (budgetData) => ipcRenderer.invoke("create-budget", budgetData),
+  updateBudget: (budgetData) => ipcRenderer.invoke("update-budget", budgetData),
+  getBudgets: (filters) => ipcRenderer.invoke("get-budgets", filters),
+  getBudgetById: (budgetId) => ipcRenderer.invoke("get-budget-by-id", budgetId),
+  getBudgetItems: (budgetId) => ipcRenderer.invoke("get-budget-items", budgetId),
+  cancelBudget: (budgetId) => ipcRenderer.invoke("cancel-budget", budgetId),
+  duplicateBudget: (budgetId) => ipcRenderer.invoke("duplicate-budget", budgetId),
+  convertBudgetToSale: (payload) => ipcRenderer.invoke("convert-budget-to-sale", payload),
 
   // --- SERVIÇOS AVULSOS ---
   getServices: (filters) => ipcRenderer.invoke("get-services", filters),
@@ -48,9 +56,10 @@ contextBridge.exposeInMainWorld("api", {
   // --- BACKUP & IMPRESSÃO ---
   backupDatabase: () => ipcRenderer.invoke("backup-database"),
   restoreDatabase: () => ipcRenderer.invoke("restore-database"),
+  saveGeneratedFile: (options) => ipcRenderer.invoke("save-generated-file", options),
   getPrinters: () => ipcRenderer.invoke("get-printers"),
-  printSilent: (html, printer) =>
-    ipcRenderer.invoke("print-silent", html, printer),
+  printSilent: (html, printer, options) =>
+    ipcRenderer.invoke("print-silent", html, printer, options),
 
   // --- VENDAS & COMISSÕES ---
   cancelSale: (data) => ipcRenderer.invoke("cancel-sale", data),

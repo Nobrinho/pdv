@@ -28,6 +28,7 @@ const EventLogs = lazy(() => import("./pages/EventLogs"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Comissoes = lazy(() => import("./pages/Comissoes"));
 const Clientes = lazy(() => import("./pages/Clientes"));
+const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 
 const PageFallback = () => (
   <div className="flex h-full items-center justify-center bg-surface-50 text-surface-500">
@@ -99,6 +100,12 @@ const MENU_ITEMS = [
     label: "Clientes",
     icon: "fa-users",
     restricted: true,
+  },
+  {
+    path: "/orcamentos",
+    label: "Orcamentos",
+    icon: "fa-file-invoice-dollar",
+    restricted: false,
   },
   {
     path: "/config",
@@ -372,6 +379,7 @@ function App() {
             <Route path="/produtos" element={hasAccess("/produtos") ? <Produtos /> : <Navigate to="/vendas" replace />} />
             <Route path="/pessoas" element={hasAccess("/pessoas") ? <Pessoas /> : <Navigate to="/vendas" replace />} />
             <Route path="/clientes" element={hasAccess("/clientes") ? <Clientes /> : <Navigate to="/vendas" replace />} />
+            <Route path="/orcamentos" element={hasAccess("/orcamentos") ? <Orcamentos /> : <Navigate to="/vendas" replace />} />
             <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
             <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
             <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />

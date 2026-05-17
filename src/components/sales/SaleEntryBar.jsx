@@ -121,7 +121,7 @@ const SaleEntryBar = ({
               <div
                 key={product.id}
                 onClick={() => onSelectProduct(product)}
-                className="p-3 hover:bg-primary-50 cursor-pointer border-b border-surface-200 flex justify-between items-center group"
+                className="p-3 hover:bg-primary-500/10 cursor-pointer border-b border-surface-200 flex justify-between items-center group transition-colors"
               >
                 <div>
                   <div className="font-medium text-surface-800">{product.descricao}</div>

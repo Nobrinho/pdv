@@ -106,6 +106,7 @@ app.whenReady().then(async () => {
     require("./handlers/sales").register(safeHandle, knex, authSession);
     require("./handlers/clients").register(safeHandle, knex, authSession);
     require("./handlers/services").register(safeHandle, knex);
+    require("./handlers/budgets").register(safeHandle, knex);
     require("./handlers/dashboard").register(safeHandle, knex);
     require("./handlers/auth").register(safeHandle, knex, authSession);
     require("./handlers/config").register(safeHandle, knex, mainWindow, authSession);

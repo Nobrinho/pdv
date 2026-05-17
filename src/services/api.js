@@ -36,6 +36,17 @@ export const api = {
     payCommissions: (ids) => safeCall(window.api.payCommissions, ids),
   },
 
+  budgets: {
+    create: (data) => safeCall(window.api.createBudget, data),
+    update: (data) => safeCall(window.api.updateBudget, data),
+    list: (filters) => safeCall(window.api.getBudgets, filters),
+    getById: (id) => safeCall(window.api.getBudgetById, id),
+    items: (id) => safeCall(window.api.getBudgetItems, id),
+    cancel: (id) => safeCall(window.api.cancelBudget, id),
+    duplicate: (id) => safeCall(window.api.duplicateBudget, id),
+    convert: (data) => safeCall(window.api.convertBudgetToSale, data),
+  },
+
   // --- CLIENTES & FIADO ---
   clients: {
     list:      ()    => safeCall(window.api.getClients),
@@ -107,7 +118,7 @@ export const api = {
   // --- IMPRESSÃO ---
   print: {
     printers: () => safeCall(window.api.getPrinters),
-    silent: (html, p) => safeCall(window.api.printSilent, html, p),
+    silent: (html, p, options) => safeCall(window.api.printSilent, html, p, options),
   },
 
   // --- SISTEMA ---
@@ -117,6 +128,7 @@ export const api = {
     downloadUpdate: () => safeCall(window.api.downloadUpdate),
     quitAndInstall: () => safeCall(window.api.quitAndInstall),
     openFileDialog: () => safeCall(window.api.openFileDialog),
+    saveGeneratedFile: (options) => safeCall(window.api.saveGeneratedFile, options),
     onUpdateAvailable: (callback) => window.api.onUpdateAvailable(callback),
     onUpdateProgress: (callback) => window.api.onUpdateProgress(callback),
     onUpdateDownloaded: (callback) => window.api.onUpdateDownloaded(callback),

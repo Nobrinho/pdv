@@ -15,6 +15,7 @@ const PERMISSOES_CAIXA = [
   "/recibos",
   "/historico",
   "/produtos",
+  "/orcamentos",
 ];
 
 const AuthContext = createContext(null);

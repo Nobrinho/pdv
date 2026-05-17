@@ -1,5 +1,5 @@
 /**
- * Handler de Impressão Silenciosa
+ * Handler de impressao silenciosa.
  */
 const { BrowserWindow } = require("electron");
 
@@ -18,26 +18,91 @@ function sanitizeReceiptHtml(contentHtml = "") {
     .replace(/javascript:/gi, "");
 }
 
+function buildPrintShell(contentHtml, isDocumentLayout) {
+  const bodyStyle = isDocumentLayout
+    ? `
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 400;
+        margin: 0;
+        padding: 24px;
+        width: 100%;
+        max-width: 900px;
+        background-color: #fff;
+      `
+    : `
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 13px;
+        font-weight: 700;
+        margin: 0;
+        padding: 5px;
+        width: 280px;
+        background-color: #fff;
+      `;
+
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        @page { margin: 0; size: auto; }
+        * {
+          box-sizing: border-box;
+          color: #000 !important;
+          text-shadow: 0 0 0 #000;
+        }
+        body { ${bodyStyle} }
+        .flex { display: flex; }
+        .justify-between { justify-content: space-between; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: 900; }
+        .border-b { border-bottom: 2px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+        .border-t { border-top: 2px dashed #000; padding-top: 5px; margin-top: 5px; }
+        .mb-2 { margin-bottom: 5px; }
+        .mb-4 { margin-bottom: 10px; }
+        .mt-2 { margin-top: 5px; }
+        .mt-4 { margin-top: 10px; }
+        .uppercase { text-transform: uppercase; }
+        .text-xs { font-size: 11px; }
+        .text-sm { font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { padding: 2px 0; vertical-align: top; }
+      </style>
+    </head>
+    <body>
+      ${contentHtml}
+    </body>
+    </html>
+  `;
+}
+
 function register(safeHandle, knex, mainWindow) {
+  const isDefaultPrinter = (printerName) =>
+    !printerName || printerName === "Padrao do Windows" || printerName === "Padrão do Windows";
+
   safeHandle("get-printers", async () => {
     return mainWindow.webContents.getPrintersAsync();
   });
 
-  safeHandle("print-silent", async (event, contentHtml, printerName) => {
-    console.log(`🖨️ Tentando imprimir: "${printerName}"`);
+  safeHandle("print-silent", async (event, contentHtml, printerName, printOptions = {}) => {
+    console.log(`Tentando imprimir: "${printerName}"`);
 
-    if (printerName && printerName !== "Padrão do Windows") {
+    if (!isDefaultPrinter(printerName)) {
       const printers = await mainWindow.webContents.getPrintersAsync();
-      const exists = printers.find((p) => p.name === printerName);
-      if (!exists) return { success: false, error: "Impressora não encontrada." };
+      const exists = printers.find((printer) => printer.name === printerName);
+      if (!exists) return { success: false, error: "Impressora nao encontrada." };
     }
 
     const safeContentHtml = sanitizeReceiptHtml(contentHtml);
+    const isDocumentLayout = printOptions?.layout === "document";
+    const fullHtml = buildPrintShell(safeContentHtml, isDocumentLayout);
 
-    let printWindow = new BrowserWindow({
+    const printWindow = new BrowserWindow({
       show: false,
-      width: 300,
-      height: 600,
+      width: isDocumentLayout ? 1000 : 300,
+      height: isDocumentLayout ? 1200 : 600,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -45,69 +110,21 @@ function register(safeHandle, knex, mainWindow) {
       },
     });
 
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-      <head>
-          <meta charset="UTF-8">
-          <style>
-              @page { margin: 0; size: auto; }
-              * {
-                  box-sizing: border-box;
-                  color: #000 !important;
-                  text-shadow: 0 0 0 #000;
-              }
-              body {
-                  font-family: 'Courier New', Courier, monospace;
-                  font-size: 13px;
-                  font-weight: 700;
-                  margin: 0;
-                  padding: 5px;
-                  width: 280px;
-                  background-color: #fff;
-              }
-              .flex { display: flex; }
-              .justify-between { justify-content: space-between; }
-              .text-center { text-align: center; }
-              .text-right { text-align: right; }
-              .font-bold { font-weight: 900; }
-              .border-b { border-bottom: 2px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-              .border-t { border-top: 2px dashed #000; padding-top: 5px; margin-top: 5px; }
-              .mb-2 { margin-bottom: 5px; }
-              .mb-4 { margin-bottom: 10px; }
-              .mt-2 { margin-top: 5px; }
-              .mt-4 { margin-top: 10px; }
-              .uppercase { text-transform: uppercase; }
-              .text-xs { font-size: 11px; }
-              .text-sm { font-size: 13px; }
-              table { width: 100%; border-collapse: collapse; }
-              td, th { padding: 2px 0; vertical-align: top; }
-          </style>
-      </head>
-      <body>
-          ${safeContentHtml}
-      </body>
-      </html>
-    `;
-
     try {
-      await printWindow.loadURL(
-        `data:text/html;charset=utf-8,${encodeURIComponent(fullHtml)}`,
-      );
-
-      await new Promise((r) => setTimeout(r, 500));
+      await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(fullHtml)}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       const options = {
         silent: true,
-        printBackground: false,
+        printBackground: isDocumentLayout,
         color: false,
         margins: { marginType: "none" },
-        landscape: false,
+        landscape: Boolean(printOptions?.landscape),
         scaleFactor: 100,
         copies: 1,
       };
 
-      if (printerName && printerName !== "Padrão do Windows") {
+      if (!isDefaultPrinter(printerName)) {
         options.deviceName = printerName;
       }
 
