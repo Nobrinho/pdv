@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { useAlert } from "../context/AlertSystem";
@@ -30,6 +30,12 @@ const Comissoes = () => {
   const [viewMode, setViewMode] = useState("condensed"); // 'condensed', 'detailed'
   const [selectedIds, setSelectedIds] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
+  const hasInvalidDateRange =
+    startDate &&
+    endDate &&
+    dayjs(startDate).isAfter(dayjs(endDate));
 
   // Derivação de dados filtrados
   const salesDisplay = useMemo(() => {
@@ -45,6 +51,16 @@ const Comissoes = () => {
 
     return sales;
   }, [filteredSales, statusFilter]);
+
+  const totalPages = Math.ceil(salesDisplay.length / PAGE_SIZE);
+  const paginatedSalesDisplay = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return salesDisplay.slice(start, start + PAGE_SIZE);
+  }, [salesDisplay, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, startDate, endDate, selectedSeller, periodType, viewMode]);
 
   // KPIs
   const { totalPagar, totalPago, totalAcumulado } = useMemo(() => {
@@ -73,6 +89,7 @@ const Comissoes = () => {
   };
 
   const handleSelectAll = (e) => {
+    if (hasInvalidDateRange) return;
     if (e.target.checked) {
       setSelectedIds(
         salesDisplay.filter((v) => !v.comissao_paga).map((v) => v.id)
@@ -83,6 +100,9 @@ const Comissoes = () => {
   };
 
   const handlePaySelected = async () => {
+    if (hasInvalidDateRange) {
+      return showAlert("Data inicial nao pode ser maior que a data final.", "Filtro invalido", "warning");
+    }
     if (selectedIds.length === 0) {
       return showAlert("Selecione ao menos uma comissão para baixar.", "Aviso", "warning");
     }
@@ -128,7 +148,7 @@ const Comissoes = () => {
         {selectedIds.length > 0 && (
           <button
             onClick={handlePaySelected}
-            disabled={processing}
+            disabled={processing || hasInvalidDateRange}
             className="w-full sm:w-auto bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 shadow-md flex items-center justify-center gap-2 font-bold transition active:scale-95 disabled:opacity-50"
           >
             <i className={`fas ${processing ? "fa-spinner fa-spin" : "fa-check-double"}`}></i>
@@ -139,6 +159,11 @@ const Comissoes = () => {
 
       {/* FILTROS */}
       <div className="bg-surface-100 p-4 rounded-xl shadow-sm mb-6 border border-surface-200 flex flex-col gap-4">
+        {hasInvalidDateRange && (
+          <div className="bg-yellow-500/10 text-yellow-700 border border-yellow-500/20 rounded-lg p-2.5 text-xs font-semibold">
+            Data inicial nao pode ser maior que a data final.
+          </div>
+        )}
         <div className="flex gap-2 border-b pb-4 overflow-x-auto">
           <button
             onClick={() => handlePeriodChange("weekly")}
@@ -274,6 +299,7 @@ const Comissoes = () => {
                     type="checkbox"
                     className="w-4 h-4 text-indigo-600 rounded border-surface-300 focus:ring-indigo-500 cursor-pointer bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
                     onChange={handleSelectAll}
+                    disabled={hasInvalidDateRange}
                     checked={
                       salesDisplay.filter((v) => !v.comissao_paga).length > 0 &&
                       selectedIds.length === salesDisplay.filter((v) => !v.comissao_paga).length
@@ -288,7 +314,7 @@ const Comissoes = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {salesDisplay.map((venda) => (
+              {paginatedSalesDisplay.map((venda) => (
                 <React.Fragment key={venda.id}>
                   {/* Linha Principal (Condensada) */}
                   <tr className={`hover:bg-surface-50 transition-colors ${selectedIds.includes(venda.id) ? "bg-primary-500/10 text-primary-600" : ""}`}>
@@ -380,6 +406,29 @@ const Comissoes = () => {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+            <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+              Pag {page} de {totalPages} • {salesDisplay.length} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

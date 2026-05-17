@@ -1,0 +1,180 @@
+import React from "react";
+import FormField from "../ui/FormField";
+
+const StoreIdentitySettings = ({
+  identity,
+  onIdentityChange,
+  logoPreview = "",
+  logoInputRef,
+  onLogoUpload,
+  onClearLogo,
+  onSave,
+  isSaving = false,
+}) => {
+  return (
+    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 mb-6">
+      <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+        <i className="fas fa-palette text-primary"></i> Identidade da Loja
+      </h2>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
+            Dados da Empresa
+          </h3>
+          <FormField
+            label="Nome da Loja *"
+            placeholder="Ex: Barba Pneus"
+            value={identity.nome}
+            onChange={(value) => onIdentityChange("nome", value)}
+            icon="fa-store"
+          />
+          <FormField
+            label="Subtítulo do Sistema"
+            placeholder="Ex: Terminal de Vendas"
+            value={identity.subtitulo}
+            onChange={(value) => onIdentityChange("subtitulo", value)}
+            icon="fa-tag"
+          />
+          <FormField
+            label="Endereço"
+            placeholder="Av. Principal, 100"
+            value={identity.endereco}
+            onChange={(value) => onIdentityChange("endereco", value)}
+            icon="fa-map-marker-alt"
+          />
+          <FormField
+            label="Cidade / UF"
+            placeholder="Ex: São Paulo/SP"
+            value={identity.cidade}
+            onChange={(value) => onIdentityChange("cidade", value)}
+            icon="fa-city"
+          />
+          <FormField
+            label="Telefone"
+            placeholder="(00) 00000-0000"
+            value={identity.telefone}
+            onChange={(value) => onIdentityChange("telefone", value)}
+            icon="fa-phone"
+          />
+          <FormField
+            label="CNPJ"
+            placeholder="00.000.000/0000-00"
+            value={identity.documento}
+            onChange={(value) => onIdentityChange("documento", value)}
+            icon="fa-file-alt"
+          />
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
+            Aparência
+          </h3>
+
+          <div className="pt-4 border-t border-surface-200">
+            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-3">
+              Créditos do Desenvolvedor
+            </h3>
+            <FormField
+              label="Nome / @usuario"
+              placeholder="Ex: @eminobre"
+              value={identity.devNome}
+              onChange={(value) => onIdentityChange("devNome", value)}
+              icon="fa-code"
+            />
+            <div className="mt-3">
+              <FormField
+                label="Link (opcional)"
+                placeholder="https://instagram.com/..."
+                value={identity.devLink}
+                onChange={(value) => onIdentityChange("devLink", value)}
+                icon="fa-link"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
+            Imagens
+          </h3>
+
+          <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
+            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
+              Logo do Recibo (Impressora Térmica)
+            </label>
+            <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
+              A imagem será automaticamente convertida para{" "}
+              <strong>preto e branco</strong>, redimensionada para{" "}
+              <strong>200px</strong> de largura e otimizada para impressão térmica.
+            </p>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={onLogoUpload}
+              className="hidden bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+            />
+
+            {logoPreview ? (
+              <div className="flex items-center gap-3">
+                <div
+                  className="bg-surface-100 border border-surface-200 rounded-lg p-2 flex items-center justify-center"
+                  style={{ width: 80, height: 60 }}
+                >
+                  <img
+                    src={logoPreview}
+                    alt="Logo"
+                    style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => logoInputRef.current?.click()}
+                    className="text-xs font-bold text-primary hover:underline"
+                  >
+                    <i className="fas fa-redo mr-1"></i> Trocar
+                  </button>
+                  <button
+                    onClick={onClearLogo}
+                    className="text-xs font-bold text-red-500 hover:underline"
+                  >
+                    <i className="fas fa-trash mr-1"></i> Remover
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
+              >
+                <i className="fas fa-cloud-upload-alt text-2xl mb-2 block"></i>
+                <span className="text-xs font-bold">Clique para enviar logo</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-surface-200 flex justify-end">
+        <button
+          onClick={onSave}
+          disabled={isSaving}
+          className="bg-primary text-white px-8 py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
+        >
+          {isSaving ? (
+            <>
+              <i className="fas fa-circle-notch fa-spin"></i> SALVANDO...
+            </>
+          ) : (
+            <>
+              <i className="fas fa-save"></i> SALVAR IDENTIDADE
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default StoreIdentitySettings;

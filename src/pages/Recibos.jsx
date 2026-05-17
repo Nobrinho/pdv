@@ -9,6 +9,7 @@ import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
+import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Recibos = () => {
   const { showAlert } = useAlert();
@@ -17,6 +18,10 @@ const Recibos = () => {
   const [sellers, setSellers] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const LIMIT = 100;
 
   // Filtros de Data e Período
   const [periodType, setPeriodType] = useState("weekly");
@@ -37,6 +42,9 @@ const Recibos = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [saleToCancel, setSaleToCancel] = useState(null);
+  const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
+  const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
+  const [isCancellingSale, setIsCancellingSale] = useState(false);
   
   const [cancelForm, setCancelForm] = useState({
     adminUser: "",
@@ -45,22 +53,41 @@ const Recibos = () => {
   });
 
   const loadData = useCallback(async () => {
+    if (
+      filters.startDate &&
+      filters.endDate &&
+      dayjs(filters.startDate).isAfter(dayjs(filters.endDate))
+    ) {
+      setSales([]);
+      setTotalPages(0);
+      setTotalRecords(0);
+      return showAlert("Data inicial não pode ser maior que a data final.", "Filtro inválido", "warning");
+    }
+
     try {
       setLoading(true);
-      const startTimestamp = filters.startDate 
-        ? dayjs(filters.startDate).startOf("day").valueOf() 
-        : undefined;
-      const endTimestamp = filters.endDate 
-        ? dayjs(filters.endDate).endOf("day").valueOf() 
-        : undefined;
+      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
+        filters.startDate,
+        filters.endDate,
+      );
 
       const [salesData, peopleData, clientsData] = await Promise.all([
-        api.sales.list({ startDate: startTimestamp, endDate: endTimestamp }),
+        api.sales.list({
+          page,
+          limit: LIMIT,
+          startDate: startTimestamp,
+          endDate: endTimestamp,
+          sellerId: filters.sellerId && filters.sellerId !== "all" ? filters.sellerId : undefined,
+          clientId: filters.clientId && filters.clientId !== "all" ? filters.clientId : undefined,
+        }),
         api.people.list(),
         api.clients.list()
       ]);
 
-      setSales(salesData.sort((a, b) => b.data_venda - a.data_venda));
+      const salesList = Array.isArray(salesData) ? salesData : (salesData?.data || []);
+      setSales(salesList.sort((a, b) => b.data_venda - a.data_venda));
+      setTotalPages(Array.isArray(salesData) ? 0 : (salesData?.totalPages || 0));
+      setTotalRecords(Array.isArray(salesData) ? salesList.length : (salesData?.total || 0));
       setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
       setClients(clientsData || []);
     } catch (error) {
@@ -69,7 +96,7 @@ const Recibos = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters.startDate, filters.endDate, showAlert]);
+  }, [filters.startDate, filters.endDate, filters.sellerId, filters.clientId, showAlert, page]);
 
   useEffect(() => {
     loadData();
@@ -77,34 +104,15 @@ const Recibos = () => {
 
   const handlePeriodChange = (type) => {
     setPeriodType(type);
-    const now = dayjs();
-    let newStart = filters.startDate;
-    let newEnd = filters.endDate;
-
-    if (type === "weekly") {
-      newStart = now.startOf("week").format("YYYY-MM-DD");
-      newEnd = now.endOf("week").format("YYYY-MM-DD");
-    } else if (type === "monthly") {
-      newStart = now.startOf("month").format("YYYY-MM-DD");
-      newEnd = now.endOf("month").format("YYYY-MM-DD");
-    } else if (type === "yearly") {
-      newStart = now.startOf("year").format("YYYY-MM-DD");
-      newEnd = now.endOf("year").format("YYYY-MM-DD");
-    }
-
-    setFilters((prev) => ({ ...prev, startDate: newStart, endDate: newEnd }));
+    setPage(1);
+    const range = getPeriodRange(type);
+    if (!range) return;
+    setFilters((prev) => ({ ...prev, startDate: range.startDate, endDate: range.endDate }));
   };
 
   const filteredSales = useMemo(() => {
-    let result = sales;
-    if (filters.sellerId && filters.sellerId !== "all") {
-      result = result.filter((s) => s.vendedor_id === parseInt(filters.sellerId));
-    }
-    if (filters.clientId && filters.clientId !== "all") {
-      result = result.filter((s) => s.cliente_id === parseInt(filters.clientId));
-    }
-    return result;
-  }, [sales, filters.sellerId, filters.clientId]);
+    return sales;
+  }, [sales]);
 
   const filteredClientsList = useMemo(() => {
     if (!clientSearchTerm) return [];
@@ -120,31 +128,40 @@ const Recibos = () => {
       setFilters({ ...filters, clientId: "" });
       setClientSearchTerm("");
     }
+    setPage(1);
     setShowClientResults(false);
   };
 
   const handleViewReceipt = async (sale) => {
+    if (isLoadingReceipt) return;
     try {
+      setIsLoadingReceipt(true);
       const items = await api.sales.items(sale.id);
       setSelectedSale(sale);
       setSaleItems(items);
       setShowReceiptModal(true);
     } catch (error) {
       showAlert("Erro ao carregar itens da venda.", "Erro", "error");
+    } finally {
+      setIsLoadingReceipt(false);
     }
   };
 
   const handleSilentPrint = async () => {
+    if (isPrintingReceipt) return;
     const receiptElement = document.getElementById("cupom-fiscal-wrapper");
     if (!receiptElement) return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
     
     try {
+      setIsPrintingReceipt(true);
       const printerName = await api.config.get("impressora_padrao");
       const result = await api.print.silent(receiptElement.outerHTML, printerName);
       if (result.success) showAlert("Enviado para impressão.", "Sucesso", "success");
       else showAlert("Erro na impressão: " + result.error, "Erro", "error");
     } catch (error) {
       showAlert("Erro ao tentar imprimir.", "Erro", "error");
+    } finally {
+      setIsPrintingReceipt(false);
     }
   };
 
@@ -156,6 +173,7 @@ const Recibos = () => {
   };
 
   const handleSubmitCancel = async (e) => {
+    if (isCancellingSale) return;
     if (e) e.preventDefault();
     if (cancelForm.reason.trim().length < 10) {
       return showAlert("O motivo deve ter no mínimo 10 caracteres.", "Atenção", "warning");
@@ -165,7 +183,8 @@ const Recibos = () => {
     }
 
     try {
-      const authResult = await api.auth.login({
+      setIsCancellingSale(true);
+      const authResult = await api.auth.verifyAdmin({
         username: cancelForm.adminUser,
         password: cancelForm.adminPass,
       });
@@ -189,6 +208,8 @@ const Recibos = () => {
       }
     } catch (err) {
       showAlert("Erro técnico ao processar cancelamento.", "Erro", "error");
+    } finally {
+      setIsCancellingSale(false);
     }
   };
 
@@ -240,15 +261,17 @@ const Recibos = () => {
         <div className="flex justify-center gap-2">
           <button
             onClick={() => handleViewReceipt(row)}
-            className="text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition active:scale-90"
+            disabled={isLoadingReceipt}
+            className="text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Ver Recibo"
           >
-            <i className="fas fa-eye"></i>
+            <i className={`fas ${isLoadingReceipt ? "fa-spinner fa-spin" : "fa-eye"}`}></i>
           </button>
           {!row.cancelada && (
             <button
               onClick={() => initiateCancel(row)}
-              className="text-red-500 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition active:scale-90"
+              disabled={isCancellingSale}
+              className="text-red-500 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Cancelar Venda"
             >
               <i className="fas fa-ban"></i>
@@ -280,15 +303,15 @@ const Recibos = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <FormField label="Início" type="date" value={filters.startDate} onChange={(v) => { setFilters({ ...filters, startDate: v }); setPeriodType("custom"); }} />
-          <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); }} />
+          <FormField label="Início" type="date" value={filters.startDate} onChange={(v) => { setFilters({ ...filters, startDate: v }); setPeriodType("custom"); setPage(1); }} />
+          <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); setPage(1); }} />
           
           <div>
             <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Vendedor</label>
             <select
               className="w-full border border-surface-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-100 outline-none bg-surface-100 transition-all"
               value={filters.sellerId}
-              onChange={(e) => setFilters({ ...filters, sellerId: e.target.value })}
+              onChange={(e) => { setFilters({ ...filters, sellerId: e.target.value }); setPage(1); }}
             >
               <option value="all">Todos os Vendedores</option>
               {sellers.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
@@ -305,6 +328,7 @@ const Recibos = () => {
                 onChange={(e) => {
                   setClientSearchTerm(e.target.value);
                   if (filters.clientId) setFilters({ ...filters, clientId: "" });
+                  setPage(1);
                   setShowClientResults(true);
                 }}
                 onFocus={() => setShowClientResults(true)}
@@ -340,6 +364,29 @@ const Recibos = () => {
           loading={loading}
           emptyMessage="Nenhuma venda encontrada para o filtro selecionado."
         />
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+            <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+              Pag {page} de {totalPages} • {totalRecords} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal de Recibo */}
@@ -359,9 +406,11 @@ const Recibos = () => {
             </button>
             <button
               onClick={handleSilentPrint}
-              className="flex-[2] px-4 py-2.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 shadow-md active:scale-95"
+              disabled={isPrintingReceipt}
+              className="flex-[2] px-4 py-2.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <i className="fas fa-print mr-2"></i> Reimprimir Recibo
+              <i className={`fas mr-2 ${isPrintingReceipt ? "fa-circle-notch fa-spin" : "fa-print"}`}></i>
+              {isPrintingReceipt ? "Imprimindo..." : "Reimprimir Recibo"}
             </button>
           </div>
         }
@@ -390,9 +439,10 @@ const Recibos = () => {
             </button>
             <button
               onClick={handleSubmitCancel}
-              className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 shadow-md active:scale-95"
+              disabled={isCancellingSale}
+              className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              CONFIRMAR CANCELAMENTO
+              {isCancellingSale ? "CANCELANDO..." : "CONFIRMAR CANCELAMENTO"}
             </button>
           </div>
         }

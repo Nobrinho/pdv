@@ -21,6 +21,11 @@ const Clientes = () => {
   const [clients, setClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSavingClient, setIsSavingClient] = useState(false);
+  const [deletingClientId, setDeletingClientId] = useState(null);
+  const [payingDebtId, setPayingDebtId] = useState(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
   // Modal Cadastro
   const [showModal, setShowModal] = useState(false);
@@ -74,9 +79,20 @@ const Clientes = () => {
     });
   }, [searchTerm, clients]);
 
+  const totalPages = Math.ceil(filteredClients.length / PAGE_SIZE);
+  const paginatedClients = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredClients.slice(start, start + PAGE_SIZE);
+  }, [filteredClients, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
   // --- CRUD ---
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (isSavingClient) return;
     if (!formData.nome.trim())
       return showAlert("Nome é obrigatório.", "Atenção", "warning");
 
@@ -90,6 +106,7 @@ const Clientes = () => {
     if (editingId) clientToSave.id = editingId;
 
     try {
+      setIsSavingClient(true);
       const result = await api.clients.save(clientToSave);
 
       if (result.success) {
@@ -106,6 +123,8 @@ const Clientes = () => {
       }
     } catch (error) {
       showAlert("Erro técnico ao salvar.", "Erro", "error");
+    } finally {
+      setIsSavingClient(false);
     }
   };
 
@@ -161,6 +180,7 @@ const Clientes = () => {
   };
 
   const handlePayDebt = async (debtId, saldoDevedor) => {
+    if (payingDebtId) return;
     if (!paymentValue || parseFloat(paymentValue) <= 0)
       return showAlert("Digite um valor válido.");
 
@@ -169,6 +189,7 @@ const Clientes = () => {
       return showAlert("Valor maior que a dívida.", "Aviso", "warning");
 
     try {
+      setPayingDebtId(debtId);
       const result = await api.clients.payDebt({
         contaId: debtId,
         valorPago: valorPagar,
@@ -185,6 +206,8 @@ const Clientes = () => {
       }
     } catch (error) {
       showAlert("Erro ao processar pagamento.", "Erro", "error");
+    } finally {
+      setPayingDebtId(null);
     }
   };
 
@@ -250,10 +273,11 @@ const Clientes = () => {
           </button>
           <button
             onClick={() => handleDelete(row.id)}
-            className="bg-red-500/10 text-red-500 text-red-500 p-2 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-100"
+            disabled={deletingClientId === row.id}
+            className="bg-red-500/10 text-red-500 text-red-500 p-2 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Excluir"
           >
-            <i className="fas fa-trash text-xs"></i>
+            <i className={`fas text-xs ${deletingClientId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i>
           </button>
         </div>
       ),
@@ -296,13 +320,36 @@ const Clientes = () => {
         </div>
 
         {/* Lista */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
           <DataTable
             columns={columns}
-            data={filteredClients}
+            data={paginatedClients}
             loading={loading}
             emptyMessage="Nenhum cliente encontrado."
           />
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+                Pag {page} de {totalPages} • {filteredClients.length} total
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -337,7 +384,7 @@ const Clientes = () => {
               }`}
             >
               <i className="fas fa-save mr-2"></i>
-              {editingId ? "Atualizar" : "Salvar Cliente"}
+              {isSavingClient ? "SALVANDO..." : (editingId ? "Atualizar" : "Salvar Cliente")}
             </button>
           </div>
         }
@@ -483,10 +530,11 @@ const Clientes = () => {
                         />
                         <button
                           onClick={() => handlePayDebt(row.id, restante)}
-                          className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition shadow-sm active:scale-90"
+                          disabled={payingDebtId === row.id}
+                          className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition shadow-sm active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Pagar"
                         >
-                          <i className="fas fa-check text-xs"></i>
+                          <i className={`fas text-xs ${payingDebtId === row.id ? "fa-circle-notch fa-spin" : "fa-check"}`}></i>
                         </button>
                       </div>
                     );

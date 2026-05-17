@@ -18,6 +18,14 @@ contextBridge.exposeInMainWorld("api", {
   createSale: (saleData) => ipcRenderer.invoke("create-sale", saleData),
   getSales: (filters) => ipcRenderer.invoke("get-sales", filters),
   getSaleItems: (vendaId) => ipcRenderer.invoke("get-sale-items", vendaId),
+  createBudget: (budgetData) => ipcRenderer.invoke("create-budget", budgetData),
+  updateBudget: (budgetData) => ipcRenderer.invoke("update-budget", budgetData),
+  getBudgets: (filters) => ipcRenderer.invoke("get-budgets", filters),
+  getBudgetById: (budgetId) => ipcRenderer.invoke("get-budget-by-id", budgetId),
+  getBudgetItems: (budgetId) => ipcRenderer.invoke("get-budget-items", budgetId),
+  cancelBudget: (budgetId) => ipcRenderer.invoke("cancel-budget", budgetId),
+  duplicateBudget: (budgetId) => ipcRenderer.invoke("duplicate-budget", budgetId),
+  convertBudgetToSale: (payload) => ipcRenderer.invoke("convert-budget-to-sale", payload),
 
   // --- SERVIÇOS AVULSOS ---
   getServices: (filters) => ipcRenderer.invoke("get-services", filters),
@@ -34,19 +42,24 @@ contextBridge.exposeInMainWorld("api", {
   getWeeklySales: () => ipcRenderer.invoke("get-weekly-sales"),
   getLowStock: () => ipcRenderer.invoke("get-low-stock"),
 
-  // --- AUTENTICAÇÃO & USUÁRIOS (O QUE FALTAVA) ---
+  // --- AUTENTICAÇÃO & USUÁRIOS ---
   checkUsersExist: () => ipcRenderer.invoke("check-users-exist"),
+  checkOnboardingStatus: () => ipcRenderer.invoke("check-onboarding-status"),
   registerUser: (data) => ipcRenderer.invoke("register-user", data),
   loginAttempt: (data) => ipcRenderer.invoke("login-attempt", data),
-  getUsers: () => ipcRenderer.invoke("get-users"), // <--- FALTAVA ESTA
-  deleteUser: (id) => ipcRenderer.invoke("delete-user", id), // <--- E ESTA
+  verifyAdmin: (data) => ipcRenderer.invoke("verify-admin", data),
+  logoutSession: () => ipcRenderer.invoke("logout-session"),
+  getUsers: () => ipcRenderer.invoke("get-users"),
+  deleteUser: (id) => ipcRenderer.invoke("delete-user", id),
+
 
   // --- BACKUP & IMPRESSÃO ---
   backupDatabase: () => ipcRenderer.invoke("backup-database"),
   restoreDatabase: () => ipcRenderer.invoke("restore-database"),
+  saveGeneratedFile: (options) => ipcRenderer.invoke("save-generated-file", options),
   getPrinters: () => ipcRenderer.invoke("get-printers"),
-  printSilent: (html, printer) =>
-    ipcRenderer.invoke("print-silent", html, printer),
+  printSilent: (html, printer, options) =>
+    ipcRenderer.invoke("print-silent", html, printer, options),
 
   // --- VENDAS & COMISSÕES ---
   cancelSale: (data) => ipcRenderer.invoke("cancel-sale", data),
@@ -88,4 +101,10 @@ contextBridge.exposeInMainWorld("api", {
   findClientByDoc: (doc) => ipcRenderer.invoke("find-client-by-doc", doc),
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
+
+  // --- EVENT LOGS ---
+  logEvent: (payload) => ipcRenderer.invoke("log-event", payload),
+  getEventLogs: (filters) => ipcRenderer.invoke("get-event-logs", filters),
+
 });
+

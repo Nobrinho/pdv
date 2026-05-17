@@ -3,9 +3,39 @@ import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
 import { processLogoForThermal, processBackgroundImage } from "../context/TenantContext";
 import { api } from "../services/api";
-import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
-import StatusBadge from "../components/ui/StatusBadge";
+import CommissionSettings from "../components/config/CommissionSettings";
+import LocalThemePicker from "../components/config/LocalThemePicker";
+import RoleManager from "../components/config/RoleManager";
+import StoreIdentitySettings from "../components/config/StoreIdentitySettings";
+import SystemToolsPanel from "../components/config/SystemToolsPanel";
+import UserManager from "../components/config/UserManager";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/pt-br";
+
+dayjs.extend(relativeTime);
+dayjs.locale("pt-br");
+
+const INITIAL_USER_FORM = {
+  nome: "",
+  username: "",
+  password: "",
+  cargo: "vendedor",
+};
+
+const INITIAL_IDENTITY = {
+  nome: "",
+  subtitulo: "",
+  endereco: "",
+  cidade: "",
+  telefone: "",
+  documento: "",
+  corPrimaria: "#2563EB",
+  corSecundaria: "#4F46E5",
+  devNome: "",
+  devLink: "",
+};
 
 const Config = () => {
   const { showAlert, showConfirm } = useAlert();
@@ -20,16 +50,19 @@ const Config = () => {
   const [usedCommission, setUsedCommission] = useState(""); 
 
   const [systemUsers, setSystemUsers] = useState([]);
-  const [newUser, setNewUser] = useState({
-    nome: "",
-    username: "",
-    password: "",
-    cargo: "vendedor",
-  });
+  const [newUser, setNewUser] = useState(INITIAL_USER_FORM);
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+  const [dataLoadError, setDataLoadError] = useState("");
+  const [isAddingRole, setIsAddingRole] = useState(false);
+  const [deletingRoleId, setDeletingRoleId] = useState(null);
+  const [isSavingPrinter, setIsSavingPrinter] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
+  const [isBackupRunning, setIsBackupRunning] = useState(false);
+  const [isRestoreRunning, setIsRestoreRunning] = useState(false);
 
   const availableThemes = [
     { id: "default", name: "Azul Padrão", color: "#3B82F6" },
@@ -45,18 +78,7 @@ const Config = () => {
   ];
 
   // --- WHITE LABEL: Estado local da identidade ---
-  const [identity, setIdentity] = useState({
-    nome: "",
-    subtitulo: "",
-    endereco: "",
-    cidade: "",
-    telefone: "",
-    documento: "",
-    corPrimaria: "#2563EB",
-    corSecundaria: "#4F46E5",
-    devNome: "",
-    devLink: "",
-  });
+  const [identity, setIdentity] = useState(INITIAL_IDENTITY);
   const [logoPreview, setLogoPreview] = useState("");
   const [bgPreview, setBgPreview] = useState("");
   const [savingIdentity, setSavingIdentity] = useState(false);
@@ -67,14 +89,15 @@ const Config = () => {
   useEffect(() => {
     if (tenant) {
       setIdentity({
+        ...INITIAL_IDENTITY,
         nome: tenant.nome || "",
         subtitulo: tenant.subtitulo || "",
         endereco: tenant.endereco || "",
         cidade: tenant.cidade || "",
         telefone: tenant.telefone || "",
         documento: tenant.documento || "",
-        corPrimaria: tenant.corPrimaria || "#2563EB",
-        corSecundaria: tenant.corSecundaria || "#4F46E5",
+        corPrimaria: tenant.corPrimaria || INITIAL_IDENTITY.corPrimaria,
+        corSecundaria: tenant.corSecundaria || INITIAL_IDENTITY.corSecundaria,
         devNome: tenant.devNome || "",
         devLink: tenant.devLink || "",
       });
@@ -83,9 +106,17 @@ const Config = () => {
     }
   }, [tenant]);
 
+  const updateIdentityField = useCallback((field, value) => {
+    setIdentity((currentIdentity) => ({
+      ...currentIdentity,
+      [field]: value,
+    }));
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setLoadingData(true);
+      setDataLoadError("");
       const [
         rolesData, 
         configData, 
@@ -113,6 +144,7 @@ const Config = () => {
       if (printerConfig) setSelectedPrinter(printerConfig);
     } catch (error) {
       console.error(error);
+      setDataLoadError("Nao foi possivel carregar todas as configuracoes do painel.");
       showAlert("Erro ao carregar configurações.", "Erro", "error");
     } finally {
       setLoadingData(false);
@@ -145,33 +177,46 @@ const Config = () => {
 
   const handleAddRole = async (e) => {
     if (e) e.preventDefault();
+    if (isAddingRole) return;
     if (!newRole.trim()) return;
 
-    const result = await api.auth.saveRole(newRole.trim());
-    if (result.success) {
-      setNewRole("");
-      loadData();
-      showAlert("Cargo adicionado!", "Sucesso", "success");
-    } else {
-      showAlert("Erro ao criar cargo: " + result.error, "Erro", "error");
+    try {
+      setIsAddingRole(true);
+      const result = await api.auth.saveRole(newRole.trim());
+      if (result.success) {
+        setNewRole("");
+        loadData();
+        showAlert("Cargo adicionado!", "Sucesso", "success");
+      } else {
+        showAlert("Erro ao criar cargo: " + result.error, "Erro", "error");
+      }
+    } finally {
+      setIsAddingRole(false);
     }
   };
 
   const handleDeleteRole = async (id) => {
     const confirmed = await showConfirm("Tem a certeza que deseja excluir este cargo?");
     if (confirmed) {
-      const result = await api.auth.deleteRole(id);
-      if (result.success) {
-        loadData();
-        showAlert("Cargo excluído.", "Sucesso", "success");
-      } else {
-        showAlert("Erro: " + result.error, "Erro", "error");
+      try {
+        setDeletingRoleId(id);
+        const result = await api.auth.deleteRole(id);
+        if (result.success) {
+          loadData();
+          showAlert("Cargo excluido.", "Sucesso", "success");
+        } else {
+          showAlert("Erro: " + result.error, "Erro", "error");
+        }
+      } finally {
+        setDeletingRoleId(null);
       }
     }
   };
 
   const handleBackup = async () => {
+    if (isBackupRunning) return;
     try {
+      setIsBackupRunning(true);
       const result = await api.config.backup();
       if (result.success) {
         showAlert("Backup realizado com sucesso!", "Dados Seguros", "success");
@@ -180,66 +225,83 @@ const Config = () => {
       }
     } catch (error) {
       showAlert("Erro ao tentar realizar backup.", "Erro", "error");
+    } finally {
+      setIsBackupRunning(false);
     }
   };
 
   const handleRestore = async () => {
+    if (isRestoreRunning) return;
     try {
+      setIsRestoreRunning(true);
       await api.config.restore();
     } catch (error) {
       showAlert("Erro ao tentar restaurar backup.", "Erro", "error");
+    } finally {
+      setIsRestoreRunning(false);
     }
   };
 
   const handleSavePrinter = async () => {
+    if (isSavingPrinter) return;
     try {
+      setIsSavingPrinter(true);
       const result = await api.config.save("impressora_padrao", selectedPrinter);
       if (result.success) {
-        showAlert("Impressora padrão salva com sucesso!", "Configuração", "success");
+        showAlert("Impressora padrao salva com sucesso!", "Configuracao", "success");
       } else {
         showAlert("Erro ao salvar impressora.", "Erro", "error");
       }
     } catch (error) {
-      showAlert("Erro técnico ao salvar impressora.", "Erro", "error");
+      showAlert("Erro tecnico ao salvar impressora.", "Erro", "error");
+    } finally {
+      setIsSavingPrinter(false);
     }
   };
 
   const handleAddUser = async (e) => {
     if (e) e.preventDefault();
+    if (isAddingUser) return;
     if (!newUser.nome || !newUser.username || !newUser.password) {
-      return showAlert("Preencha todos os campos.", "Atenção", "warning");
+      return showAlert("Preencha todos os campos.", "Atencao", "warning");
     }
     if (newUser.password.length < 4) {
       return showAlert("A senha deve ter pelo menos 4 caracteres.", "Senha Fraca", "warning");
     }
 
     try {
+      setIsAddingUser(true);
       const result = await api.auth.register(newUser);
       if (result.success) {
-        showAlert("Usuário criado com sucesso!", "Sucesso", "success");
-        setNewUser({ nome: "", username: "", password: "", cargo: "vendedor" });
+        showAlert("Usuario criado com sucesso!", "Sucesso", "success");
+        setNewUser(INITIAL_USER_FORM);
         loadData();
       } else {
-        showAlert("Erro ao criar usuário: " + result.error, "Erro", "error");
+        showAlert("Erro ao criar usuario: " + result.error, "Erro", "error");
       }
     } catch (error) {
-      showAlert("Erro técnico ao registrar usuário.", "Erro", "error");
+      showAlert("Erro tecnico ao registrar usuario.", "Erro", "error");
+    } finally {
+      setIsAddingUser(false);
     }
   };
 
   const handleDeleteUser = async (id) => {
-    const confirmed = await showConfirm("Tem a certeza que deseja excluir este usuário?");
+    const confirmed = await showConfirm("Tem a certeza que deseja excluir este usuario?");
     if (confirmed) {
       try {
+        setDeletingUserId(id);
         const result = await api.auth.deleteUser(id);
         if (result.success) {
           loadData();
-          showAlert("Usuário removido.", "Sucesso", "success");
+          showAlert("Usuario removido.", "Sucesso", "success");
         } else {
           showAlert("Erro: " + result.error, "Erro", "error");
         }
       } catch (error) {
-        showAlert("Erro ao tentar remover usuário.", "Erro", "error");
+        showAlert("Erro ao tentar remover usuario.", "Erro", "error");
+      } finally {
+        setDeletingUserId(null);
       }
     }
   };
@@ -309,38 +371,6 @@ const Config = () => {
     }
   };
 
-  const userColumns = [
-    { key: "nome", label: "Nome completo", bold: true },
-    { key: "username", label: "Login / Usuário", format: (v) => <span className="font-mono text-surface-500">{v}</span> },
-    { 
-      key: "cargo", 
-      label: "Permissão", 
-      align: "center",
-      format: (v) => {
-        let type = "success";
-        let label = "Vendedor";
-        if (v === "admin") { type = "secondary"; label = "Administrador"; }
-        else if (v === "caixa") { type = "warning"; label = "Caixa"; }
-        else if (v) { label = v.charAt(0).toUpperCase() + v.slice(1); }
-        return <StatusBadge type={type} label={label} />;
-      }
-    },
-    {
-      key: "actions",
-      label: "Ação",
-      align: "center",
-      format: (_, row) => (
-        <button
-          onClick={() => handleDeleteUser(row.id)}
-          className="text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition"
-          title="Excluir Usuário"
-        >
-          <i className="fas fa-trash"></i>
-        </button>
-      )
-    }
-  ];
-
   return (
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50 custom-scrollbar">
       <div className="mb-6">
@@ -348,453 +378,86 @@ const Config = () => {
         <p className="text-xs text-surface-500 mt-1">Ajuste taxas, gerencie usuários e personalize a identidade da loja.</p>
       </div>
 
-      {/* ====== SEÇÃO: IDENTIDADE DA LOJA (WHITE LABEL) ====== */}
-      <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 mb-6">
-        <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <i className="fas fa-palette text-primary"></i> Identidade da Loja
-        </h2>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coluna 1: Dados básicos */}
-          <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">Dados da Empresa</h3>
-            <FormField
-              label="Nome da Loja *"
-              placeholder="Ex: Barba Pneus"
-              value={identity.nome}
-              onChange={(v) => setIdentity({ ...identity, nome: v })}
-              icon="fa-store"
-            />
-            <FormField
-              label="Subtítulo do Sistema"
-              placeholder="Ex: Terminal de Vendas"
-              value={identity.subtitulo}
-              onChange={(v) => setIdentity({ ...identity, subtitulo: v })}
-              icon="fa-tag"
-            />
-            <FormField
-              label="Endereço"
-              placeholder="Av. Principal, 100"
-              value={identity.endereco}
-              onChange={(v) => setIdentity({ ...identity, endereco: v })}
-              icon="fa-map-marker-alt"
-            />
-            <FormField
-              label="Cidade / UF"
-              placeholder="Ex: São Paulo/SP"
-              value={identity.cidade}
-              onChange={(v) => setIdentity({ ...identity, cidade: v })}
-              icon="fa-city"
-            />
-            <FormField
-              label="Telefone"
-              placeholder="(00) 00000-0000"
-              value={identity.telefone}
-              onChange={(v) => setIdentity({ ...identity, telefone: v })}
-              icon="fa-phone"
-            />
-            <FormField
-              label="CNPJ"
-              placeholder="00.000.000/0000-00"
-              value={identity.documento}
-              onChange={(v) => setIdentity({ ...identity, documento: v })}
-              icon="fa-file-alt"
-            />
-          </div>
-
-          {/* Coluna 2: Cores + Dev */}
-          <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">Aparência</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Cor Primária</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={identity.corPrimaria}
-                    onChange={(e) => setIdentity({ ...identity, corPrimaria: e.target.value })}
-                    className="w-10 h-10 rounded-lg border border-surface-200 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={identity.corPrimaria}
-                    onChange={(e) => setIdentity({ ...identity, corPrimaria: e.target.value })}
-                    className="flex-1 border border-surface-300 rounded-xl p-2 text-sm font-mono font-bold text-surface-600 outline-none"
-                    maxLength={7}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Cor Secundária</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={identity.corSecundaria}
-                    onChange={(e) => setIdentity({ ...identity, corSecundaria: e.target.value })}
-                    className="w-10 h-10 rounded-lg border border-surface-200 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={identity.corSecundaria}
-                    onChange={(e) => setIdentity({ ...identity, corSecundaria: e.target.value })}
-                    className="flex-1 border border-surface-300 rounded-xl p-2 text-sm font-mono font-bold text-surface-600 outline-none"
-                    maxLength={7}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Preview de cores */}
-            <div className="p-4 rounded-xl border border-surface-200 bg-surface-50">
-              <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-3">Pré-visualização</p>
-              <div className="flex gap-2 mb-3">
-                <div className="h-8 flex-1 rounded-lg" style={{ backgroundColor: identity.corPrimaria }}></div>
-                <div className="h-8 flex-1 rounded-lg" style={{ backgroundColor: identity.corSecundaria }}></div>
-              </div>
-              <div className="h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${identity.corPrimaria}, ${identity.corSecundaria})` }}></div>
-            </div>
-
-            <div className="pt-4 border-t border-surface-200">
-              <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-3">Créditos do Desenvolvedor</h3>
-              <FormField
-                label="Nome / @usuario"
-                placeholder="Ex: @eminobre"
-                value={identity.devNome}
-                onChange={(v) => setIdentity({ ...identity, devNome: v })}
-                icon="fa-code"
-              />
-              <div className="mt-3">
-                <FormField
-                  label="Link (opcional)"
-                  placeholder="https://instagram.com/..."
-                  value={identity.devLink}
-                  onChange={(v) => setIdentity({ ...identity, devLink: v })}
-                  icon="fa-link"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Coluna 3: Uploads */}
-          <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">Imagens</h3>
-
-            {/* Logo para Recibo */}
-            <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
-              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
-                Logo do Recibo (Impressora Térmica)
-              </label>
-              <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
-                A imagem será automaticamente convertida para <strong>preto e branco</strong>, redimensionada para <strong>200px</strong> de largura e otimizada para impressão térmica.
-              </p>
-              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" />
-              
-              {logoPreview ? (
-                <div className="flex items-center gap-3">
-                  <div className="bg-surface-100 border border-surface-200 rounded-lg p-2 flex items-center justify-center" style={{ width: 80, height: 60 }}>
-                    <img src={logoPreview} alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <button
-                      onClick={() => logoInputRef.current?.click()}
-                      className="text-xs font-bold text-primary hover:underline"
-                    >
-                      <i className="fas fa-redo mr-1"></i> Trocar
-                    </button>
-                    <button
-                      onClick={() => setLogoPreview("")}
-                      className="text-xs font-bold text-red-500 hover:underline"
-                    >
-                      <i className="fas fa-trash mr-1"></i> Remover
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => logoInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
-                >
-                  <i className="fas fa-cloud-upload-alt text-2xl mb-2 block"></i>
-                  <span className="text-xs font-bold">Clique para enviar logo</span>
-                </button>
-              )}
-            </div>
-
-            {/* Background do Login */}
-            <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
-              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
-                Fundo da Tela de Login
-              </label>
-              <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
-                Se nenhuma imagem for enviada, será usado um <strong>gradiente elegante</strong> com as cores primária e secundária.
-              </p>
-              <input ref={bgInputRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" />
-
-              {bgPreview ? (
-                <div>
-                  <div className="w-full h-24 rounded-lg overflow-hidden border border-surface-200 mb-2">
-                    <img src={bgPreview} alt="Background" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => bgInputRef.current?.click()}
-                      className="flex-1 text-xs font-bold text-primary hover:underline py-1"
-                    >
-                      <i className="fas fa-redo mr-1"></i> Trocar
-                    </button>
-                    <button
-                      onClick={() => setBgPreview("")}
-                      className="flex-1 text-xs font-bold text-red-500 hover:underline py-1"
-                    >
-                      <i className="fas fa-trash mr-1"></i> Remover
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => bgInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
-                >
-                  <i className="fas fa-image text-2xl mb-2 block"></i>
-                  <span className="text-xs font-bold">Clique para enviar imagem de fundo</span>
-                </button>
-              )}
-            </div>
-          </div>
+      {dataLoadError && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {dataLoadError}
         </div>
+      )}
 
-        {/* Botão Salvar Identidade */}
-        <div className="mt-8 pt-6 border-t border-surface-200 flex justify-end">
-          <button
-            onClick={handleSaveIdentity}
-            disabled={savingIdentity}
-            className="bg-primary text-white px-8 py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
-          >
-            {savingIdentity ? (
-              <><i className="fas fa-circle-notch fa-spin"></i> SALVANDO...</>
-            ) : (
-              <><i className="fas fa-save"></i> SALVAR IDENTIDADE</>
-            )}
-          </button>
-        </div>
-      </div>
+      <StoreIdentitySettings
+        identity={identity}
+        onIdentityChange={updateIdentityField}
+        logoPreview={logoPreview}
+        logoInputRef={logoInputRef}
+        onLogoUpload={handleLogoUpload}
+        onClearLogo={() => setLogoPreview("")}
+        onSave={handleSaveIdentity}
+        isSaving={savingIdentity}
+      />
 
-      {/* ====== SEÇÕES EXISTENTES ====== */}
+      {/* ====== SECOES EXISTENTES ====== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        {/* Card Comissão */}
-        <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
-          <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-percent text-primary"></i> Taxas de Comissão
-          </h2>
+        <CommissionSettings
+          defaultCommission={defaultCommission}
+          usedCommission={usedCommission}
+          onDefaultCommissionChange={setDefaultCommission}
+          onUsedCommissionChange={setUsedCommission}
+          onSave={handleSaveCommission}
+          isSaving={isLoading}
+        />
 
-          <div className="space-y-4 flex-1">
-            <FormField
-              label="Peças Novas (% Total)"
-              type="number"
-              placeholder="Ex: 5"
-              value={defaultCommission}
-              onChange={setDefaultCommission}
-              icon="fa-tag"
-            />
-            <FormField
-              label="Peças Usadas (% Lucro)"
-              type="number"
-              placeholder="Ex: 25"
-              value={usedCommission}
-              onChange={setUsedCommission}
-              icon="fa-recycle"
-            />
-          </div>
+        <LocalThemePicker
+          themes={availableThemes}
+          selectedColor={identity.corPrimaria}
+          onSelectTheme={(theme) => {
+            updateTenant("corPrimaria", theme.color);
+            updateIdentityField("corPrimaria", theme.color);
+          }}
+        />
 
-          <button
-            onClick={handleSaveCommission}
-            disabled={isLoading}
-            className="w-full bg-primary text-white py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition mt-6 shadow-md active:scale-95 disabled:opacity-50"
-          >
-            {isLoading ? "SALVANDO..." : "ATUALIZAR TAXAS"}
-          </button>
-        </div>
+        <SystemToolsPanel
+          printers={printers}
+          selectedPrinter={selectedPrinter}
+          onSelectedPrinterChange={setSelectedPrinter}
+          onSavePrinter={handleSavePrinter}
+          isSavingPrinter={isSavingPrinter}
+          onBackup={handleBackup}
+          onRestore={handleRestore}
+          isBackupRunning={isBackupRunning}
+          isRestoreRunning={isRestoreRunning}
+        />
 
-        {/* Card Temas (Local) */}
-        <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
-          <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-paint-roller text-primary"></i> Interface Local (Temas)
-          </h2>
-          <p className="text-[11px] text-surface-500 mb-4 tracking-wide">
-            A cor será aplicada instantaneamente apenas neste navegador (via localStorage).
-          </p>
-          <div className="flex flex-wrap gap-3 flex-1">
-            {availableThemes.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => {
-                  updateTenant("corPrimaria", t.color);
-                  setIdentity({...identity, corPrimaria: t.color});
-                }}
-                title={t.name}
-                className={`w-10 h-10 rounded-full border-2 transition-transform ${identity.corPrimaria.toUpperCase() === t.color.toUpperCase() ? 'border-gray-900 scale-110 shadow-lg' : 'border-transparent shadow-sm hover:scale-105'}`}
-                style={{ backgroundColor: t.color }}
-              >
-                {identity.corPrimaria.toUpperCase() === t.color.toUpperCase() && <i className="fas fa-check text-white text-xs drop-shadow-md"></i>}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Card Impressora e Backup */}
-        <div className="space-y-6">
-          <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
-             <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-               <i className="fas fa-print text-surface-600"></i> Impressão
-             </h2>
-             <div className="flex gap-2 items-end">
-               <div className="flex-1">
-                 <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">Dispositivo Padrão</label>
-                 <select
-                   className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-100 outline-none focus:ring-2 focus:ring-primary-100 transition text-sm font-medium"
-                   value={selectedPrinter}
-                   onChange={(e) => setSelectedPrinter(e.target.value)}
-                 >
-                   <option value="">Configuração do Windows</option>
-                   {printers.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
-                 </select>
-               </div>
-                <button
-                  onClick={handleSavePrinter}
-                  className="bg-primary px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-primary-700 text-white transition shadow-md active:scale-95"
-                >
-                  OK
-                </button>
-             </div>
-          </div>
-
-          <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 grow">
-             <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-               <i className="fas fa-database text-green-600"></i> Manutenção
-             </h2>
-             <div className="grid grid-cols-2 gap-3">
-               <button
-                 onClick={handleBackup}
-                 className="bg-green-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition shadow-md active:scale-95 flex flex-col items-center gap-2"
-               >
-                 <i className="fas fa-download fa-lg"></i> Backup
-               </button>
-                <button
-                  onClick={handleRestore}
-                  className="bg-orange-500/10 text-orange-600 border border-orange-500/20 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-500/20 transition active:scale-95 flex flex-col items-center gap-2"
-                >
-                  <i className="fas fa-upload fa-lg"></i> Restaurar
-                </button>
-             </div>
-          </div>
-        </div>
-
-        {/* Card Cargos */}
-        <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col max-h-[400px]">
-          <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-id-badge text-purple-600"></i> Gerenciar Cargos
-          </h2>
-          <form onSubmit={handleAddRole} className="flex gap-2 mb-4">
-            <input
-              type="text"
-              className="flex-1 border border-surface-300 rounded-xl p-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-purple-100 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-              placeholder="Nome do novo cargo..."
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="bg-purple-600 text-white px-4 py-2 rounded-xl font-black hover:bg-purple-700 transition shadow-sm active:scale-90"
-            >
-              +
-            </button>
-          </form>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-            {roles.map((role) => (
-              <div
-                key={role.id}
-                className="flex justify-between items-center p-3 bg-surface-50 rounded-xl border border-surface-200 hover:border-purple-500/30 transition group"
-              >
-                <span className="text-sm font-bold text-surface-800 uppercase tracking-tight">{role.nome}</span>
-                <button
-                  onClick={() => handleDeleteRole(role.id)}
-                  className="text-surface-300 hover:text-red-500 p-1.5 transition"
-                  title="Excluir"
-                >
-                  <i className="fas fa-trash-alt text-xs"></i>
-                </button>
-              </div>
-            ))}
-            {roles.length === 0 && <p className="text-surface-400 text-[10px] text-center mt-10 uppercase tracking-widest font-black opacity-30">Nenhum cargo</p>}
-          </div>
-        </div>
+        <RoleManager
+          roles={roles}
+          newRole={newRole}
+          onNewRoleChange={setNewRole}
+          onAddRole={handleAddRole}
+          onDeleteRole={handleDeleteRole}
+          deletingRoleId={deletingRoleId}
+        />
       </div>
 
-      {/* Gestão de Usuários */}
-      <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
-        <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <i className="fas fa-users-cog text-indigo-600"></i> Usuários de Acesso
-        </h2>
-
-        <div className="flex flex-col lg:flex-row gap-8">
-          <form onSubmit={handleAddUser} className="lg:w-80 xl:w-96 space-y-4 shrink-0 bg-surface-50 p-6 rounded-2xl border border-surface-200">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4">Novo Acesso</h3>
-            <FormField label="Nome Completo" placeholder="Ex: João da Silva" value={newUser.nome} onChange={(v) => setNewUser({...newUser, nome: v})} required />
-            <FormField label="Login / Usuário" placeholder="Ex: joao.vendas" value={newUser.username} onChange={(v) => setNewUser({...newUser, username: v})} required />
-            
-            <div className="relative">
-              <FormField 
-                label="Senha Secura" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="******" 
-                value={newUser.password} 
-                onChange={(v) => setNewUser({...newUser, password: v})} 
-                required 
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[34px] text-surface-400 hover:text-indigo-600"
-              >
-                <i className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"} text-xs`}></i>
-              </button>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Permissão</label>
-              <select
-                className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-100 outline-none focus:ring-2 focus:ring-indigo-100 transition text-sm font-medium"
-                value={newUser.cargo}
-                onChange={(e) => setNewUser({ ...newUser, cargo: e.target.value })}
-              >
-                <option value="vendedor">Vendedor (Básico)</option>
-                <option value="caixa">Caixa (Restrito)</option>
-                <option value="admin">Administrador (Total)</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-black text-sm hover:bg-indigo-700 transition mt-4 shadow-md active:scale-95 flex items-center justify-center gap-2"
-            >
-              <i className="fas fa-user-plus"></i> CRIAR USUÁRIO
-            </button>
-          </form>
-
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4 ml-4">Usuários com Acesso ao Terminal</h3>
-            <DataTable 
-              columns={userColumns} 
-              data={systemUsers} 
-              loading={loadingData} 
-              emptyMessage="Nenhum usuário de acesso cadastrado."
-            />
-          </div>
-        </div>
-      </div>
+      <UserManager
+        users={systemUsers}
+        loading={loadingData}
+        newUser={newUser}
+        onNewUserChange={setNewUser}
+        onAddUser={handleAddUser}
+        onDeleteUser={handleDeleteUser}
+        showPassword={showPassword}
+        onTogglePassword={() => setShowPassword(!showPassword)}
+        deletingUserId={deletingUserId}
+      />
     </div>
   );
 };
 
+
+
+
 export default Config;
+
+
+
+
+

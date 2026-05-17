@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
+import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const standardizeMethod = (method) => {
   if (!method) return "Outros";
@@ -53,6 +54,8 @@ const useReportData = () => {
   const [laborSummary, setLaborSummary] = useState([]);
   const [paymentSummary, setPaymentSummary] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [salesPagination, setSalesPagination] = useState({ page: 1, totalPages: 0, total: 0 });
+  const [servicesPagination, setServicesPagination] = useState({ page: 1, totalPages: 0, total: 0 });
 
   const paymentMethods = useMemo(() => {
     const methods = new Set();
@@ -72,23 +75,39 @@ const useReportData = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const startTimestamp = startDate
-        ? dayjs(startDate).startOf("day").valueOf()
-        : undefined;
-      const endTimestamp = endDate
-        ? dayjs(endDate).endOf("day").valueOf()
-        : undefined;
+      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
 
-      const sales = await api.sales.list({
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      const services = await api.services.list({
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      const people = await api.people.list();
-      const configComissao = await api.config.get("comissao_padrao");
+      const [salesResult, servicesResult, people, configComissao] =
+        await Promise.all([
+          api.sales.list({
+            startDate: startTimestamp,
+            endDate: endTimestamp,
+          }),
+          api.services.list({
+            startDate: startTimestamp,
+            endDate: endTimestamp,
+          }),
+          api.people.list(),
+          api.config.get("comissao_padrao"),
+        ]);
+
+      const sales = Array.isArray(salesResult) ? salesResult : salesResult?.data || [];
+      const services = Array.isArray(servicesResult) ? servicesResult : servicesResult?.data || [];
+
+      if (!Array.isArray(salesResult)) {
+        setSalesPagination({
+          page: salesResult?.page || 1,
+          totalPages: salesResult?.totalPages || 0,
+          total: salesResult?.total || 0,
+        });
+      }
+      if (!Array.isArray(servicesResult)) {
+        setServicesPagination({
+          page: servicesResult?.page || 1,
+          totalPages: servicesResult?.totalPages || 0,
+          total: servicesResult?.total || 0,
+        });
+      }
 
       setAllSales(sales.sort((a, b) => b.data_venda - a.data_venda));
       setAllServices(
@@ -106,26 +125,16 @@ const useReportData = () => {
   }, [startDate, endDate, showAlert]);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
     if (startDate && endDate) loadData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, loadData]);
 
   // --- PERIOD CHANGE ---
   const handlePeriodChange = useCallback((type) => {
     setPeriodType(type);
-    const now = dayjs();
-    if (type === "weekly") {
-      setStartDate(now.startOf("week").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("week").format("YYYY-MM-DD"));
-    } else if (type === "monthly") {
-      setStartDate(now.startOf("month").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("month").format("YYYY-MM-DD"));
-    } else if (type === "yearly") {
-      setStartDate(now.startOf("year").format("YYYY-MM-DD"));
-      setEndDate(now.endOf("year").format("YYYY-MM-DD"));
+    const range = getPeriodRange(type);
+    if (range) {
+      setStartDate(range.startDate);
+      setEndDate(range.endDate);
     }
   }, []);
 
@@ -337,6 +346,8 @@ const useReportData = () => {
     handlePeriodChange,
     // Ações
     loadData,
+    salesPagination,
+    servicesPagination,
     standardizeMethod,
   };
 };

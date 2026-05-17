@@ -89,14 +89,16 @@ function register(safeHandle, knex) {
     const rows = await knex("vendas")
       .whereBetween("data_venda", [sevenDaysAgo.getTime(), endOfToday.getTime()])
       .where("cancelada", 0)
-      .select(
-        knex.raw("CAST((data_venda / 86400000) AS INTEGER) as day_key"),
-        knex.raw("SUM(total_final - mao_de_obra) as total"),
-      )
-      .groupByRaw("CAST((data_venda / 86400000) AS INTEGER)");
+      .select("data_venda", "total_final", "mao_de_obra");
 
     const dayMap = {};
-    rows.forEach((r) => { dayMap[r.day_key] = r.total || 0; });
+    rows.forEach((row) => {
+      const saleDate = new Date(Number(row.data_venda));
+      saleDate.setHours(0, 0, 0, 0);
+      const dayKey = Math.floor(saleDate.getTime() / 86400000);
+      const total = Number(row.total_final || 0) - Number(row.mao_de_obra || 0);
+      dayMap[dayKey] = (dayMap[dayKey] || 0) + total;
+    });
 
     const labels = [];
     const data = [];

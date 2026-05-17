@@ -6,6 +6,7 @@
 // =============================================================
 import React, { createContext, useState, useContext, useRef, useEffect, useMemo, useCallback } from "react";
 import { useAlert } from "./AlertSystem";
+import { api } from "../services/api";
 
 // Definição de permissões por cargo
 const PERMISSOES_CAIXA = [
@@ -14,6 +15,7 @@ const PERMISSOES_CAIXA = [
   "/recibos",
   "/historico",
   "/produtos",
+  "/orcamentos",
 ];
 
 const AuthContext = createContext(null);
@@ -27,6 +29,8 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
+  const [onboardingRequired, setOnboardingRequired] = useState(null); // null = carregando, true = precisa, false = pronto
+
 
   // --- Modal de supervisor ---
   const [showSupervisorModal, setShowSupervisorModal] = useState(false);
@@ -39,13 +43,29 @@ export const AuthProvider = ({ children }) => {
 
   const { showAlert } = useAlert();
 
+  // Verificação de onboarding no startup
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const status = await api.auth.checkOnboarding();
+        setOnboardingRequired(!status.onboardingDone);
+      } catch (error) {
+        console.error("Erro ao verificar onboarding:", error);
+        setOnboardingRequired(false); // Fallback seguro
+      }
+    };
+    checkOnboarding();
+  }, []);
+
   // --- Auth ---
+
   const login = useCallback((userData) => {
     setUser(userData);
     setUnlockedRoutes([]);
   }, []);
 
   const logout = useCallback(() => {
+    api.auth.logout().catch(() => {});
     setUser(null);
     setUnlockedRoutes([]);
   }, []);
@@ -117,7 +137,7 @@ export const AuthProvider = ({ children }) => {
 
     setIsAuthLoading(true);
     try {
-      const result = await window.api.loginAttempt({
+      const result = await api.auth.verifyAdmin({
         username: adminUser,
         password: adminPass,
       });
@@ -152,7 +172,10 @@ export const AuthProvider = ({ children }) => {
     withPermission,
     requestRouteAccess,
     unlockedRoutes,
-  }), [user, login, logout, hasAccess, withPermission, requestRouteAccess, unlockedRoutes]);
+    onboardingRequired,
+    setOnboardingRequired,
+  }), [user, login, logout, hasAccess, withPermission, requestRouteAccess, unlockedRoutes, onboardingRequired]);
+
 
   return (
     <AuthContext.Provider value={value}>
