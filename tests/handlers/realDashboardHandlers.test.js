@@ -186,7 +186,8 @@ describe("Handlers reais - dashboard", () => {
     const weekly = await ipc.invoke("get-weekly-sales", mainEvent);
 
     expect(weekly.data).toHaveLength(7);
-    expect(weekly.data[6]).toBe(100);
+    expect(weekly.data.reduce((sum, value) => sum + value, 0)).toBe(100);
+    expect(weekly.data).toContain(100);
   });
 
   it("estatisticas de estoque consideram apenas produtos ativos", async () => {

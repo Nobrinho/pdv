@@ -1,15 +1,25 @@
 ﻿// @ts-nocheck
 import React, { useState, useEffect, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
-import dayjs from "dayjs";
-import CupomFiscal from "../components/CupomFiscal";
-import { applyCpfCnpjMask, applyNameMask, applyPhoneMask, validarDocumento } from "../utils/validators";
-import { formatCurrency } from "../utils/format";
+import SaleCartPanel from "../components/sales/SaleCartPanel";
+import SaleEntryBar from "../components/sales/SaleEntryBar";
+import SalePaymentPanel from "../components/sales/SalePaymentPanel";
+import QuickClientModal from "../components/sales/QuickClientModal";
+import SaleReceiptModal from "../components/sales/SaleReceiptModal";
+import { applyCpfCnpjMask, validarDocumento } from "../utils/validators";
+import { findSavedClient, findSelectedClient, getSalesPeopleByRole } from "../utils/salesViewModel";
 import useCart from "../hooks/useCart";
 import usePayments from "../hooks/usePayments";
 import useProductSearch from "../hooks/useProductSearch";
 import useClientSearch from "../hooks/useClientSearch";
 import { api } from "../services/api";
+
+const INITIAL_NEW_CLIENT_DATA = {
+  nome: "",
+  documento: "",
+  telefone: "",
+  endereco: "",
+};
 
 const Vendas = () => {
   const { showAlert } = useAlert();
@@ -19,6 +29,8 @@ const Vendas = () => {
   const [sellers, setSellers] = useState([]);
   const [mechanics, setMechanics] = useState([]);
   const [clients, setClients] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   // --- SELEÇÃO ---
   const [selectedSeller, setSelectedSeller] = useState("");
@@ -48,6 +60,12 @@ const Vendas = () => {
   const hasValidReceiptDocument = (client) => {
     const doc = (client?.documento || "").toString().trim();
     return !!doc && validarDocumento(doc);
+  };
+  const resetReceiptState = () => {
+    setOptsCpfReceipt(false);
+    setReceiptCpf("");
+    setReceiptName("");
+    setReceiptClientFound(null);
   };
 
   // Auto-busca quando CPF (11 dígitos) ou CNPJ (14 dígitos) está completo
@@ -85,12 +103,19 @@ const Vendas = () => {
   };
 
   // --- DADOS NOVO CLIENTE ---
-  const [newClientData, setNewClientData] = useState({
-    nome: "",
-    documento: "",
-    telefone: "",
-    endereco: "",
-  });
+  const [newClientData, setNewClientData] = useState(INITIAL_NEW_CLIENT_DATA);
+  const updateNewClientField = (field, value) => {
+    setNewClientData((current) => ({ ...current, [field]: value }));
+  };
+  const resetNewClientData = () => {
+    setNewClientData(INITIAL_NEW_CLIENT_DATA);
+  };
+  const closeClientModal = () => {
+    setShowClientModal(false);
+  };
+  const clearSelectedClient = () => {
+    handleSelectClient(null);
+  };
 
   const paymentInputRef = useRef(null);
 
@@ -116,9 +141,11 @@ const Vendas = () => {
   const {
     clientSearchTerm, setClientSearchTerm,
     showClientResults, setShowClientResults,
-    selectedClient, setSelectedClient,
+    selectedClient,
     filteredClients, handleSelectClient,
   } = useClientSearch(clients);
+  const selectedClientObject = clients.find((client) => client.id == selectedClient);
+  const selectedClientHasValidDocument = hasValidReceiptDocument(selectedClientObject);
 
   // ===== LOAD DATA =====
   useEffect(() => {
@@ -128,16 +155,23 @@ const Vendas = () => {
 
   const loadData = async () => {
     try {
+      setLoadingData(true);
+      setLoadError("");
       const prods = await api.products.list();
       const people = await api.people.list();
       const clientsData = await api.clients.list();
+      const { sellers: sellerOptions, mechanics: mechanicOptions } = getSalesPeopleByRole(people);
 
       setProducts(prods || []);
-      setSellers(people.filter((p) => p.cargo_nome === "Vendedor"));
-      setMechanics(people.filter((p) => p.cargo_nome === "Trocador"));
+      setSellers(sellerOptions);
+      setMechanics(mechanicOptions);
       setClients(clientsData || []);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+      setLoadError("Nao foi possivel carregar os dados da venda.");
+      showAlert("Erro ao carregar dados da venda.", "Erro", "error");
+    } finally {
+      setLoadingData(false);
     }
   };
 
@@ -162,12 +196,10 @@ const Vendas = () => {
         showAlert("Cliente cadastrado com sucesso!", "Sucesso", "success");
         const updatedClients = await api.clients.list();
         setClients(updatedClients);
-        const newClient = updatedClients.find(
-          (c) => c.id === result.id || (newClientData.documento && c.documento === newClientData.documento),
-        );
+        const newClient = findSavedClient(updatedClients, result.id, newClientData.documento);
         if (newClient) handleSelectClient(newClient);
-        setShowClientModal(false);
-        setNewClientData({ nome: "", documento: "", telefone: "", endereco: "" });
+        closeClientModal();
+        resetNewClientData();
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
       }
@@ -219,7 +251,7 @@ const Vendas = () => {
     }
 
     let finalClientId = selectedClient || null;
-    let finalClientObj = clients.find((c) => c.id == selectedClient);
+    let finalClientObj = findSelectedClient(clients, selectedClient);
 
     // --- CPF NO RECIBO LOGIC ---
     if (optsCpfReceipt) {
@@ -305,12 +337,9 @@ const Vendas = () => {
         setSurchargeValue("");
         setLaborInput(0);
         setSearchTerm("");
-        handleSelectClient(null);
+        clearSelectedClient();
         setSelectedMechanic("");
-        setOptsCpfReceipt(false);
-        setReceiptCpf("");
-        setReceiptName("");
-        setReceiptClientFound(null);
+        resetReceiptState();
         loadData();
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
@@ -341,578 +370,115 @@ const Vendas = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 p-4 bg-surface-200 overflow-y-auto lg:overflow-hidden custom-scrollbar">
-      {/* Esquerda: Produtos e Carrinho */}
-      <div className="flex-1 flex flex-col gap-4">
+    <div className="h-full p-4 bg-surface-200 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+      <div className="flex h-full min-h-0 flex-col gap-4">
+        {(loadingData || loadError) && (
+          <div className={`rounded-xl border px-4 py-3 text-sm ${
+            loadError
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-primary-200 bg-primary-50 text-primary-700"
+          }`}>
+            {loadError || "Carregando dados da venda..."}
+          </div>
+        )}
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+          {/* Esquerda: Produtos e Carrinho */}
+          <div className="flex-1 flex flex-col gap-4">
         {/* Barra de Busca e Seleção */}
-        <div className="bg-surface-100 p-4 rounded-xl shadow-sm border border-surface-200">
-          <div className="flex gap-4 mb-3">
-            <div className="w-1/2">
-              <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-                Vendedor
-              </label>
-              <select
-                className="w-full border border-surface-300 rounded-lg p-2.5 bg-surface-50 outline-none focus:ring-2 focus:ring-primary-500"
-                value={selectedSeller}
-                onChange={(e) => setSelectedSeller(e.target.value)}
-              >
-                <option value="">Selecione...</option>
-                {sellers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="w-1/2 flex gap-2 items-end">
-              <div className="flex-1 relative">
-                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-                  Cliente
-                </label>
-                <div className="relative">
-                  <input
-                    className={`w-full border rounded-lg p-2.5 pl-8 outline-none focus:ring-2 focus:ring-primary-500 transition-all ${selectedClient ? "border-green-500 bg-green-500/10 text-green-600 font-bold shadow-sm" : "border-surface-300 bg-surface-100 text-surface-800 focus:bg-surface-50"}`}
-                    placeholder={selectedClient ? "" : "Buscar Cliente..."}
-                    value={clientSearchTerm}
-                    onChange={(e) => {
-                      setClientSearchTerm(e.target.value);
-                      if (selectedClient) setSelectedClient("");
-                      setShowClientResults(true);
-                    }}
-                    onFocus={() => setShowClientResults(true)}
-                    onBlur={() =>
-                      setTimeout(() => setShowClientResults(false), 200)
-                    }
-                  />
-                  <i
-                    className={`fas ${selectedClient ? "fa-user-check text-green-600" : "fa-search text-surface-400"} absolute left-3 top-3`}
-                  ></i>
-                  {selectedClient && (
-                    <button
-                      onClick={() => handleSelectClient(null)}
-                      className="absolute right-3 top-3 text-surface-400 hover:text-red-500"
-                    >
-                      <i className="fas fa-times"></i>
-                    </button>
-                  )}
-                </div>
-                {showClientResults &&
-                  (clientSearchTerm.length > 0 || clients.length > 0) && (
-                    <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto z-[60]">
-                      <div
-                        className="p-2 hover:bg-surface-200 cursor-pointer text-sm text-surface-600 italic border-b"
-                        onClick={() => handleSelectClient(null)}
-                      >
-                        <i className="fas fa-user-tag mr-2"></i> Consumidor
-                        Final
-                      </div>
-                      {filteredClients.map((c) => (
-                        <div
-                          key={c.id}
-                          onClick={() => handleSelectClient(c)}
-                          className="p-2 hover:bg-primary-50 cursor-pointer border-b border-surface-200 text-sm"
-                        >
-                          <div className="font-bold text-surface-800">
-                            {c.nome}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-              </div>
-              <button
-                onClick={() => setShowClientModal(true)}
-                className="bg-green-600 text-white p-2.5 rounded-lg hover:bg-green-700 transition shadow-sm h-[42px] w-[42px] flex items-center justify-center"
-              >
-                <i className="fas fa-plus"></i>
-              </button>
-            </div>
-          </div>
-
-          <div className="relative">
-            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-              Produto (Bipar ou Digitar)
-            </label>
-            <input
-              ref={searchInputRef}
-              className="w-full border border-surface-300 rounded-lg p-2.5 pl-10 text-lg outline-none focus:ring-2 focus:ring-primary-500 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-              placeholder="Código ou Nome..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-            />
-            <i className="fas fa-barcode absolute left-3 top-9 text-surface-400 text-lg"></i>
-
-            {searchResults.length > 0 && (
-              <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto z-50">
-                {searchResults.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => selectProduct(p)}
-                    className="p-3 hover:bg-primary-50 cursor-pointer border-b border-surface-200 flex justify-between items-center group"
-                  >
-                    <div>
-                      <div className="font-medium text-surface-800">
-                        {p.descricao}
-                      </div>
-                      <div className="text-xs text-surface-500">{p.codigo}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-primary-600">
-                        R$ {p.preco_venda.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-surface-400">
-                        Estoque: {p.estoque_atual}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <SaleEntryBar
+          selectedSeller={selectedSeller}
+          onSellerChange={setSelectedSeller}
+          sellers={sellers}
+          selectedClient={selectedClient}
+          clientSearchTerm={clientSearchTerm}
+          onClientSearchTermChange={setClientSearchTerm}
+          onClearSelectedClient={clearSelectedClient}
+          showClientResults={showClientResults}
+          onShowClientResultsChange={setShowClientResults}
+          clients={clients}
+          filteredClients={filteredClients}
+          onSelectClient={handleSelectClient}
+          onOpenClientModal={() => setShowClientModal(true)}
+          searchInputRef={searchInputRef}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onSearchKeyDown={handleSearchKeyDown}
+          searchResults={searchResults}
+          onSelectProduct={selectProduct}
+        />
 
         {/* Tabela do Carrinho */}
-        <div className="bg-surface-100 rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col z-10 border border-surface-200">
-          <div className="overflow-y-auto flex-1 p-2">
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-surface-50 sticky top-0">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-bold text-surface-500 uppercase">
-                    Item
-                  </th>
-                  <th className="px-4 py-2 text-center text-xs font-bold text-surface-500 uppercase w-24">
-                    Qtd
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-surface-500 uppercase">
-                    Unit.
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-surface-500 uppercase">
-                    Total
-                  </th>
-                  <th className="px-4 py-2 w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {cart.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-50 transition">
-                    <td className="px-4 py-3 text-sm text-surface-800 font-medium">
-                      {item.descricao}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-16 text-center border rounded p-1 text-sm font-bold bg-surface-50 focus:bg-surface-100 outline-none"
-                        value={item.qty}
-                        onChange={(e) =>
-                          handleQuantityChange(item.id, e.target.value)
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm text-surface-500">
-                      {formatCurrency(item.preco_venda)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-surface-900">
-                      {formatCurrency(item.preco_venda * item.qty)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-red-400 hover:text-red-600 p-1"
-                      >
-                        <i className="fas fa-trash-alt"></i>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {cart.length === 0 && (
-                  <tr>
-                    <td colSpan="5" className="text-center py-20 text-surface-400">
-                      Carrinho Vazio
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        <SaleCartPanel
+          cart={cart}
+          totals={totals}
+          onQuantityChange={handleQuantityChange}
+          onRemoveItem={removeFromCart}
+        />
           </div>
-          <div className="p-4 bg-surface-50 border-t border-surface-200 flex justify-between items-center">
-            <span className="text-surface-500 font-medium">Subtotal Itens:</span>
-            <span className="text-xl font-bold text-surface-800">
-              {formatCurrency(totals.subtotal)}
-            </span>
-          </div>
+
+          {/* Direita: Pagamento */}
+          <SalePaymentPanel
+        laborInput={laborInput}
+        onLaborInputChange={setLaborInput}
+        selectedMechanic={selectedMechanic}
+        onMechanicChange={setSelectedMechanic}
+        mechanics={mechanics}
+        surchargeType={surchargeType}
+        onSurchargeTypeChange={setSurchargeType}
+        surchargeValue={surchargeValue}
+        onSurchargeValueChange={setSurchargeValue}
+        discountType={discountType}
+        onDiscountTypeChange={setDiscountType}
+        discountValue={discountValue}
+        onDiscountValueChange={setDiscountValue}
+        totals={totals}
+        payments={payments}
+        onRemovePayment={removePayment}
+        currentPaymentMethod={currentPaymentMethod}
+        onCurrentPaymentMethodChange={setCurrentPaymentMethod}
+        installments={installments}
+        onInstallmentsChange={setInstallments}
+        paymentInputRef={paymentInputRef}
+        currentPaymentValue={currentPaymentValue}
+        onCurrentPaymentValueChange={setCurrentPaymentValue}
+        onPaymentValueFocus={autoFillRemaining}
+        onAddPayment={addPayment}
+        optsCpfReceipt={optsCpfReceipt}
+        onOptsCpfReceiptChange={setOptsCpfReceipt}
+        selectedClient={selectedClient}
+        selectedClientHasValidDocument={selectedClientHasValidDocument}
+        receiptCpf={receiptCpf}
+        onReceiptCpfChange={setReceiptCpf}
+        receiptName={receiptName}
+        onReceiptNameChange={setReceiptName}
+        receiptClientFound={receiptClientFound}
+        receiptSearching={receiptSearching}
+        onHandleReceiptCpfChange={handleReceiptCpfChange}
+        onFinishSale={handleFinishSale}
+        isFinishingSale={isFinishingSale}
+          />
         </div>
+
+        {showClientModal && (
+          <QuickClientModal
+            newClientData={newClientData}
+            onClientFieldChange={updateNewClientField}
+            onClose={closeClientModal}
+            onSubmit={handleSaveNewClient}
+            isSavingClient={isSavingClient}
+          />
+        )}
+
+        {showReceipt && lastSale && (
+          <SaleReceiptModal
+            lastSale={lastSale}
+            onPrint={handleSilentPrint}
+            onClose={() => setShowReceipt(false)}
+            isPrintingReceipt={isPrintingReceipt}
+          />
+        )}
       </div>
-
-      {/* Direita: Pagamento */}
-      <div className="w-full lg:w-96 flex flex-col gap-4 shrink-0">
-        <div className="bg-surface-100 p-5 rounded-xl shadow-sm border border-surface-200 space-y-4">
-          <h2 className="text-sm font-bold text-surface-500 uppercase tracking-wide border-b pb-2">
-            Ajustes
-          </h2>
-
-          <div className="border-b border-dashed pb-3">
-            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-              Mão de Obra (R$)
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="labor-input"
-                type="number"
-                className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm font-medium focus:ring-1 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-                value={laborInput}
-                onChange={(e) => setLaborInput(e.target.value)}
-                placeholder="0.00"
-                min="0"
-              />
-              <select
-                id="mechanic-select"
-                className="w-1/2 border border-surface-300 rounded p-1.5 text-xs bg-surface-100"
-                value={selectedMechanic}
-                onChange={(e) => setSelectedMechanic(e.target.value)}
-              >
-                <option value="">Técnico...</option>
-                {mechanics.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex gap-2 items-center">
-            <div className="flex bg-surface-200 rounded p-0.5 border border-surface-200">
-              <button
-                onClick={() => setSurchargeType("fixed")}
-                className={`text-xs px-2 py-1 rounded ${surchargeType === "fixed" ? "bg-surface-100 shadow text-green-600 font-bold" : "text-surface-400"}`}
-              >
-                R$
-              </button>
-              <button
-                onClick={() => setSurchargeType("percent")}
-                className={`text-xs px-2 py-1 rounded ${surchargeType === "percent" ? "bg-surface-100 shadow text-green-600 font-bold" : "text-surface-400"}`}
-              >
-                %
-              </button>
-            </div>
-            <input
-              type="number"
-              className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm text-green-600 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-              placeholder="Acréscimo"
-              value={surchargeValue}
-              onChange={(e) => setSurchargeValue(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2 items-center">
-            <div className="flex bg-surface-200 rounded p-0.5 border border-surface-200">
-              <button
-                onClick={() => setDiscountType("fixed")}
-                className={`text-xs px-2 py-1 rounded ${discountType === "fixed" ? "bg-surface-100 shadow text-red-600 font-bold" : "text-surface-400"}`}
-              >
-                R$
-              </button>
-              <button
-                onClick={() => setDiscountType("percent")}
-                className={`text-xs px-2 py-1 rounded ${discountType === "percent" ? "bg-surface-100 shadow text-red-600 font-bold" : "text-surface-400"}`}
-              >
-                %
-              </button>
-            </div>
-            <input
-              type="number"
-              className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm text-red-600 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-              placeholder="Desconto"
-              value={discountValue}
-              onChange={(e) => setDiscountValue(e.target.value)}
-            />
-          </div>
-          <div className="flex justify-between items-center pt-2 border-t border-dashed">
-            <span className="text-surface-600 font-bold">Total a Pagar</span>
-            <span className="text-2xl font-extrabold text-primary-700">
-              {formatCurrency(totals.total)}
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-surface-100 p-5 rounded-xl shadow-md border-l-4 border-primary-600 flex-1 flex flex-col">
-          <h2 className="text-sm font-bold text-surface-500 uppercase tracking-wide mb-4">
-            Pagamento
-          </h2>
-          <div className="flex-1 bg-surface-50 rounded-lg p-2 mb-4 overflow-y-auto max-h-40 border border-surface-200">
-            {payments.map((p, idx) => (
-              <div
-                key={idx}
-                className="flex justify-between items-center p-2 bg-surface-100 rounded shadow-sm mb-1 text-sm"
-              >
-                <div>
-                  <span className="font-bold text-surface-800">{p.metodo}</span>
-                  {p.detalhes && (
-                    <span className="text-xs text-surface-400 ml-1">
-                      ({p.detalhes})
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-surface-800">
-                    {formatCurrency(p.valor)}
-                  </span>
-                  <button
-                    onClick={() => removePayment(idx)}
-                    className="text-red-400 hover:text-red-600"
-                  >
-                    <i className="fas fa-times-circle"></i>
-                  </button>
-                </div>
-              </div>
-            ))}
-            {payments.length === 0 && (
-              <p className="text-center text-xs text-surface-400 py-4">
-                Nenhum pagamento adicionado
-              </p>
-            )}
-          </div>
-
-          <div
-            className={`space-y-3 ${totals.remaining <= 0 ? "opacity-50 pointer-events-none" : ""}`}
-          >
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                className="border border-surface-300 rounded p-2 text-sm bg-surface-100"
-                value={currentPaymentMethod}
-                onChange={(e) => setCurrentPaymentMethod(e.target.value)}
-              >
-                <option>Dinheiro</option>
-                <option>Pix</option>
-                <option>Crédito</option>
-                <option>Débito</option>
-                <option>Fiado</option>
-              </select>
-              {currentPaymentMethod === "Crédito" && (
-                <select
-                  className="border border-surface-300 rounded p-2 text-sm bg-surface-100"
-                  value={installments}
-                  onChange={(e) => setInstallments(e.target.value)}
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-                    <option key={i} value={i}>
-                      {i}x
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <input
-                ref={paymentInputRef}
-                type="number"
-                className="flex-1 border border-surface-300 rounded p-2 text-right font-bold text-surface-800 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-                placeholder="0.00"
-                value={currentPaymentValue}
-                onChange={(e) => setCurrentPaymentValue(e.target.value)}
-                onFocus={autoFillRemaining}
-              />
-              <button
-                onClick={addPayment}
-                className="bg-primary-600 text-white px-4 py-2 rounded font-bold hover:bg-primary-700"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-auto pt-4 border-t border-surface-200">
-            <div className="flex justify-between text-sm mb-2">
-              <span>Pago:</span>
-              <span className="font-bold text-green-600">
-                {formatCurrency(totals.totalPaid)}
-              </span>
-            </div>
-            {totals.remaining > 0 ? (
-              <div className="flex justify-between text-lg font-bold text-red-600">
-                <span>Falta:</span>
-                <span>{formatCurrency(totals.remaining)}</span>
-              </div>
-            ) : (
-              <div className="flex justify-between text-lg font-bold text-primary-600">
-                <span>Troco:</span>
-                <span>{formatCurrency(totals.change)}</span>
-              </div>
-            )}
-            <div className="mt-4 border-t border-surface-200 pt-3">
-              <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-surface-800">
-                <input type="checkbox" className="w-4 h-4 text-primary-600 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20" checked={optsCpfReceipt} onChange={e => setOptsCpfReceipt(e.target.checked)} />
-                Deseja CPF no Recibo?
-              </label>
-              {optsCpfReceipt && (
-                <div className="mt-2 space-y-2 p-3 bg-primary-500/10 rounded-lg border border-primary-500/20">
-                  {selectedClient && hasValidReceiptDocument(clients.find(c => c.id == selectedClient)) ? (
-                    <p className="text-xs text-primary-600 font-medium"><i className="fas fa-check-circle mr-1"></i> Cliente já possui CPF/CNPJ cadastrado.</p>
-                  ) : selectedClient ? (
-                    <div>
-                      <input className="w-full border border-surface-300 rounded p-1.5 text-sm bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none" placeholder="Digite o CPF/CNPJ" value={receiptCpf} onChange={e => setReceiptCpf(applyCpfCnpjMask(e.target.value))} maxLength="18" />
-                      <p className="text-[11px] text-surface-500 mt-1">Cliente selecionado não possui CPF/CNPJ válido. Informe abaixo para atualizar o cadastro e imprimir no recibo.</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="relative">
-                        <input
-                          className="w-full border border-surface-300 rounded p-1.5 pl-8 text-sm font-medium bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none placeholder:text-surface-400"
-                          placeholder="CPF/CNPJ *"
-                          value={receiptCpf}
-                          onChange={e => handleReceiptCpfChange(e.target.value)}
-                          maxLength="18"
-                          autoFocus
-                        />
-                        <i className={`fas ${receiptSearching ? 'fa-spinner fa-spin' : receiptClientFound ? 'fa-check-circle text-green-500' : 'fa-id-card text-surface-400'} absolute left-2.5 top-2.5 text-xs`}></i>
-                      </div>
-                      {receiptClientFound ? (
-                        <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded p-1.5 text-sm">
-                          <i className="fas fa-user-check text-green-600 text-xs ml-1"></i>
-                          <span className="font-bold text-green-600 whitespace-nowrap overflow-hidden text-ellipsis">{receiptClientFound.nome}</span>
-                        </div>
-                      ) : (
-                        <input
-                          className="w-full border border-surface-300 rounded p-1.5 text-sm bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none placeholder:text-surface-400"
-                          placeholder="Nome Completo *"
-                          value={receiptName}
-                          onChange={e => setReceiptName(applyNameMask(e.target.value))}
-                          disabled={receiptCpf.replace(/\D/g, '').length < 11}
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleFinishSale}
-              disabled={totals.remaining > 0.01 || isFinishingSale}
-              className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${totals.remaining > 0.01 || isFinishingSale ? "bg-surface-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
-            >
-              {isFinishingSale ? "A GUARDAR..." : "CONCLUIR VENDA"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {showClientModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-surface-100 rounded-xl shadow-2xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-surface-800 border-b pb-2 flex items-center">
-              <i className="fas fa-user-plus mr-2 text-primary-600"></i> Novo
-              Cliente Rápido
-            </h2>
-            <form onSubmit={handleSaveNewClient} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-                  Nome Completo *
-                </label>
-                <input
-                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-                  value={newClientData.nome}
-                  onChange={(e) =>
-                    setNewClientData({ ...newClientData, nome: e.target.value })
-                  }
-                  autoFocus
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-                  CPF / Documento *
-                </label>
-                <input
-                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-                  value={newClientData.documento}
-                  onChange={(e) =>
-                    setNewClientData({
-                      ...newClientData,
-                      documento: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-                  Telefone / WhatsApp *
-                </label>
-                <input
-                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-                  value={newClientData.telefone}
-                  onChange={(e) =>
-                    setNewClientData({
-                      ...newClientData,
-                      telefone: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-                  Endereço (Opcional)
-                </label>
-                <input
-                  className="w-full border border-surface-300 rounded p-2 focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-                  value={newClientData.endereco}
-                  onChange={(e) =>
-                    setNewClientData({
-                      ...newClientData,
-                      endereco: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
-                <button
-                  type="button"
-                  onClick={() => setShowClientModal(false)}
-                  className="px-4 py-2 bg-surface-200 rounded text-surface-800 hover:bg-surface-300 font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingClient}
-                  className={`px-4 py-2 rounded font-bold shadow-md ${isSavingClient ? "bg-surface-400 text-white cursor-not-allowed" : "bg-primary-600 text-white hover:bg-primary-700"}`}
-                >
-                  {isSavingClient ? "SALVANDO..." : "Salvar e Selecionar"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showReceipt && lastSale && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-surface-300 p-4 rounded-lg shadow-2xl flex flex-col max-h-[95vh] w-full max-w-[340px]">
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              <CupomFiscal sale={lastSale} items={lastSale.itens} />
-            </div>
-            <div className="mt-4 flex gap-2 pt-2 border-t border-surface-300">
-              <button
-                onClick={handleSilentPrint}
-                disabled={isPrintingReceipt}
-                className={`flex-1 py-3 rounded-lg font-bold shadow transition-transform flex items-center justify-center ${isPrintingReceipt ? "bg-surface-400 text-white cursor-not-allowed" : "bg-primary-600 text-white hover:bg-primary-700 active:scale-95"}`}
-              >
-                <i className={`fas mr-2 ${isPrintingReceipt ? "fa-circle-notch fa-spin" : "fa-print"}`}></i>
-                {isPrintingReceipt ? "Imprimindo..." : "Imprimir"}
-              </button>
-              <button
-                onClick={() => setShowReceipt(false)}
-                className="flex-1 bg-surface-500 text-white py-3 rounded-lg font-bold hover:bg-surface-600 active:scale-95 transition-transform"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
