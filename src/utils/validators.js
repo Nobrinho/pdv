@@ -52,16 +52,16 @@ export const validarDocumento = (value) => {
   if (clean.length === 14) {
     // CNPJ
     if (/^(\d)\1+$/.test(clean)) return false;
-    const calc = (s, n) => {
+    const calc = (tamanho) => {
       let sum = 0;
-      let pos = n - 7;
-      for (let i = s; i >= 1; i--) {
-        sum += parseInt(clean[s - i]) * pos--;
+      let pos = tamanho - 7;
+      for (let i = tamanho; i >= 1; i--) {
+        sum += parseInt(clean[tamanho - i]) * pos--;
         if (pos < 2) pos = 9;
       }
       return sum % 11 < 2 ? 0 : 11 - (sum % 11);
     };
-    return calc(12, 5) === parseInt(clean[12]) && calc(13, 6) === parseInt(clean[13]);
+    return calc(12) === parseInt(clean[12]) && calc(13) === parseInt(clean[13]);
   }
 
   return false;
