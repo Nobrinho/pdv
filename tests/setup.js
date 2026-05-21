@@ -39,7 +39,7 @@ global.window.api = {
 };
 
 // Mock do Contexto de Alerta
-vi.mock("../src/context/AlertSystem", () => ({
+vi.mock("../apps/pdv/src/context/AlertSystem", () => ({
   useAlert: () => ({
     showAlert: vi.fn(),
     showConfirm: vi.fn(),

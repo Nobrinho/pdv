@@ -3,7 +3,7 @@
   "productName": "SysControl",
   "version": "1.8.0",
   "description": "Sistema PDV White Label - Controle de Estoque e Vendas",
-  "main": "electron/main.js",
+  "main": "apps/pdv/electron/main.js",
   "author": "Emerson Nobre",
   "license": "MIT",
   "repository": {
@@ -11,16 +11,21 @@
     "url": "https://github.com/Nobrinho/pdv.git"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --config apps/pdv/vite.config.js",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "server:dev": "node apps/pdv-back/src/server.js",
+    "server:migrate": "knex migrate:latest --knexfile ./apps/pdv-back/knexfile.js",
+    "server:smoke": "node apps/pdv-back/scripts/smoke.js",
+    "build": "vite build --config apps/pdv/vite.config.js",
     "electron": "electron .",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dist": "vite build && electron-builder",
+    "dist": "vite build --config apps/pdv/vite.config.js && electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "migrate:make": "knex migrate:make --knexfile ./database/knexfile.js",
-    "migrate:latest": "knex migrate:latest --knexfile ./database/knexfile.js"
+    "migrate:make": "knex migrate:make --knexfile ./apps/pdv/database/knexfile.js",
+    "migrate:latest": "knex migrate:latest --knexfile ./apps/pdv/database/knexfile.js"
   },
   "build": {
     "appId": "com.pdv.whitelabel",
@@ -37,14 +42,14 @@
       "output": "dist_electron"
     },
     "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "database/**/*",
+      "apps/pdv/dist/**/*",
+      "apps/pdv/electron/**/*",
+      "apps/pdv/database/**/*",
       "package.json"
     ],
     "extraResources": [
       {
-        "from": "./database",
+        "from": "./apps/pdv/database",
         "to": "database",
         "filter": [
           "**/*"
@@ -81,6 +86,7 @@
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.23",
     "knex": "^3.1.0",
+    "pg": "^8.13.1",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",

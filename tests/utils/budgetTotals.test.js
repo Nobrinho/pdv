@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateBudgetTotals, toBudgetNumber } from "../../src/utils/budgetTotals";
+import { calculateBudgetTotals, toBudgetNumber } from "../../apps/pdv/src/utils/budgetTotals";
 
 describe("budgetTotals", () => {
   it("normaliza valores invalidos para zero", () => {

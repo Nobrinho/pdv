@@ -1,9 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import CupomFiscal from "../../src/components/CupomFiscal";
+import CupomFiscal from "../../apps/pdv/src/components/CupomFiscal";
 
-vi.mock("../../src/context/TenantContext", () => ({
+vi.mock("../../apps/pdv/src/context/TenantContext", () => ({
   useTenant: () => ({
     tenant: {
       nome: "Loja Teste",

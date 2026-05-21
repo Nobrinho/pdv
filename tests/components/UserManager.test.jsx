@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import UserManager from "../../src/components/config/UserManager.jsx";
+import UserManager from "../../apps/pdv/src/components/config/UserManager.jsx";
 
 describe("UserManager", () => {
   it("exibe loading da lista de usuarios", () => {

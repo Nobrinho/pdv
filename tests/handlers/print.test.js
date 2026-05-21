@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeReceiptHtml } from "../../electron/handlers/print.js";
+import { sanitizeReceiptHtml } from "../../apps/pdv/electron/handlers/print.js";
 
 describe("Print handler", () => {
   it("remove scripts, iframes e handlers inline do HTML do recibo", () => {

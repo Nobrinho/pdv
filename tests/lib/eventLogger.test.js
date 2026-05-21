@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stringifyPayload, truncateText } from "../../electron/lib/eventLogger.js";
+import { stringifyPayload, truncateText } from "../../apps/pdv/electron/lib/eventLogger.js";
 
 describe("eventLogger", () => {
   it("limita textos longos para evitar crescimento excessivo do banco", () => {

@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import ProductListPanel from "../../src/components/products/ProductListPanel.jsx";
+import ProductListPanel from "../../apps/pdv/src/components/products/ProductListPanel.jsx";
 
 describe("ProductListPanel", () => {
   const columns = [{ key: "descricao", label: "Descricao" }];

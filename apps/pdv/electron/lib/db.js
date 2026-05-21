@@ -4,7 +4,7 @@ const path = require("path");
 const isDev = !app.isPackaged;
 
 const dbPath = isDev
-  ? path.join(__dirname, "../../syscontrol.sqlite3")
+  ? path.join(__dirname, "../../../syscontrol.sqlite3")
   : path.join(app.getPath("userData"), "syscontrol.sqlite3");
 
 const knex = require("knex")({

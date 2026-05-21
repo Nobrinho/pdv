@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOnboardingSettings } from "../../src/pages/Onboarding.jsx";
+import { buildOnboardingSettings } from "../../apps/pdv/src/pages/Onboarding.jsx";
 
 describe("Onboarding - configuracoes iniciais", () => {
   it("normaliza chaves esperadas pelo TenantContext e comissoes em decimal", () => {

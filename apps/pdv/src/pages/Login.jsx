@@ -7,10 +7,13 @@ const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const { showAlert } = useAlert();
-  const { tenant } = useTenant();
+  const { tenant, reloadTenant } = useTenant();
   const [appVersion, setAppVersion] = useState("");
+  const isOnlineMode = api.isRemote;
+  const [dataMode, setDataMode] = useState(api.dataMode);
 
   // Login State
+  const [lojaId, setLojaId] = useState(() => localStorage.getItem("syscontrol_online_loja_id") || "");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -29,7 +32,7 @@ const Login = ({ onLoginSuccess }) => {
         api.auth.checkExist(),
         api.config.getVersion()
       ]);
-      setIsSetupMode(!hasUsers);
+      setIsSetupMode(!isOnlineMode && !hasUsers);
       setAppVersion(ver || "1.0.0");
     } catch (error) {
       console.error("Erro ao iniciar login:", error);
@@ -37,19 +40,29 @@ const Login = ({ onLoginSuccess }) => {
     } finally {
       setLoading(false);
     }
-  }, [showAlert]);
+  }, [showAlert, isOnlineMode]);
 
   useEffect(() => {
     checkStatus();
   }, [checkStatus]);
 
+  const handleDataModeChange = (mode) => {
+    if (mode === dataMode) return;
+    api.setDataMode(mode);
+    setDataMode(mode);
+    window.location.reload();
+  };
+
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
+    if (isOnlineMode && !lojaId) return showAlert("Informe o ID da loja.", "Atenção", "warning");
     if (!username || !password) return showAlert("Informe usuário e senha.", "Atenção", "warning");
 
     try {
-      const result = await api.auth.login(username, password);
+      const result = await api.auth.login({ lojaId, username, password });
       if (result.success) {
+        if (isOnlineMode) localStorage.setItem("syscontrol_online_loja_id", String(lojaId));
+        if (isOnlineMode) await reloadTenant();
         onLoginSuccess(result.user);
       } else {
         showAlert(result.error || "Credenciais inválidas.", "Acesso Negado", "error");
@@ -154,6 +167,33 @@ const Login = ({ onLoginSuccess }) => {
         </div>
 
         <div className="p-10">
+          {api.isElectron && (
+            <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-surface-200/70 p-1 text-[10px] font-black uppercase tracking-widest">
+              <button
+                type="button"
+                onClick={() => handleDataModeChange("local")}
+                className={`rounded-xl px-3 py-2 transition ${
+                  dataMode === "local"
+                    ? "bg-surface-100 text-surface-900 shadow-sm"
+                    : "text-surface-500 hover:text-surface-800"
+                }`}
+              >
+                Local
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDataModeChange("online")}
+                className={`rounded-xl px-3 py-2 transition ${
+                  dataMode === "online"
+                    ? "bg-surface-100 text-surface-900 shadow-sm"
+                    : "text-surface-500 hover:text-surface-800"
+                }`}
+              >
+                Online
+              </button>
+            </div>
+          )}
+
           {isSetupMode ? (
             <form onSubmit={handleSetup} className="space-y-5 animate-slide-up">
               <div className="p-4 rounded-2xl border mb-6 flex gap-4" style={{ backgroundColor: `${tenant.corPrimaria}08`, borderColor: `${tenant.corPrimaria}22` }}>
@@ -226,6 +266,27 @@ const Login = ({ onLoginSuccess }) => {
             </form>
           ) : (
             <form onSubmit={handleLogin} className="space-y-6 animate-fade-in">
+              {isOnlineMode && (
+                <div className="space-y-1 group">
+                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">ID da loja</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
+                      <i className="fas fa-store text-lg"></i>
+                    </div>
+                    <input
+                      className="w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
+                      style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
+                      onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                      onBlur={(e) => e.target.style.borderColor = ''}
+                      placeholder="Ex: 1"
+                      value={lojaId}
+                      onChange={(e) => setLojaId(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1 group">
                 <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">Usuário</label>
                 <div className="relative">
@@ -240,7 +301,7 @@ const Login = ({ onLoginSuccess }) => {
                     placeholder="ID do usuário"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    autoFocus
+                    autoFocus={!isOnlineMode}
                   />
                 </div>
               </div>

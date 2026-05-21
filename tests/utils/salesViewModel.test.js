@@ -3,7 +3,7 @@ import {
   findSavedClient,
   findSelectedClient,
   getSalesPeopleByRole,
-} from "../../src/utils/salesViewModel";
+} from "../../apps/pdv/src/utils/salesViewModel";
 
 describe("salesViewModel", () => {
   it("separa vendedores e trocadores por cargo", () => {

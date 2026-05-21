@@ -3,7 +3,7 @@ import {
   buildProductImportPreviewRows,
   mapProductImportColumn,
   normalizeImportHeader,
-} from "../../src/utils/productImport";
+} from "../../apps/pdv/src/utils/productImport";
 
 describe("productImport utils", () => {
   it("normaliza cabecalhos com acentos e espacos", () => {
