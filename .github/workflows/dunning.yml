@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: "20"
       - name: Instalar dependencias (so producao, sem builds nativos)
-        run: npm ci --omit=dev --ignore-scripts
+        run: npm install --omit=dev --ignore-scripts --no-audit --no-fund
       - name: Rodar cobranca
         run: npm run server:dunning
         env:

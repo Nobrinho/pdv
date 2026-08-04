@@ -4,7 +4,8 @@
 // inicia a API em processo e executa o smoke completo.
 //
 // Uso:  npm run server:smoke:local
-// Requer devDeps: @electric-sql/pglite, @electric-sql/pglite-socket
+// Requer (instale sob demanda, nao ficam no package.json p/ nao pesar o deploy):
+//   npm i -D @electric-sql/pglite @electric-sql/pglite-socket knex
 // =============================================================
 import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
