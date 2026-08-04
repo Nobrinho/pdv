@@ -1,13 +1,28 @@
 // Aplica CORS (allowlist) e cabecalhos de seguranca. Chamado no inicio de
 // cada request; usa setHeader para persistir ate o writeHead.
+// App desktop (cliente primeiro-parte): em dev roda em localhost; empacotado
+// (file://) manda Origin "null". Esses contextos sao sempre liberados.
+function isFirstPartyAppOrigin(origin) {
+  if (origin === "null") return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+}
+
 function applySecurity(req, res, config) {
   const origin = req.headers.origin;
   const list = config.corsOrigins || [];
+  let allowOrigin = null;
+
   if (!list.length) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    allowOrigin = "*"; // dev: sem allowlist
   } else if (origin && list.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
+    allowOrigin = origin; // origem web autorizada (painel)
+  } else if (origin && isFirstPartyAppOrigin(origin)) {
+    allowOrigin = origin; // app desktop (localhost em dev ou file:// empacotado)
+  }
+
+  if (allowOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+    if (allowOrigin !== "*") res.setHeader("Vary", "Origin");
   }
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
