@@ -43,6 +43,24 @@ const clearOnlineSession = () => {
   localStorage.removeItem(ONLINE_USER_KEY);
 };
 
+const DEVICE_ID_KEY = "syscontrol_device_id";
+const DEVICE_NAME_KEY = "syscontrol_device_name";
+
+const getDeviceInfo = () => {
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+  if (!deviceId) {
+    deviceId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
+  }
+  const nomeMaquina =
+    localStorage.getItem(DEVICE_NAME_KEY) ||
+    (typeof navigator !== "undefined" ? navigator.platform || "Dispositivo" : "Dispositivo");
+  return { deviceId, nomeMaquina };
+};
+
 const buildQuery = (params = {}) => {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params || {})) {
@@ -83,10 +101,109 @@ const safeCall = async (fn, ...args) => {
   }
 };
 
+const readJsonFileFromPicker = () =>
+  new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return resolve({ canceled: true });
+      try {
+        const text = await file.text();
+        resolve({ canceled: false, fileName: file.name, json: JSON.parse(text) });
+      } catch (error) {
+        resolve({ canceled: false, error: "Arquivo de backup invalido." });
+      }
+    };
+    input.click();
+  });
+
+const saveJsonFile = async (defaultPath, data) => {
+  const text = JSON.stringify(data, null, 2);
+  const dataBase64 = btoa(unescape(encodeURIComponent(text)));
+
+  if (hasElectronApi() && window.api?.saveGeneratedFile) {
+    return await safeCall(window.api.saveGeneratedFile, {
+      defaultPath,
+      filters: [{ name: "Backup SysControl", extensions: ["json"] }],
+      dataBase64,
+    });
+  }
+
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = defaultPath;
+  link.click();
+  URL.revokeObjectURL(url);
+  return { success: true };
+};
+
+const toNumber = (value, fallback = 0) => {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+};
+
+const normalizeOnlineProduct = (product) => {
+  if (!product) return product;
+  return {
+    ...product,
+    custo: toNumber(product.custo),
+    preco_venda: toNumber(product.preco_venda),
+    estoque_atual: toNumber(product.estoque_atual),
+  };
+};
+
+const normalizeDashboardStats = (stats = {}) => ({
+  faturamento: toNumber(stats.faturamento),
+  lucro: toNumber(stats.lucro),
+  vendasCount: toNumber(stats.vendasCount ?? stats.vendasHoje ?? stats.totalVendas),
+  maoDeObra: toNumber(stats.maoDeObra),
+  comissoes: toNumber(stats.comissoes),
+  hasFinancialBreakdown: stats.maoDeObra !== undefined || stats.comissoes !== undefined,
+});
+
+const normalizeInventoryStats = (stats = {}) => {
+  const custoTotal = toNumber(stats.custoTotal ?? stats.custoEstoque);
+  const vendaPotencial = toNumber(stats.vendaPotencial ?? stats.valorVendaEstoque);
+  const hasStockCounters =
+    stats.qtdZerados !== undefined ||
+    stats.qtdBaixoEstoque !== undefined ||
+    stats.totalItensFisicos !== undefined;
+  return {
+    custoTotal,
+    vendaPotencial,
+    lucroProjetado: toNumber(stats.lucroProjetado, vendaPotencial - custoTotal),
+    qtdZerados: toNumber(stats.qtdZerados),
+    qtdBaixoEstoque: toNumber(stats.qtdBaixoEstoque),
+    totalItensFisicos: toNumber(stats.totalItensFisicos ?? stats.estoqueTotal),
+    hasStockCounters,
+  };
+};
+
+const normalizeWeeklySales = (weekly = {}) => {
+  if (Array.isArray(weekly)) {
+    return {
+      labels: weekly.map((row) =>
+        new Date(row.dia).toLocaleDateString("pt-BR", { weekday: "short" }),
+      ),
+      data: weekly.map((row) => toNumber(row.total)),
+    };
+  }
+
+  return {
+    labels: Array.isArray(weekly.labels) ? weekly.labels : [],
+    data: Array.isArray(weekly.data) ? weekly.data.map((value) => toNumber(value)) : [],
+  };
+};
+
 const online = {
   products: {
-    list: async () => (await http("/products")).products || [],
-    search: async (params) => (await http(`/products/search${buildQuery(params)}`)).products || [],
+    list: async () => ((await http("/products")).products || []).map(normalizeOnlineProduct),
+    search: async (params) =>
+      ((await http(`/products/search${buildQuery(params)}`)).products || []).map(normalizeOnlineProduct),
     save: async (data) => {
       if (data?.id) return await http(`/products/${data.id}`, { method: "PUT", body: data });
       return await http("/products", { method: "POST", body: data });
@@ -101,7 +218,7 @@ const online = {
         totalPages: result.totalPages || 0,
       };
     },
-    importBatch: async (data) => await http("/products/import", { method: "POST", body: { products: data } }),
+    importBatch: async (data) => await http("/products/import", { method: "POST", body: data }),
   },
 
   sales: {
@@ -165,15 +282,41 @@ const online = {
       if (getOnlineToken()) {
         return await http("/users", { method: "POST", body: data });
       }
-
+      return await online.auth.createStore(data);
+    },
+    createStore: async (data = {}) => {
+      const store = data.store || {
+        nome: data.lojaNome || data.nome || "Minha Loja",
+        documento: data.documento || null,
+        telefone: data.telefone || null,
+        email: data.email || null,
+        cidade: data.cidade || null,
+      };
+      const admin = data.admin || {
+        nome: data.nome,
+        username: data.username,
+        password: data.password,
+      };
       const result = await http("/store/onboarding/create", {
         method: "POST",
+        body: { store, admin, device: getDeviceInfo(), settings: data.settings || [] },
+        token: null,
+      });
+      return result;
+    },
+    joinStore: async (data = {}) => {
+      const result = await http("/store/onboarding/join", {
+        method: "POST",
         body: {
-          store: { nome: data.lojaNome || "Minha Loja" },
-          admin: data,
+          lojaId: data.lojaId || data.loja_id || data.codigoLoja,
+          codigo: data.codigo || data.invite,
+          username: data.username,
+          password: data.password,
+          device: getDeviceInfo(),
         },
         token: null,
       });
+      setOnlineSession(result);
       return result;
     },
     login: async (username, password) => {
@@ -208,8 +351,19 @@ const online = {
       method: "PUT",
       body: { valor: value },
     }),
-    backup: async () => ({ success: false, error: "Backup online ainda nao implementado." }),
-    restore: async () => ({ success: false, error: "Restore online ainda nao implementado." }),
+    backup: async () => {
+      const result = await http("/backup/export");
+      const lojaId = result.backup?.loja?.id || getOnlineStoreId() || "loja";
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const saved = await saveJsonFile(`backup-online-loja-${lojaId}-${stamp}.json`, result.backup);
+      return saved.success === false ? saved : { success: true };
+    },
+    restore: async () => {
+      const selected = await readJsonFileFromPicker();
+      if (selected.canceled) return { success: false, message: "Restore cancelado." };
+      if (selected.error) return { success: false, error: selected.error };
+      return await http("/backup/restore", { method: "POST", body: selected.json });
+    },
     getVersion: async () => "online-dev",
     getTenant: async () => {
       if (!getOnlineToken()) return null;
@@ -219,10 +373,15 @@ const online = {
   },
 
   dashboard: {
-    stats: async () => (await http("/dashboard/stats")).stats || {},
-    weeklySales: async () => (await http("/dashboard/weekly-sales")).data || [],
-    lowStock: async () => (await http("/dashboard/low-stock")).products || [],
-    inventoryStats: async () => (await http("/dashboard/inventory")).stats || {},
+    stats: async () => normalizeDashboardStats((await http("/dashboard/stats")).stats),
+    weeklySales: async () => normalizeWeeklySales((await http("/dashboard/weekly-sales")).data),
+    lowStock: async () =>
+      ((await http("/dashboard/low-stock")).products || []).map(normalizeOnlineProduct),
+    inventoryStats: async () => normalizeInventoryStats((await http("/dashboard/inventory")).stats),
+  },
+
+  reports: {
+    sales: async (filters = {}) => (await http(`/reports/sales${buildQuery(filters)}`)).report,
   },
 
   roles: {
@@ -356,15 +515,40 @@ const electron = {
   },
 };
 
+// Migracao: le o banco local (SQLite via IPC) e importa na loja online logada.
+const migrateLocalToOnline = async ({ force = false } = {}) => {
+  if (!hasElectronApi() || !window.api?.exportLocalData) {
+    throw new Error("Exportacao local disponivel apenas no aplicativo desktop.");
+  }
+  if (!getOnlineToken()) {
+    throw new Error("Entre em uma loja online antes de importar os dados locais.");
+  }
+
+  const dump = await safeCall(window.api.exportLocalData);
+  if (!dump || dump.success === false) {
+    throw new Error(dump?.error || "Falha ao ler os dados locais.");
+  }
+
+  return await http("/store/import-sqlite", {
+    method: "POST",
+    body: { backup: dump.backup, force },
+  });
+};
+
 export const api = new Proxy(
   {},
   {
     get(_target, prop) {
+      if (prop === "migrateLocalToOnline") return migrateLocalToOnline;
       if (prop === "isRemote") return isRemoteMode();
       if (prop === "isElectron") return hasElectronApi();
       if (prop === "dataMode") return getDataMode();
       if (prop === "setDataMode") return setDataMode;
       if (prop === "baseUrl") return getBaseUrl();
+      if (prop === "setApiUrl")
+        return (url) => localStorage.setItem("syscontrol_api_url", String(url || "").trim());
+      if (prop === "onlineStoreId") return getOnlineStoreId();
+      if (prop === "onlineToken") return getOnlineToken();
       return (isRemoteMode() ? online : electron)[prop];
     },
   },

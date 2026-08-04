@@ -124,9 +124,41 @@ const useReportData = () => {
     }
   }, [startDate, endDate, showAlert]);
 
+  const isOnlineReports = api.isRemote && !!api.reports;
+
+  // Modo online: o relatorio e calculado no servidor (endpoint /reports/sales).
+  const loadOnlineReport = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
+      const [report, people] = await Promise.all([
+        api.reports.sales({
+          startDate: startTimestamp,
+          endDate: endTimestamp,
+          sellerId: selectedSeller !== "all" ? selectedSeller : undefined,
+          payment: selectedPayment !== "all" ? selectedPayment : undefined,
+        }),
+        api.people.list(),
+      ]);
+      setAllPeople(people);
+      setAllSales(report.sales || []);
+      setFilteredSales(report.sales || []);
+      setMetrics(report.metrics || {});
+      setLaborSummary(report.laborSummary || []);
+      setPaymentSummary(report.paymentSummary || []);
+    } catch (error) {
+      console.error("Erro ao carregar relatorio online:", error);
+      showAlert("Erro ao carregar o relatorio online.", "Erro", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate, selectedSeller, selectedPayment, showAlert]);
+
   useEffect(() => {
-    if (startDate && endDate) loadData();
-  }, [startDate, endDate, loadData]);
+    if (!startDate || !endDate) return;
+    if (isOnlineReports) loadOnlineReport();
+    else loadData();
+  }, [startDate, endDate, isOnlineReports, loadData, loadOnlineReport]);
 
   // --- PERIOD CHANGE ---
   const handlePeriodChange = useCallback((type) => {
@@ -140,6 +172,8 @@ const useReportData = () => {
 
   // --- PROCESS DATA ---
   const processData = useCallback(() => {
+    // No modo online o relatorio ja vem calculado do servidor.
+    if (api.isRemote && api.reports) return;
     let vendasFiltradas = allSales.filter((s) => {
       const isSeller =
         selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);

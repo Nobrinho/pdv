@@ -59,3 +59,26 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #6b7280;
 }
+
+[data-theme='dark'] .animate-fade-in label {
+    color: rgb(var(--color-surface-700));
+}
+
+[data-theme='dark'] .animate-fade-in .login-icon {
+    color: rgb(var(--color-surface-600));
+}
+
+[data-theme='dark'] .animate-fade-in .login-input {
+    background-color: rgb(3 7 18);
+    border-color: rgb(var(--color-surface-300));
+    color: rgb(var(--color-surface-900));
+}
+
+[data-theme='dark'] .animate-fade-in .login-input:focus {
+    background-color: rgb(3 7 18);
+    border-color: rgb(var(--color-primary-500));
+}
+
+[data-theme='dark'] .animate-fade-in .login-input::placeholder {
+    color: rgb(var(--color-surface-500));
+}

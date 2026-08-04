@@ -24,6 +24,29 @@ PLATFORM_ADMIN_PASSWORD=admin123
 PLATFORM_ADMIN_NAME=Administrador
 ```
 
+## Cobranca automatica (dunning)
+
+Marca assinaturas vencidas como `past_due` e bloqueia a loja apos a carencia
+(`BILLING_GRACE_DAYS`, padrao 5). Rode diariamente:
+
+```bash
+npm run server:dunning
+```
+
+Agende via cron do SO (ex.: `0 3 * * *`), systemd timer ou agendador da nuvem.
+Tambem pode ser disparado manualmente por `POST /platform/billing/run-dunning`
+ou pelo botao "Rodar cobranca" no painel admin. O pagamento
+(`register-payment`) reativa a loja e avanca o vencimento.
+
+## Documentacao interativa (Swagger)
+
+Com a API rodando (`npm run server:dev`):
+
+- **Swagger UI navegavel:** http://localhost:3333/docs
+- **Spec OpenAPI (JSON):** http://localhost:3333/openapi.json
+
+No Swagger, clique em **Authorize** e cole um Bearer token (obtido em `/platform/auth/login`, `/auth/login`, `/store/onboarding/create` ou `/store/onboarding/join`) para testar as rotas protegidas com o botao **Try it out**.
+
 ## Modulos Implementados
 
 - Plataforma: lojas, planos, assinaturas, dispositivos e usuarios admin.

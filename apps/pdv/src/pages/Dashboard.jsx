@@ -49,6 +49,17 @@ const Dashboard = () => {
     loadDashboardData();
   }, []);
 
+  const getTodayRange = () => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return {
+      startDate: start.getTime(),
+      endDate: end.getTime(),
+    };
+  };
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -61,9 +72,45 @@ const Dashboard = () => {
         api.dashboard.inventoryStats()
       ]);
 
-      setStats(statsData);
+      let movementData = statsData;
+      if (!statsData.hasFinancialBreakdown) {
+        const todayRange = getTodayRange();
+        const [salesResult, servicesResult] = await Promise.all([
+          api.sales.list(todayRange),
+          api.services.list(todayRange),
+        ]);
+        const sales = Array.isArray(salesResult) ? salesResult : salesResult?.data || [];
+        const services = Array.isArray(servicesResult) ? servicesResult : servicesResult?.data || [];
+        const validSales = sales.filter((sale) => !sale.cancelada);
+        movementData = {
+          ...statsData,
+          maoDeObra:
+            validSales.reduce((total, sale) => total + Number(sale.mao_de_obra || 0), 0) +
+            services.reduce((total, service) => total + Number(service.valor || 0), 0),
+          comissoes: validSales.reduce((total, sale) => total + Number(sale.comissao_real || 0), 0),
+        };
+      }
+
+      let inventoryData = invStats;
+      if (!invStats.hasStockCounters) {
+        const products = await api.products.list();
+        inventoryData = {
+          ...invStats,
+          qtdZerados: products.filter((product) => Number(product.estoque_atual || 0) <= 0).length,
+          qtdBaixoEstoque: products.filter((product) => {
+            const stock = Number(product.estoque_atual || 0);
+            return stock > 0 && stock <= 5;
+          }).length,
+          totalItensFisicos: products.reduce(
+            (total, product) => total + Number(product.estoque_atual || 0),
+            0,
+          ),
+        };
+      }
+
+      setStats(movementData);
       setLowStock(stockData);
-      setInventoryStats(invStats);
+      setInventoryStats(inventoryData);
 
       setChartData({
         labels: weeklyData.labels,

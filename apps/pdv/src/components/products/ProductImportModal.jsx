@@ -146,13 +146,13 @@ const ProductImportModal = ({
         <div className="flex flex-wrap gap-2">
           <button
             onClick={onSelectFile}
-            className="bg-surface-900 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-surface-900 shadow-md active:scale-95 transition flex items-center gap-2"
+            className="bg-primary-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-700 shadow-md active:scale-95 transition flex items-center gap-2 border border-primary-500"
           >
             <i className="fas fa-folder-open"></i> Selecionar Planilha
           </button>
           <button
             onClick={onDownloadTemplate}
-            className="bg-surface-200 text-surface-800 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-surface-300 border border-surface-300 transition flex items-center gap-2"
+            className="bg-surface-200 text-surface-800 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-surface-300 border border-surface-400/40 transition flex items-center gap-2"
           >
             <i className="fas fa-download"></i> Baixar Modelo
           </button>
@@ -165,7 +165,7 @@ const ProductImportModal = ({
           </button>
           <button
             onClick={onExportCSV}
-            className="bg-surface-200 text-surface-800 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-surface-300 border border-surface-300 transition flex items-center gap-2"
+            className="bg-surface-200 text-surface-800 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-surface-300 border border-surface-400/40 transition flex items-center gap-2"
             title="Exportar como CSV (.csv)"
           >
             <i className="fas fa-file-csv"></i> Exportar CSV

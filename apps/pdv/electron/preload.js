@@ -106,5 +106,8 @@ contextBridge.exposeInMainWorld("api", {
   logEvent: (payload) => ipcRenderer.invoke("log-event", payload),
   getEventLogs: (filters) => ipcRenderer.invoke("get-event-logs", filters),
 
+  // --- MIGRACAO PARA ONLINE ---
+  exportLocalData: () => ipcRenderer.invoke("export-local-data"),
+
 });
 

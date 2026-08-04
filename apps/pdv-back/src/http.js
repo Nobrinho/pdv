@@ -1,13 +1,36 @@
+// Aplica CORS (allowlist) e cabecalhos de seguranca. Chamado no inicio de
+// cada request; usa setHeader para persistir ate o writeHead.
+function applySecurity(req, res, config) {
+  const origin = req.headers.origin;
+  const list = config.corsOrigins || [];
+  if (!list.length) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  } else if (origin && list.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+}
+
 function sendJson(res, statusCode, data) {
   const body = JSON.stringify(data);
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body),
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   });
   res.end(body);
+}
+
+function sendHtml(res, statusCode, html) {
+  res.writeHead(statusCode, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Content-Length": Buffer.byteLength(html),
+  });
+  res.end(html);
 }
 
 function sendError(res, statusCode, message, details) {
@@ -40,4 +63,4 @@ function readJson(req) {
   });
 }
 
-module.exports = { sendJson, sendError, readJson };
+module.exports = { sendJson, sendHtml, sendError, readJson, applySecurity };

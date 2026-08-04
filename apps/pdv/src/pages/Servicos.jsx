@@ -237,7 +237,11 @@ const Servicos = () => {
                 <button
                   key={period}
                   onClick={() => handlePeriodChange(period)}
-                  className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${periodType === period ? "bg-primary-600 text-white shadow-md shadow-blue-100" : "bg-surface-200 text-surface-400 hover:bg-surface-300"}`}
+                  className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${
+                    periodType === period
+                      ? "bg-primary-600 text-white shadow-[0_8px_20px_-12px_rgba(37,99,235,0.85)]"
+                      : "bg-surface-200 text-surface-400 hover:bg-surface-300"
+                  }`}
                 >
                   {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
                 </button>

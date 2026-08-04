@@ -91,6 +91,108 @@ async function loginStore(knex, credentials = {}) {
   };
 }
 
+async function registerDevice(knex, lojaId, device = {}, plan = null) {
+  const deviceId = String(device.deviceId || device.device_id || "").trim();
+  if (!deviceId) return { success: true, device: null };
+
+  const nomeMaquina = String(device.nomeMaquina || device.nome_maquina || "Dispositivo").trim() || "Dispositivo";
+
+  const existing = await knex("dispositivos").where({ loja_id: lojaId, device_id: deviceId }).first();
+  if (existing) {
+    if (!existing.autorizado) {
+      return { success: false, error: "Dispositivo bloqueado para esta loja. Contate o administrador." };
+    }
+    await knex("dispositivos")
+      .where({ id: existing.id })
+      .update({ nome_maquina: nomeMaquina, ultimo_acesso_em: knex.fn.now(), updated_at: knex.fn.now() });
+    return { success: true, device: { id: existing.id, deviceId, novo: false } };
+  }
+
+  const limite = Number(plan?.limite_dispositivos ?? 0);
+  if (limite > 0) {
+    const count = await knex("dispositivos")
+      .where({ loja_id: lojaId, autorizado: true })
+      .count("id as total")
+      .first();
+    if (Number(count?.total || 0) >= limite) {
+      return {
+        success: false,
+        error: `Limite de dispositivos do plano atingido (${limite}). Remova um dispositivo no painel para liberar.`,
+      };
+    }
+  }
+
+  const [created] = await knex("dispositivos")
+    .insert({
+      loja_id: lojaId,
+      nome_maquina: nomeMaquina,
+      device_id: deviceId,
+      autorizado: true,
+      ultimo_acesso_em: knex.fn.now(),
+    })
+    .returning(["id"]);
+
+  return { success: true, device: { id: created.id, deviceId, novo: true } };
+}
+
+async function joinStore(knex, payload = {}) {
+  const username = String(payload.username || "").trim();
+  const password = String(payload.password || "");
+  const codigo = String(payload.codigo || payload.invite || "").trim();
+  let lojaId = Number(payload.lojaId || payload.loja_id) || null;
+
+  if (!username || !password) {
+    return { success: false, error: "Usuario e senha sao obrigatorios." };
+  }
+
+  let invite = null;
+  if (codigo) {
+    invite = await knex("store_invites").whereRaw("LOWER(codigo) = LOWER(?)", [codigo]).first();
+    if (!invite || !invite.ativo || invite.usado_em) {
+      return { success: false, error: "Convite invalido ou ja utilizado." };
+    }
+    if (invite.expira_em && new Date(invite.expira_em) < new Date()) {
+      return { success: false, error: "Convite expirado." };
+    }
+    lojaId = invite.loja_id;
+  }
+
+  if (!lojaId) {
+    return { success: false, error: "Informe o codigo da loja ou um convite valido." };
+  }
+
+  const loja = await knex("lojas").where("id", lojaId).first();
+  if (!loja) return { success: false, error: "Loja nao encontrada." };
+  if (["blocked", "cancelled", "suspended"].includes(loja.status)) {
+    return { success: false, error: "Acesso da loja bloqueado." };
+  }
+
+  const user = await knex("usuarios")
+    .where("loja_id", lojaId)
+    .whereRaw("LOWER(username) = LOWER(?)", [username])
+    .first();
+  if (!user || !user.ativo) return { success: false, error: "Usuario invalido ou inativo." };
+  if (!verifyPassword(password, user.salt, user.password_hash)) {
+    return { success: false, error: "Senha incorreta." };
+  }
+
+  const plan = loja.plano_id ? await knex("planos").where("id", loja.plano_id).first() : null;
+  const deviceResult = await registerDevice(knex, lojaId, payload.device || {}, plan);
+  if (!deviceResult.success) return { success: false, error: deviceResult.error };
+
+  if (invite) {
+    await knex("store_invites").where("id", invite.id).update({ usado_em: knex.fn.now(), ativo: false });
+  }
+
+  return {
+    success: true,
+    user: publicStoreUser(user),
+    loja: { id: loja.id, nome: loja.nome, status: loja.status },
+    device: deviceResult.device,
+    token: createToken({ type: "store", lojaId: loja.id, userId: user.id, cargo: user.cargo }),
+  };
+}
+
 async function createStoreAdmin(knex, lojaId, admin = {}) {
   const nome = String(admin.nome || "").trim();
   const username = String(admin.username || "").trim();
@@ -201,9 +303,60 @@ async function deleteStoreUser(knex, lojaId, userId) {
   return { success: true };
 }
 
+function generatePassword(length = 8) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < length; i += 1) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+}
+
+// Reset de senha de um usuario de loja, acionado pelo admin da plataforma.
+async function resetStoreUserPassword(knex, lojaId, userId, newPassword) {
+  const user = await knex("usuarios").where({ id: userId, loja_id: lojaId }).first();
+  if (!user) return { success: false, error: "Usuario nao encontrado." };
+
+  const senha = newPassword && String(newPassword).length >= 4 ? String(newPassword) : generatePassword();
+  const { salt, hash } = hashPassword(senha);
+  await knex("usuarios").where({ id: userId, loja_id: lojaId }).update({
+    salt,
+    password_hash: hash,
+    updated_at: knex.fn.now(),
+  });
+
+  return { success: true, password: senha, generated: !newPassword };
+}
+
+// Ativa/desativa um usuario de loja pelo admin da plataforma.
+async function setStoreUserActive(knex, lojaId, userId, ativo) {
+  const user = await knex("usuarios").where({ id: userId, loja_id: lojaId }).first();
+  if (!user) return { success: false, error: "Usuario nao encontrado." };
+
+  if (!ativo && user.cargo === "admin" && user.ativo) {
+    const activeAdmins = await knex("usuarios")
+      .where({ loja_id: lojaId, cargo: "admin", ativo: true })
+      .count("id as total")
+      .first();
+    if (Number(activeAdmins?.total || 0) <= 1) {
+      return { success: false, error: "Nao e permitido desativar o ultimo administrador da loja." };
+    }
+  }
+
+  await knex("usuarios").where({ id: userId, loja_id: lojaId }).update({
+    ativo: !!ativo,
+    updated_at: knex.fn.now(),
+  });
+  return { success: true, ativo: !!ativo };
+}
+
 module.exports = {
   loginPlatform,
   loginStore,
+  joinStore,
+  resetStoreUserPassword,
+  setStoreUserActive,
+  registerDevice,
   createStoreAdmin,
   listStoreUsers,
   saveStoreUser,

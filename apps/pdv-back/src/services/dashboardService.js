@@ -1,83 +1,126 @@
+const { carregarTaxas, calcularComissaoVenda } = require("./commissionService");
+
 function startOfDay(date = new Date()) {
   const next = new Date(date);
   next.setHours(0, 0, 0, 0);
   return next;
 }
 
-async function getDashboardStats(knex, lojaId) {
-  const today = startOfDay();
+function endOfDay(date = new Date()) {
+  const next = new Date(date);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
 
-  const [salesRow, todayRow, productsRow, clientsRow] = await Promise.all([
-    knex("vendas")
-      .where({ loja_id: lojaId, cancelada: false })
-      .sum("total_final as faturamento")
-      .count("id as totalVendas")
-      .first(),
-    knex("vendas")
-      .where({ loja_id: lojaId, cancelada: false })
-      .where("data_venda", ">=", today)
-      .sum("total_final as faturamentoHoje")
-      .count("id as vendasHoje")
-      .first(),
-    knex("produtos")
-      .where({ loja_id: lojaId, ativo: true })
-      .count("id as totalProdutos")
-      .sum("estoque_atual as estoqueTotal")
-      .first(),
-    knex("clientes")
-      .where({ loja_id: lojaId, ativo: true })
-      .count("id as totalClientes")
-      .first(),
+function toNumber(value, fallback = 0) {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+async function getDashboardStats(knex, lojaId) {
+  const start = startOfDay();
+  const end = endOfDay();
+
+  const vendas = await knex("vendas")
+    .where({ loja_id: lojaId, cancelada: false })
+    .whereBetween("data_venda", [start, end])
+    .select("*");
+
+  const vendaIds = vendas.map((venda) => venda.id);
+  const vendedorIds = [...new Set(vendas.map((venda) => venda.vendedor_id).filter(Boolean))];
+
+  const [servicos, pessoas, itens, { comissaoPadrao, comissaoUsados }] = await Promise.all([
+    knex("servicos_avulsos")
+      .where({ loja_id: lojaId })
+      .whereBetween("data_servico", [start, end])
+      .select("*"),
+    vendedorIds.length > 0
+      ? knex("pessoas").where({ loja_id: lojaId }).whereIn("id", vendedorIds).select("id", "comissao_fixa")
+      : [],
+    vendaIds.length > 0
+      ? knex("venda_itens")
+          .leftJoin("produtos", function () {
+            this.on("venda_itens.produto_id", "=", "produtos.id").andOn(
+              "venda_itens.loja_id",
+              "=",
+              "produtos.loja_id",
+            );
+          })
+          .where("venda_itens.loja_id", lojaId)
+          .whereIn("venda_itens.venda_id", vendaIds)
+          .select("venda_itens.*", "produtos.tipo")
+      : [],
+    carregarTaxas(knex, lojaId),
   ]);
 
-  const costRow = await knex("venda_itens")
-    .join("vendas", function () {
-      this.on("venda_itens.venda_id", "=", "vendas.id").andOn("venda_itens.loja_id", "=", "vendas.loja_id");
-    })
-    .where("venda_itens.loja_id", lojaId)
-    .where("vendas.cancelada", false)
-    .sum({ custo_total: knex.raw("venda_itens.custo_unitario * venda_itens.quantidade") })
-    .first();
+  let faturamento = 0;
+  let maoDeObra = 0;
+  let comissoes = 0;
+  let custoProdutos = 0;
 
-  const faturamento = Number(salesRow?.faturamento || 0);
-  const custo = Number(costRow?.custo_total || 0);
+  for (const venda of vendas) {
+    faturamento += toNumber(venda.total_final) - toNumber(venda.mao_de_obra);
+    maoDeObra += toNumber(venda.mao_de_obra);
+
+    const itensVenda = itens.filter((item) => item.venda_id === venda.id);
+    const vendedor = pessoas.find((pessoa) => pessoa.id === venda.vendedor_id);
+    const taxaNovos = vendedor?.comissao_fixa ? toNumber(vendedor.comissao_fixa) / 100 : comissaoPadrao;
+
+    custoProdutos += itensVenda.reduce(
+      (total, item) => total + toNumber(item.custo_unitario) * toNumber(item.quantidade),
+      0,
+    );
+    comissoes += calcularComissaoVenda(itensVenda, venda, taxaNovos, comissaoUsados);
+  }
+
+  maoDeObra += servicos.reduce((total, servico) => total + toNumber(servico.valor), 0);
+  const lucro = faturamento - custoProdutos - comissoes;
 
   return {
-    totalVendas: Number(salesRow?.totalVendas || 0),
     faturamento,
-    lucro: faturamento - custo,
-    vendasHoje: Number(todayRow?.vendasHoje || 0),
-    faturamentoHoje: Number(todayRow?.faturamentoHoje || 0),
-    totalProdutos: Number(productsRow?.totalProdutos || 0),
-    estoqueTotal: Number(productsRow?.estoqueTotal || 0),
-    totalClientes: Number(clientsRow?.totalClientes || 0),
+    lucro,
+    vendasCount: vendas.length,
+    maoDeObra,
+    comissoes,
   };
 }
 
 async function getWeeklySales(knex, lojaId) {
-  const start = startOfDay();
+  const today = new Date();
+  const start = startOfDay(today);
   start.setDate(start.getDate() - 6);
+  const end = endOfDay(today);
 
   const rows = await knex("vendas")
     .where({ loja_id: lojaId, cancelada: false })
-    .where("data_venda", ">=", start)
-    .select(knex.raw("DATE(data_venda) as dia"))
-    .sum("total_final as total")
-    .count("id as quantidade")
-    .groupByRaw("DATE(data_venda)")
-    .orderBy("dia", "asc");
+    .whereBetween("data_venda", [start, end])
+    .select("data_venda", "total_final", "mao_de_obra");
 
-  return rows.map((row) => ({
-    dia: row.dia,
-    total: Number(row.total || 0),
-    quantidade: Number(row.quantidade || 0),
-  }));
+  const dayMap = {};
+  for (const row of rows) {
+    const saleDate = startOfDay(new Date(row.data_venda));
+    const dayKey = Math.floor(saleDate.getTime() / 86400000);
+    const total = toNumber(row.total_final) - toNumber(row.mao_de_obra);
+    dayMap[dayKey] = (dayMap[dayKey] || 0) + total;
+  }
+
+  const labels = [];
+  const data = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const day = startOfDay(today);
+    day.setDate(day.getDate() - i);
+    const dayKey = Math.floor(day.getTime() / 86400000);
+    labels.push(day.toLocaleDateString("pt-BR", { weekday: "short" }));
+    data.push(dayMap[dayKey] || 0);
+  }
+
+  return { labels, data };
 }
 
 async function getLowStock(knex, lojaId, limit = 10) {
   return await knex("produtos")
     .where({ loja_id: lojaId, ativo: true })
-    .where("estoque_atual", "<=", 3)
+    .where("estoque_atual", "<=", 5)
     .select("id", "codigo", "descricao", "estoque_atual", "preco_venda")
     .orderBy("estoque_atual", "asc")
     .limit(Math.min(Number(limit || 10), 50));
@@ -86,17 +129,25 @@ async function getLowStock(knex, lojaId, limit = 10) {
 async function getInventoryStats(knex, lojaId) {
   const row = await knex("produtos")
     .where({ loja_id: lojaId, ativo: true })
-    .count("id as totalProdutos")
-    .sum("estoque_atual as estoqueTotal")
-    .sum({ custoEstoque: knex.raw("custo * estoque_atual") })
-    .sum({ valorVendaEstoque: knex.raw("preco_venda * estoque_atual") })
+    .select(
+      knex.raw("COALESCE(SUM(custo * estoque_atual), 0) as \"custoTotal\""),
+      knex.raw("COALESCE(SUM(preco_venda * estoque_atual), 0) as \"vendaPotencial\""),
+      knex.raw("COALESCE(SUM(CASE WHEN estoque_atual <= 0 THEN 1 ELSE 0 END), 0) as \"qtdZerados\""),
+      knex.raw("COALESCE(SUM(CASE WHEN estoque_atual > 0 AND estoque_atual <= 5 THEN 1 ELSE 0 END), 0) as \"qtdBaixoEstoque\""),
+      knex.raw("COALESCE(SUM(estoque_atual), 0) as \"totalItensFisicos\""),
+    )
     .first();
 
+  const custoTotal = toNumber(row?.custoTotal);
+  const vendaPotencial = toNumber(row?.vendaPotencial);
+
   return {
-    totalProdutos: Number(row?.totalProdutos || 0),
-    estoqueTotal: Number(row?.estoqueTotal || 0),
-    custoEstoque: Number(row?.custoEstoque || 0),
-    valorVendaEstoque: Number(row?.valorVendaEstoque || 0),
+    custoTotal,
+    vendaPotencial,
+    lucroProjetado: vendaPotencial - custoTotal,
+    qtdZerados: toNumber(row?.qtdZerados),
+    qtdBaixoEstoque: toNumber(row?.qtdBaixoEstoque),
+    totalItensFisicos: toNumber(row?.totalItensFisicos),
   };
 }
 

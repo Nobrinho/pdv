@@ -113,6 +113,7 @@ app.whenReady().then(async () => {
     require("./handlers/print").register(safeHandle, knex, mainWindow);
     require("./handlers/update").register(safeHandle, knex, mainWindow, isDev);
     require("./handlers/eventLogs").register(safeHandle, knex);
+    require("./handlers/migration").register(safeHandle, knex, authSession);
   } else {
     // Se falhar, você pode mostrar um erro na splash ou logar
     console.error("O sistema não pôde ser iniciado devido a erros no banco.");

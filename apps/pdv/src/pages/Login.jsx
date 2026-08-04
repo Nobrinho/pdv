@@ -11,11 +11,27 @@ const Login = ({ onLoginSuccess }) => {
   const [appVersion, setAppVersion] = useState("");
   const isOnlineMode = api.isRemote;
   const [dataMode, setDataMode] = useState(api.dataMode);
+  // Sub-modo online: entrar em loja existente (join) ou criar nova loja
+  const [onlineSubMode, setOnlineSubMode] = useState("join");
 
   // Login State
-  const [lojaId, setLojaId] = useState(() => localStorage.getItem("syscontrol_online_loja_id") || "");
+  const [lojaId, setLojaId] = useState(() =>
+    isOnlineMode ? localStorage.getItem("syscontrol_online_loja_id") || "" : "",
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [apiUrl, setApiUrl] = useState(() => api.baseUrl);
+
+  // Create-store State (modo online)
+  const [createData, setCreateData] = useState({
+    lojaNome: "",
+    cidade: "",
+    telefone: "",
+    documento: "",
+    adminNome: "",
+    adminUser: "",
+    adminPass: "",
+  });
 
   // Setup State
   const [setupData, setSetupData] = useState({
@@ -48,6 +64,7 @@ const Login = ({ onLoginSuccess }) => {
 
   const handleDataModeChange = (mode) => {
     if (mode === dataMode) return;
+    if (mode === "online" && apiUrl) api.setApiUrl(apiUrl);
     api.setDataMode(mode);
     setDataMode(mode);
     window.location.reload();
@@ -59,17 +76,73 @@ const Login = ({ onLoginSuccess }) => {
     if (!username || !password) return showAlert("Informe usuário e senha.", "Atenção", "warning");
 
     try {
-      const result = await api.auth.login({ lojaId, username, password });
+      // Modo online: usa join (registra dispositivo e respeita limites do plano).
+      const result = isOnlineMode
+        ? await api.auth.joinStore({ lojaId, username, password })
+        : await api.auth.login({ lojaId, username, password });
       if (result.success) {
-        if (isOnlineMode) localStorage.setItem("syscontrol_online_loja_id", String(lojaId));
-        if (isOnlineMode) await reloadTenant();
+        if (isOnlineMode) {
+          localStorage.setItem("syscontrol_online_loja_id", String(result.loja?.id || lojaId));
+          await reloadTenant();
+        }
         onLoginSuccess(result.user);
       } else {
         showAlert(result.error || "Credenciais inválidas.", "Acesso Negado", "error");
       }
     } catch (error) {
       console.error(error);
-      showAlert("Falha técnica no processo de login.", "Erro", "error");
+      showAlert(error.message || "Falha técnica no processo de login.", "Erro", "error");
+    }
+  };
+
+  const handleCreateStore = async (e) => {
+    if (e) e.preventDefault();
+    if (!createData.lojaNome.trim())
+      return showAlert("Informe o nome da loja.", "Atenção", "warning");
+    if (!createData.adminNome.trim() || !createData.adminUser.trim())
+      return showAlert("Informe nome e usuário do administrador.", "Atenção", "warning");
+    if (createData.adminPass.length < 4)
+      return showAlert("A senha do administrador deve ter ao menos 4 dígitos.", "Senha Curta", "warning");
+
+    try {
+      const created = await api.auth.createStore({
+        store: {
+          nome: createData.lojaNome,
+          cidade: createData.cidade,
+          telefone: createData.telefone,
+          documento: createData.documento,
+        },
+        admin: {
+          nome: createData.adminNome,
+          username: createData.adminUser,
+          password: createData.adminPass,
+        },
+        settings: [{ chave: "loja_nome", valor: createData.lojaNome }],
+      });
+
+      if (!created.success)
+        return showAlert(created.error || "Falha ao criar loja.", "Erro", "error");
+
+      // Login automático (join) na loja recém-criada.
+      const joined = await api.auth.joinStore({
+        lojaId: created.loja.id,
+        username: createData.adminUser,
+        password: createData.adminPass,
+      });
+
+      if (joined.success) {
+        localStorage.setItem("syscontrol_online_loja_id", String(created.loja.id));
+        await reloadTenant();
+        showAlert(`Loja criada! Seu ID de loja é ${created.loja.id}. Guarde-o.`, "Loja criada", "success");
+        onLoginSuccess(joined.user);
+      } else {
+        setOnlineSubMode("join");
+        setLojaId(String(created.loja.id));
+        showAlert(`Loja criada (ID ${created.loja.id}). Faça login para entrar.`, "Loja criada", "success");
+      }
+    } catch (error) {
+      console.error(error);
+      showAlert(error.message || "Erro ao criar loja online.", "Erro", "error");
     }
   };
 
@@ -194,7 +267,74 @@ const Login = ({ onLoginSuccess }) => {
             </div>
           )}
 
-          {isSetupMode ? (
+          {isOnlineMode && (
+            <div className="mb-6 space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Servidor da API</label>
+                <input
+                  className="w-full bg-surface-50 border border-surface-200 p-3 rounded-2xl text-xs font-bold outline-none transition focus:bg-surface-100 text-surface-800"
+                  placeholder="http://localhost:3333"
+                  value={apiUrl}
+                  onChange={(e) => setApiUrl(e.target.value)}
+                  onBlur={() => api.setApiUrl(apiUrl)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 rounded-2xl bg-surface-200/70 p-1 text-[10px] font-black uppercase tracking-widest">
+                <button
+                  type="button"
+                  onClick={() => setOnlineSubMode("join")}
+                  className={`rounded-xl px-3 py-2 transition ${
+                    onlineSubMode === "join"
+                      ? "bg-surface-100 text-surface-900 shadow-sm"
+                      : "text-surface-500 hover:text-surface-800"
+                  }`}
+                >
+                  Entrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOnlineSubMode("create")}
+                  className={`rounded-xl px-3 py-2 transition ${
+                    onlineSubMode === "create"
+                      ? "bg-surface-100 text-surface-900 shadow-sm"
+                      : "text-surface-500 hover:text-surface-800"
+                  }`}
+                >
+                  Criar loja
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isOnlineMode && onlineSubMode === "create" ? (
+            <form onSubmit={handleCreateStore} className="space-y-4 animate-fade-in">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 col-span-2">
+                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Nome da loja</label>
+                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.lojaNome} onChange={(e) => setCreateData({ ...createData, lojaNome: e.target.value })} placeholder="Minha Loja" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Cidade / UF</label>
+                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.cidade} onChange={(e) => setCreateData({ ...createData, cidade: e.target.value })} placeholder="Manaus - AM" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Telefone</label>
+                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.telefone} onChange={(e) => setCreateData({ ...createData, telefone: e.target.value })} placeholder="(00) 00000-0000" />
+                </div>
+              </div>
+              <div className="pt-2 border-t border-surface-200 space-y-4">
+                <p className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Administrador da loja</p>
+                <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.adminNome} onChange={(e) => setCreateData({ ...createData, adminNome: e.target.value })} placeholder="Nome do administrador" required />
+                <div className="grid grid-cols-2 gap-3">
+                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.adminUser} onChange={(e) => setCreateData({ ...createData, adminUser: e.target.value })} placeholder="Login" required />
+                  <input type="password" className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.adminPass} onChange={(e) => setCreateData({ ...createData, adminPass: e.target.value })} placeholder="Senha" required />
+                </div>
+              </div>
+              <button type="submit" className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl" style={{ backgroundColor: tenant.corPrimaria, boxShadow: `0 12px 30px -10px ${tenant.corPrimaria}66` }}>
+                CRIAR LOJA <i className="fas fa-plus text-xs"></i>
+              </button>
+            </form>
+          ) : isSetupMode ? (
             <form onSubmit={handleSetup} className="space-y-5 animate-slide-up">
               <div className="p-4 rounded-2xl border mb-6 flex gap-4" style={{ backgroundColor: `${tenant.corPrimaria}08`, borderColor: `${tenant.corPrimaria}22` }}>
                  <i className="fas fa-magic mt-1" style={{ color: tenant.corPrimaria }}></i>
@@ -270,11 +410,11 @@ const Login = ({ onLoginSuccess }) => {
                 <div className="space-y-1 group">
                   <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">ID da loja</label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
+                    <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
                       <i className="fas fa-store text-lg"></i>
                     </div>
                     <input
-                      className="w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
+                      className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
                       style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
                       onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
                       onBlur={(e) => e.target.style.borderColor = ''}
@@ -290,11 +430,11 @@ const Login = ({ onLoginSuccess }) => {
               <div className="space-y-1 group">
                 <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">Usuário</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
+                  <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
                     <i className="fas fa-user-circle text-lg"></i>
                   </div>
                   <input
-                    className="w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
+                    className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
                     style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
                     onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
                     onBlur={(e) => e.target.style.borderColor = ''}
@@ -309,12 +449,12 @@ const Login = ({ onLoginSuccess }) => {
               <div className="space-y-1 group">
                 <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">Senha</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
+                  <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
                     <i className="fas fa-shield-alt text-lg"></i>
                   </div>
                   <input
                     type="password"
-                    className="w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
+                    className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
                     style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
                     onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
                     onBlur={(e) => e.target.style.borderColor = ''}

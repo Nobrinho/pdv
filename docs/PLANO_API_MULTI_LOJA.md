@@ -656,14 +656,105 @@ Implementado no repositório:
   - vendas/cancelamento/comissoes
   - configuracoes/tenant
 
-Ainda pendente:
+## Atualizacao MVP (29/07/2026)
 
-- Testar migrations contra um PostgreSQL real.
-- Conectar o Electron atual a essa API.
-- Criar painel Admin Web.
-- Implementar importador SQLite.
-- Implementar backup/restore online.
-- Criar dashboards e relatorios online.
+Rodada de fechamento do MVP do SaaS. O que foi validado e entregue:
+
+### Validacao contra PostgreSQL real
+
+- As migrations rodam limpas do zero em um Postgres real (validado com PGlite = Postgres 16), criando as 24 tabelas e o seed do platform admin + plano `Basico`.
+- Smoke test E2E completo passando: login plataforma, criar loja, login de loja, roles, pessoa, produto, cliente, venda com baixa de estoque transacional, bloqueio de loja -> 403 -> desbloqueio.
+- Novo comando `npm run server:smoke:local`: sobe um Postgres embarcado (PGlite), aplica migrations, inicia a API e roda o smoke completo — sem precisar de Postgres instalado. Ideal para CI e para validar antes de cada release.
+- `apps/pdv-back/src/db.js` agora aceita `DATABASE_POOL_MIN`/`DATABASE_POOL_MAX` por env (tuning de producao).
+
+### Onboarding online — entrar em loja (join)
+
+- Endpoint `POST /store/onboarding/join` implementado (`authService.joinStore`).
+- Autentica usuario da loja, valida status da loja, registra/reativa o dispositivo e **aplica o limite de dispositivos do plano** (`registerDevice`). Suporta codigo de convite (`store_invites`) como alternativa ao ID da loja.
+- Cliente do Electron (`apps/pdv/src/services/api.js`): novos metodos `auth.createStore` e `auth.joinStore`, device-id persistente por instalacao, e `setApiUrl` para configurar o servidor.
+- Tela de login do Electron: seletor Local/Online, campo de URL da API, e sub-modos **Entrar** (join com registro de dispositivo) e **Criar loja** (cria a loja online e ja entra). Removidas as credenciais de dev hardcoded.
+
+### Painel Admin (pdv-admin)
+
+- Backend: `GET /platform/me`, `GET /platform/dashboard` (agregados da plataforma), `POST /platform/stores` (criar loja pelo admin), `GET /platform/stores/:id/users`, `GET /platform/stores/:id/devices`, `POST .../devices/:deviceId/authorize|block`. Acoes registram em `platform_audit_logs`.
+- Frontend: abas **Lojas**, **Faturamento** (ranking por faturamento + totais) e **Acessos**; drawer de detalhe da loja com usuarios e dispositivos, com autorizar/bloquear dispositivo. Alem do bloqueio/liberacao de loja que ja existia.
+
+### Importador SQLite -> loja online (Fase 7) — FEITO
+
+- Endpoint `POST /store/import-sqlite` (`importService.importSqliteBackup`): recebe um dump no formato local, **remapeia os IDs** (os PKs online sao globais), **reescreve as chaves estrangeiras** em ordem de dependencia e **coage booleanos** (SQLite usa 0/1). Roda em transacao e por padrao so importa em loja vazia (protege contra duplicacao; aceita `force`).
+- Introspecta as colunas do destino em runtime (`columnInfo`), entao ignora colunas locais que nao existem online — resiliente a drift de schema.
+- Electron: handler `export-local-data` (dump de todas as tabelas locais), exposto no preload como `exportLocalData`, e `api.migrateLocalToOnline()` (le local via IPC + envia para a loja online logada). Botao "Migrar para a loja online" em Configuracoes > Ferramentas (visivel no modo online).
+- Validado E2E: import com IDs colidentes, FK reescrita, boolean 0/1, config e bloqueio de reimportacao.
+
+### Backup/restore online por loja (Fase 7) — FEITO
+
+- `GET /backup/export?persist=1`: exporta a loja e opcionalmente salva um snapshot no servidor.
+- `POST /backup/restore`: restaura SOBRE a loja atual e **gera automaticamente um snapshot `pre_restore`** antes de qualquer escrita destrutiva (recuperavel).
+- `GET /backup/list` e `GET /backup/:id`: lista e recupera snapshots salvos (tabela nova `store_backups`, migration `20260729_0007`).
+- `POST /platform/stores/restore`: restaura um backup em uma **loja nova**, remapeando ids e reescrevendo FKs (reusa o `importService`) — resolve a colisao de PKs globais.
+- Painel admin: botao "Restaurar de backup" (upload de arquivo -> cria loja nova). Electron ja tinha backup/restore da loja atual em Configuracoes > Ferramentas.
+- Validado E2E: export+persist, restore sobre a loja com snapshot automatico, listagem, restore em loja nova com dados remapeados.
+
+### Documentacao da API — FEITO
+
+- Swagger UI navegavel em `GET /docs` e spec OpenAPI 3.0.3 em `GET /openapi.json` (53 rotas, schemas, agrupadas por Publico/Plataforma/Loja). Sem dependencias novas (Swagger UI via CDN).
+
+### Relatorios online (Fase 6/relatorios) — FEITO
+
+- Endpoint `GET /reports/sales?startDate&endDate&sellerId&payment` (`reportsService.getSalesReport`): computa no servidor faturamento, custo, mao de obra, acrescimos, descontos, comissoes e lucro, alem de resumo por forma de pagamento e por responsavel de mao de obra. Reusa `listSales`/`listServices` (ja enriquecidos com `custo_total_real`, `comissao_real`, `lista_pagamentos`).
+- Cliente online `api.reports.sales(filtros)`; o hook `useReportData` usa o relatorio do servidor no modo online (caminho local intacto). A pagina Relatorios funciona online sem alteracoes de UI.
+- Validado E2E com numeros conferidos: faturamento/custo/comissoes/lucro, filtro por forma de pagamento e mao de obra por pessoa. Adicionado ao Swagger.
+
+### Billing / assinaturas na plataforma — FEITO
+
+- `billingService`: planos (listar/criar/atualizar), troca de plano, cancelamento, registro de pagamento (avanca vencimento, ativa a loja) e visao geral (`getBillingOverview`).
+- Endpoints: `GET /platform/billing` (MRR/ARR, receita por plano, contagem por status, assinaturas vencidas), `GET/POST /platform/plans`, `POST /platform/stores/:id/change-plan`, `POST /platform/stores/:id/cancel`, `POST /platform/stores/:id/register-payment`. Todas com audit log.
+- Painel admin: nova aba **Assinaturas** com MRR/ARR/vencidas, tabela de planos com receita e tabela de assinaturas com trocar plano, registrar pagamento e cancelar.
+- Validado E2E: criar plano Pro, trocar plano, registrar pagamento -> MRR = 99,90 / ARR = 1198,80, cancelamento bloqueia o login da loja. Adicionado ao Swagger.
+
+### Acoes de usuario de loja pelo admin — FEITO
+
+- `authService.resetStoreUserPassword` (aceita senha ou gera temporaria) e `setStoreUserActive` (com trava do ultimo admin).
+- Endpoints: `POST /platform/stores/:id/users/:userId/reset-password`, `.../deactivate`, `.../activate`. Com audit log.
+- Painel admin: no drawer da loja, cada usuario tem botoes **Senha** (mostra a nova senha gerada) e **Desativar/Ativar**.
+- Validado E2E: reset gera senha e o login passa a usar a nova; desativar bloqueia o login; reativar libera; desativar o ultimo admin e bloqueado.
+
+### Cobranca automatica ao vencer (dunning) — FEITO
+
+- `billingService.runDunning(knex, { graceDays })`: passo 1 marca assinaturas `active` vencidas como `past_due` (loja continua funcionando durante a carencia); passo 2 bloqueia a loja apos `BILLING_GRACE_DAYS` (padrao 5). Idempotente. O `registerPayment` reverte (reativa a loja e avanca o vencimento).
+- Disparo: `POST /platform/billing/run-dunning` (manual/teste) e script `npm run server:dunning` (para agendar via cron/agendador do SO, ex.: diariamente as 3h). Botao "Rodar cobranca" na aba Assinaturas do painel.
+- Validado E2E: vencida na carencia -> past_due (ainda loga); alem da carencia -> blocked (nao loga); pagamento -> active; execucao idempotente.
+
+### Hardening de producao — quick wins de codigo FEITOS
+
+- **CORS restrito**: `http.js/applySecurity` usa allowlist `CORS_ORIGINS` (vazio = `*`, comportamento de dev inalterado). Origem permitida e ecoada; origem desconhecida nao recebe `Access-Control-Allow-Origin`. Observacao: a allowlist vale para o painel web; o Electron e cliente nativo (requisicoes sem Origin de navegador passam) — em producao, inclua a origem do painel em `CORS_ORIGINS`.
+- **Segredo obrigatorio**: `config.validateConfig()` (chamado no boot do `server.js`) aborta em producao se `SERVER_TOKEN_SECRET`/`PLATFORM_ADMIN_PASSWORD` estiverem ausentes, no default ou fracos, ou sem `DATABASE_URL`.
+- **Rate limit** anti brute-force em `/platform/auth/login`, `/auth/login`, `/store/onboarding/join` (`AUTH_RATE_LIMIT_MAX`/`_WINDOW_MS`, padrao 20/15min) -> 429. Em memoria (multi-instancia exigiria Redis).
+- **Logs estruturados** (`logger.js`, JSON) + handler de erro central que **nao vaza detalhes internos em producao** (retorna "Erro interno.").
+- **Headers de seguranca** (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) e **Swagger `/docs` desligavel** (`ENABLE_DOCS`, off por padrao em producao).
+- Validado E2E: CORS allowlist, headers, 429 no rate limit, docs 404 quando off, e validacao de config de producao. Variaveis documentadas no `.env.example`.
+
+### Deploy — artefatos prontos
+
+- Decisao: **Railway** (API + Postgres juntos) como caminho inicial, por ser o mais simples/barato; o sistema **nao esta em uso ao vivo no balcao**, entao latencia nao e fator agora. Banco e so Postgres — da pra migrar para **Neon (Sao Paulo)** depois, se quiser dados no Brasil.
+- `Dockerfile` (raiz, portavel Railway/Fly/Render/VPS) + `.dockerignore`; script `server:start`; guia passo a passo em `docs/DEPLOY.md` (banco, API, migrations, dunning agendado, painel estatico, app desktop apontando para a nuvem, checklist).
+- Validado o boot de producao in-process: `validateConfig` passa com segredos fortes, `/docs` off, login funciona, erro interno nao vaza detalhes.
+
+### Deploy de teste GRATIS — artefatos prontos
+
+- Pilha 100% gratuita para validar: **Neon** (Postgres, Sao Paulo) + **Render** free (API via `Dockerfile`; Northflank como alternativa always-on) + **Cloudflare Pages** (painel estatico) + **GitHub Actions** (cron do dunning). Obs.: a Koyeb foi comprada pela Mistral e encerrou o free tier.
+- `.github/workflows/dunning.yml` (roda `server:dunning` 1x/dia direto no banco; so precisa do secret `DATABASE_URL`) e guia `docs/DEPLOY-FREE.md` com o passo a passo.
+- Ajuste de portabilidade: `config.port` agora respeita `PORT` (injetado por Koyeb/Render/Railway).
+- Nota: Railway nao tem mais free tier real (so trial de 30 dias); por isso a pilha gratis usa Koyeb.
+
+### Ainda pendente (infra e operacao)
+
+1. **Executar o deploy** seguindo `docs/DEPLOY-FREE.md` (Neon + Koyeb + Cloudflare Pages + secret do GitHub Actions). `docs/DEPLOY.md` cobre a variante paga no Railway.
+2. **Monitoramento**: uptime no `/health` (ex.: UptimeRobot), coletor de erros (ex.: Sentry).
+3. **Backups automaticos do banco** habilitados no provedor + staging.
+4. **Rodar a suite existente** (`npm test`) no Windows; adicionar testes de backend com o harness PGlite.
+5. **Lembretes de vencimento por e-mail** (depende de canal de e-mail, inexistente).
+6. **Modo offline somente-leitura** no Electron quando a internet cair.
 
 ## Riscos Principais
 

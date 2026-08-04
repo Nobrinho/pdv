@@ -1,0 +1,147 @@
+// =============================================================
+// importService.js - Importa um backup do PDV local (SQLite) para
+// uma loja online. Recebe um dump JSON no formato local (tabelas ->
+// linhas), remapeia os IDs (os PKs online sao globais) e reescreve
+// as chaves estrangeiras, tudo dentro de uma transacao.
+// =============================================================
+
+// Ordem de importacao: pais antes de filhos.
+// fks: coluna no destino -> tabela pai cujo mapa de ids sera usado.
+const IMPORT_PLAN = [
+  { table: "configuracoes", pk: false, fks: {} },
+  { table: "cargos", pk: true, fks: {} },
+  { table: "pessoas", pk: true, fks: { cargo_id: "cargos" } },
+  { table: "clientes", pk: true, fks: {} },
+  { table: "produtos", pk: true, fks: {} },
+  { table: "usuarios", pk: true, fks: {} },
+  {
+    table: "vendas",
+    pk: true,
+    fks: { vendedor_id: "pessoas", trocador_id: "pessoas", cliente_id: "clientes" },
+  },
+  { table: "venda_itens", pk: false, fks: { venda_id: "vendas", produto_id: "produtos" } },
+  { table: "venda_pagamentos", pk: false, fks: { venda_id: "vendas" } },
+  { table: "contas_receber", pk: false, fks: { cliente_id: "clientes", venda_id: "vendas" } },
+  { table: "historico_produtos", pk: false, fks: { produto_id: "produtos" } },
+  { table: "servicos_avulsos", pk: false, fks: { trocador_id: "pessoas" } },
+  {
+    table: "orcamentos",
+    pk: true,
+    fks: {
+      cliente_id: "clientes",
+      vendedor_id: "pessoas",
+      trocador_id: "pessoas",
+      venda_id_gerada: "vendas",
+    },
+  },
+  { table: "orcamento_itens", pk: false, fks: { orcamento_id: "orcamentos", produto_id: "produtos" } },
+  { table: "event_logs", pk: false, fks: { user_id: "usuarios" } },
+];
+
+// Colunas que nunca devem vir do dump (o destino gera/gerencia).
+const SKIP_COLUMNS = new Set(["id", "loja_id", "created_at", "updated_at"]);
+
+function extractTables(payload = {}) {
+  if (payload.tables && typeof payload.tables === "object") return payload.tables;
+  if (payload.backup && payload.backup.tables) return payload.backup.tables;
+  // Aceita tambem o objeto plano { produtos: [...], vendas: [...] }.
+  if (payload && typeof payload === "object") return payload;
+  return {};
+}
+
+function coerceBoolean(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") return ["1", "true", "t", "yes", "sim"].includes(value.toLowerCase());
+  return !!value;
+}
+
+async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
+  const tables = extractTables(payload);
+  if (!tables || typeof tables !== "object") {
+    return { success: false, error: "Backup invalido: nenhuma tabela encontrada." };
+  }
+
+  // Protege contra importacao duplicada: exige loja "vazia" (sem produtos/vendas).
+  if (!options.force) {
+    const [prod, vendas] = await Promise.all([
+      knex("produtos").where({ loja_id: lojaId }).count("id as t").first(),
+      knex("vendas").where({ loja_id: lojaId }).count("id as t").first(),
+    ]);
+    if (Number(prod?.t || 0) > 0 || Number(vendas?.t || 0) > 0) {
+      return {
+        success: false,
+        error: "A loja ja possui produtos ou vendas. Importe apenas em uma loja nova (ou use force).",
+      };
+    }
+  }
+
+  const summary = {};
+
+  const result = await knex.transaction(async (trx) => {
+    const idMaps = {}; // tabela -> { oldId: newId }
+
+    for (const step of IMPORT_PLAN) {
+      const { table, pk, fks } = step;
+      const rows = Array.isArray(tables[table]) ? tables[table] : [];
+      if (!rows.length) {
+        summary[table] = 0;
+        continue;
+      }
+
+      const columnInfo = await trx(table).columnInfo();
+      const validColumns = new Set(Object.keys(columnInfo));
+      const booleanColumns = new Set(
+        Object.keys(columnInfo).filter((c) => columnInfo[c].type === "boolean"),
+      );
+      if (pk) idMaps[table] = {};
+
+      let inserted = 0;
+      for (const row of rows) {
+        const mapped = {};
+        for (const [key, value] of Object.entries(row)) {
+          if (SKIP_COLUMNS.has(key)) continue;
+          if (!validColumns.has(key)) continue; // ignora colunas locais que nao existem online
+          mapped[key] = booleanColumns.has(key) ? coerceBoolean(value) : value;
+        }
+
+        // Reescreve as FKs usando os mapas dos pais ja importados.
+        for (const [fkColumn, parentTable] of Object.entries(fks)) {
+          if (!validColumns.has(fkColumn)) continue;
+          const oldValue = row[fkColumn];
+          if (oldValue === null || oldValue === undefined || oldValue === "") {
+            mapped[fkColumn] = null;
+            continue;
+          }
+          const parentMap = idMaps[parentTable] || {};
+          mapped[fkColumn] = parentMap[oldValue] ?? null;
+        }
+
+        mapped.loja_id = lojaId;
+
+        if (table === "configuracoes") {
+          await trx(table).insert(mapped).onConflict(["loja_id", "chave"]).merge();
+          inserted += 1;
+          continue;
+        }
+
+        if (pk) {
+          const [created] = await trx(table).insert(mapped).returning(["id"]);
+          if (row.id !== undefined && row.id !== null) idMaps[table][row.id] = created.id;
+        } else {
+          await trx(table).insert(mapped);
+        }
+        inserted += 1;
+      }
+
+      summary[table] = inserted;
+    }
+
+    return { success: true, summary };
+  });
+
+  return result;
+}
+
+module.exports = { importSqliteBackup, IMPORT_PLAN };

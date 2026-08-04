@@ -11,6 +11,7 @@ const StatCard = ({
   icon,
   tooltip,
   isCurrency = true,
+  format,
   className = "",
 }) => {
   const colorMap = {
@@ -24,6 +25,7 @@ const StatCard = ({
   };
 
   const colors = colorMap[color] || colorMap.blue;
+  const displayValue = format ? format(value) : isCurrency ? formatCurrency(value) : value;
 
   return (
     <div
@@ -40,7 +42,7 @@ const StatCard = ({
           {title}
         </p>
         <p className={`text-xl font-bold ${colors.text}`}>
-          {isCurrency ? formatCurrency(value) : value}
+          {displayValue}
         </p>
       </div>
       {icon && (

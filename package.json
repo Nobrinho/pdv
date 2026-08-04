@@ -12,11 +12,16 @@
   },
   "scripts": {
     "dev": "vite --config apps/pdv/vite.config.js",
+    "admin:dev": "vite --config apps/pdv-admin/vite.config.js",
+    "admin:build": "vite build --config apps/pdv-admin/vite.config.js",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "server:dev": "node apps/pdv-back/src/server.js",
+    "server:start": "node apps/pdv-back/src/server.js",
     "server:migrate": "knex migrate:latest --knexfile ./apps/pdv-back/knexfile.js",
     "server:smoke": "node apps/pdv-back/scripts/smoke.js",
+    "server:dunning": "node apps/pdv-back/scripts/dunning.js",
+    "server:smoke:local": "node apps/pdv-back/scripts/smoke-local.mjs",
     "build": "vite build --config apps/pdv/vite.config.js",
     "electron": "electron .",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
@@ -94,6 +99,8 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@electric-sql/pglite-socket": "^0.0.9",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

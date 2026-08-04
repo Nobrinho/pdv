@@ -234,7 +234,13 @@ const Config = () => {
     if (isRestoreRunning) return;
     try {
       setIsRestoreRunning(true);
-      await api.config.restore();
+      const result = await api.config.restore();
+      if (result?.success) {
+        showAlert("Backup restaurado com sucesso!", "Dados Restaurados", "success");
+        await loadData();
+      } else if (result?.error) {
+        showAlert("Erro: " + result.error, "Falha na Restauracao", "error");
+      }
     } catch (error) {
       showAlert("Erro ao tentar restaurar backup.", "Erro", "error");
     } finally {

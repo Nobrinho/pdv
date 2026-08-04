@@ -235,18 +235,56 @@ const Produtos = () => {
       }
     }
   };  // === SELECIONAR ARQUIVO ===
+  const selectSpreadsheetInBrowser = () =>
+    new Promise((resolve) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = [
+        ".xlsx",
+        ".xls",
+        ".csv",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
+      ].join(",");
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return resolve({ canceled: true });
+
+        try {
+          const buffer = await file.arrayBuffer();
+          resolve({
+            canceled: false,
+            fileName: file.name,
+            bytes: new Uint8Array(buffer),
+          });
+        } catch (error) {
+          resolve({
+            canceled: false,
+            error: error.message || "Nao foi possivel ler o arquivo.",
+          });
+        }
+      };
+      input.click();
+    });
+
   const handleSelectFile = async () => {
     try {
-      const fileResult = await api.system.openFileDialog();
+      const fileResult = api.isRemote
+        ? await selectSpreadsheetInBrowser()
+        : await api.system.openFileDialog();
       if (fileResult.canceled) return;
+      if (fileResult.error) throw new Error(fileResult.error);
 
       setImportFileName(fileResult.fileName);
       setImportResult(null);
 
-      // Decodificar base64 e parsear com SheetJS
-      const binaryStr = atob(fileResult.buffer);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+      let bytes = fileResult.bytes;
+      if (!bytes) {
+        const binaryStr = atob(fileResult.buffer);
+        bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+      }
 
       const workbook = XLSX.read(bytes, { type: "array" });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];

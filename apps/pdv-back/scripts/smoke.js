@@ -131,6 +131,58 @@ async function main() {
   }
   console.log("stock after sale:", soldProduct.estoque_atual);
 
+  // --- Onboarding: entrar em loja existente (join) + limite de dispositivos ---
+  const joinSame = await request(
+    "POST",
+    "/store/onboarding/join",
+    {
+      lojaId: createdStore.loja.id,
+      username: `admin${suffix}`,
+      password: "1234",
+      device: { deviceId: `smoke-${suffix}`, nomeMaquina: "Smoke Test" },
+    },
+  );
+  if (!joinSame.token) throw new Error("join no mesmo dispositivo deveria retornar token.");
+  console.log("join same device:", joinSame.device?.novo === false ? "reconhecido" : "novo");
+
+  const joinSecond = await fetch(`${BASE_URL}/store/onboarding/join`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      lojaId: createdStore.loja.id,
+      username: `admin${suffix}`,
+      password: "1234",
+      device: { deviceId: `smoke-2-${suffix}`, nomeMaquina: "Segundo PC" },
+    }),
+  });
+  if (joinSecond.status !== 400) {
+    throw new Error(`2o dispositivo (limite plano) deveria falhar com 400, retornou ${joinSecond.status}`);
+  }
+  console.log("device limit enforced:", joinSecond.status);
+
+  // --- Painel da plataforma: dashboard, usuarios e dispositivos ---
+  const me = await request("GET", "/platform/me", undefined, platformLogin.token);
+  console.log("platform me:", me.user.email);
+
+  const dashboard = await request("GET", "/platform/dashboard", undefined, platformLogin.token);
+  console.log("platform dashboard stores:", dashboard.stats.total_lojas);
+
+  const storeUsers = await request(
+    "GET",
+    `/platform/stores/${createdStore.loja.id}/users`,
+    undefined,
+    platformLogin.token,
+  );
+  console.log("store users:", storeUsers.users.length);
+
+  const storeDevices = await request(
+    "GET",
+    `/platform/stores/${createdStore.loja.id}/devices`,
+    undefined,
+    platformLogin.token,
+  );
+  console.log("store devices:", storeDevices.devices.length);
+
   const blocked = await request(
     "POST",
     `/platform/stores/${createdStore.loja.id}/block`,
@@ -158,7 +210,11 @@ async function main() {
   console.log("smoke ok");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+module.exports = { main };
+
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

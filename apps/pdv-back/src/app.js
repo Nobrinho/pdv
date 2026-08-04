@@ -1,5 +1,9 @@
 const { knex } = require("./db");
-const { readJson, sendError, sendJson } = require("./http");
+const { readJson, sendError, sendJson, sendHtml, applySecurity } = require("./http");
+const { config } = require("./config");
+const logger = require("./logger");
+const { rateLimit } = require("./security/rateLimit");
+const { spec: openapiSpec, swaggerHtml } = require("./openapi");
 const {
   requirePlatform,
   requireStore,
@@ -9,11 +13,22 @@ const {
 const {
   loginPlatform,
   loginStore,
+  joinStore,
+  resetStoreUserPassword,
+  setStoreUserActive,
   listStoreUsers,
   saveStoreUser,
   deleteStoreUser,
 } = require("./services/authService");
-const { createStore, listStores, setStoreStatus } = require("./services/storeService");
+const {
+  createStore,
+  listStores,
+  setStoreStatus,
+  getPlatformDashboard,
+  listStoreUsersForPlatform,
+  listStoreDevices,
+  setDeviceAuthorization,
+} = require("./services/storeService");
 const { logPlatformAction } = require("./services/auditService");
 const {
   listProducts,
@@ -65,6 +80,24 @@ const {
   duplicateBudget,
   convertBudget,
 } = require("./services/budgetService");
+const {
+  exportStoreBackup,
+  restoreStoreBackup,
+  listStoreBackups,
+  getStoreBackup,
+  restoreBackupToNewStore,
+} = require("./services/backupService");
+const { importSqliteBackup } = require("./services/importService");
+const { getSalesReport } = require("./services/reportsService");
+const {
+  listPlans,
+  savePlan,
+  changeStorePlan,
+  cancelStoreSubscription,
+  registerPayment,
+  runDunning,
+  getBillingOverview,
+} = require("./services/billingService");
 
 function match(method, pathname, expectedMethod, pattern) {
   if (method !== expectedMethod) return null;
@@ -72,9 +105,30 @@ function match(method, pathname, expectedMethod, pattern) {
   return matchResult ? matchResult.groups || {} : null;
 }
 
+// Rotas de credenciais sujeitas a rate limit (anti brute-force).
+const AUTH_RATE_LIMITED = new Set([
+  "/platform/auth/login",
+  "/auth/login",
+  "/store/onboarding/join",
+]);
+
+function tooManyAuthAttempts(req, res, pathname) {
+  if (!AUTH_RATE_LIMITED.has(pathname)) return false;
+  const ip = req.socket.remoteAddress || "unknown";
+  const { limited } = rateLimit(`auth:${ip}`, config.authRateLimit);
+  if (limited) {
+    logger.warn("rate_limited", { ip, path: pathname });
+    sendError(res, 429, "Muitas tentativas. Aguarde alguns minutos e tente novamente.");
+    return true;
+  }
+  return false;
+}
+
 async function handleRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const { pathname } = url;
+
+  applySecurity(req, res, config);
 
   if (req.method === "OPTIONS") {
     return sendJson(res, 200, {});
@@ -83,6 +137,16 @@ async function handleRequest(req, res) {
   if (req.method === "GET" && pathname === "/health") {
     return sendJson(res, 200, { success: true, status: "ok" });
   }
+
+  if (config.enableDocs && req.method === "GET" && (pathname === "/docs" || pathname === "/docs/")) {
+    return sendHtml(res, 200, swaggerHtml);
+  }
+
+  if (config.enableDocs && req.method === "GET" && pathname === "/openapi.json") {
+    return sendJson(res, 200, openapiSpec);
+  }
+
+  if (tooManyAuthAttempts(req, res, pathname)) return;
 
   try {
     if (req.method === "POST" && pathname === "/platform/auth/login") {
@@ -103,11 +167,258 @@ async function handleRequest(req, res) {
       return sendJson(res, result.success ? 201 : 400, result);
     }
 
+    if (req.method === "POST" && pathname === "/store/onboarding/join") {
+      const body = await readJson(req);
+      const result = await joinStore(knex, body);
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    if (req.method === "GET" && pathname === "/platform/me") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const user = await knex("platform_users")
+        .where({ id: auth.userId })
+        .select("id", "nome", "email", "role", "ativo")
+        .first();
+      if (!user || !user.ativo) return sendError(res, 401, "Usuario invalido.");
+      return sendJson(res, 200, { success: true, user });
+    }
+
+    if (req.method === "GET" && pathname === "/platform/dashboard") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const stats = await getPlatformDashboard(knex);
+      return sendJson(res, 200, { success: true, stats });
+    }
+
     if (req.method === "GET" && pathname === "/platform/stores") {
       const auth = requirePlatform(req);
       if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
       const stores = await listStores(knex);
       return sendJson(res, 200, { success: true, stores });
+    }
+
+    if (req.method === "POST" && pathname === "/platform/stores") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await createStore(knex, body);
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: result.loja.id,
+          acao: "store.create",
+          entidade: "lojas",
+          entidadeId: String(result.loja.id),
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 201 : 400, result);
+    }
+
+    if (req.method === "GET" && pathname === "/platform/billing") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      return sendJson(res, 200, await getBillingOverview(knex));
+    }
+
+    if (req.method === "POST" && pathname === "/platform/billing/run-dunning") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await runDunning(knex, { graceDays: body.graceDays });
+      await logPlatformAction(knex, {
+        platformUserId: auth.userId,
+        acao: "billing.dunning",
+        entidade: "assinaturas",
+        metadata: result,
+        ip: req.socket.remoteAddress,
+        userAgent: req.headers["user-agent"],
+      });
+      return sendJson(res, 200, result);
+    }
+
+    if (req.method === "GET" && pathname === "/platform/plans") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      return sendJson(res, 200, await listPlans(knex));
+    }
+
+    if (req.method === "POST" && pathname === "/platform/plans") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await savePlan(knex, body);
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const changePlanParams = match(req.method, pathname, "POST", /^\/platform\/stores\/(?<id>\d+)\/change-plan$/);
+    if (changePlanParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await changeStorePlan(knex, Number(changePlanParams.id), Number(body.planoId ?? body.plano_id));
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: Number(changePlanParams.id),
+          acao: "store.change_plan",
+          entidade: "lojas",
+          entidadeId: changePlanParams.id,
+          metadata: { plano_id: body.planoId ?? body.plano_id },
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const cancelStoreParams = match(req.method, pathname, "POST", /^\/platform\/stores\/(?<id>\d+)\/cancel$/);
+    if (cancelStoreParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await cancelStoreSubscription(knex, Number(cancelStoreParams.id), body.motivo);
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: Number(cancelStoreParams.id),
+          acao: "store.cancel",
+          entidade: "lojas",
+          entidadeId: cancelStoreParams.id,
+          metadata: { motivo: body.motivo || null },
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const payParams = match(req.method, pathname, "POST", /^\/platform\/stores\/(?<id>\d+)\/register-payment$/);
+    if (payParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await registerPayment(knex, Number(payParams.id), body);
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: Number(payParams.id),
+          acao: "store.payment",
+          entidade: "assinaturas",
+          entidadeId: payParams.id,
+          metadata: { valor: result.valor, vencimento: result.vencimento },
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const storeUsersParams = match(req.method, pathname, "GET", /^\/platform\/stores\/(?<id>\d+)\/users$/);
+    if (storeUsersParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const users = await listStoreUsersForPlatform(knex, Number(storeUsersParams.id));
+      return sendJson(res, 200, { success: true, users });
+    }
+
+    const resetUserParams = match(
+      req.method,
+      pathname,
+      "POST",
+      /^\/platform\/stores\/(?<id>\d+)\/users\/(?<userId>\d+)\/reset-password$/,
+    );
+    if (resetUserParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await resetStoreUserPassword(
+        knex,
+        Number(resetUserParams.id),
+        Number(resetUserParams.userId),
+        body.password,
+      );
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: Number(resetUserParams.id),
+          acao: "user.reset_password",
+          entidade: "usuarios",
+          entidadeId: resetUserParams.userId,
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const userActiveParams = match(
+      req.method,
+      pathname,
+      "POST",
+      /^\/platform\/stores\/(?<id>\d+)\/users\/(?<userId>\d+)\/(?<action>deactivate|activate)$/,
+    );
+    if (userActiveParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const ativo = userActiveParams.action === "activate";
+      const result = await setStoreUserActive(
+        knex,
+        Number(userActiveParams.id),
+        Number(userActiveParams.userId),
+        ativo,
+      );
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: Number(userActiveParams.id),
+          acao: `user.${userActiveParams.action}`,
+          entidade: "usuarios",
+          entidadeId: userActiveParams.userId,
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const storeDevicesParams = match(req.method, pathname, "GET", /^\/platform\/stores\/(?<id>\d+)\/devices$/);
+    if (storeDevicesParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const devices = await listStoreDevices(knex, Number(storeDevicesParams.id));
+      return sendJson(res, 200, { success: true, devices });
+    }
+
+    const authDeviceParams = match(
+      req.method,
+      pathname,
+      "POST",
+      /^\/platform\/stores\/(?<id>\d+)\/devices\/(?<deviceId>\d+)\/(?<action>authorize|block)$/,
+    );
+    if (authDeviceParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const result = await setDeviceAuthorization(
+        knex,
+        Number(authDeviceParams.id),
+        Number(authDeviceParams.deviceId),
+        authDeviceParams.action === "authorize",
+      );
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: Number(authDeviceParams.id),
+          acao: `device.${authDeviceParams.action}`,
+          entidade: "dispositivos",
+          entidadeId: authDeviceParams.deviceId,
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 200 : 404, result);
     }
 
     const blockParams = match(
@@ -691,6 +1002,20 @@ async function handleRequest(req, res) {
       return sendJson(res, result.success ? 200 : 400, result);
     }
 
+    if (req.method === "GET" && pathname === "/reports/sales") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      const result = await getSalesReport(knex, auth.lojaId, {
+        startDate: url.searchParams.get("startDate"),
+        endDate: url.searchParams.get("endDate"),
+        sellerId: url.searchParams.get("sellerId"),
+        payment: url.searchParams.get("payment"),
+      });
+      return sendJson(res, 200, result);
+    }
+
     if (req.method === "GET" && pathname === "/dashboard/stats") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
@@ -797,10 +1122,100 @@ async function handleRequest(req, res) {
       return sendJson(res, 200, { success: true, tenant });
     }
 
+    if (req.method === "GET" && pathname === "/backup/export") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const persist = ["1", "true"].includes(url.searchParams.get("persist"));
+      const result = await exportStoreBackup(knex, auth.lojaId, { persist });
+      return sendJson(res, 200, result);
+    }
+
+    if (req.method === "GET" && pathname === "/backup/list") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const result = await listStoreBackups(knex, auth.lojaId);
+      return sendJson(res, 200, result);
+    }
+
+    const backupItemParams = match(req.method, pathname, "GET", /^\/backup\/(?<id>\d+)$/);
+    if (backupItemParams) {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const result = await getStoreBackup(knex, auth.lojaId, Number(backupItemParams.id));
+      return sendJson(res, result.success ? 200 : 404, result);
+    }
+
+    if (req.method === "POST" && pathname === "/platform/stores/restore") {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const body = await readJson(req);
+      const result = await restoreBackupToNewStore(knex, body);
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: result.loja.id,
+          acao: "store.restore",
+          entidade: "lojas",
+          entidadeId: String(result.loja.id),
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 201 : 400, result);
+    }
+
+    if (req.method === "POST" && pathname === "/store/import-sqlite") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const body = await readJson(req);
+      const result = await importSqliteBackup(knex, auth.lojaId, body, { force: !!body.force });
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    if (req.method === "POST" && pathname === "/backup/restore") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const body = await readJson(req);
+      const result = await restoreStoreBackup(knex, auth.lojaId, body);
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
     return sendError(res, 404, "Rota nao encontrada.");
   } catch (error) {
-    console.error("[server]", error);
-    return sendError(res, 500, error.message || "Erro interno.");
+    logger.error("request_error", {
+      method: req.method,
+      path: pathname,
+      message: error.message,
+      stack: config.isProduction ? undefined : error.stack,
+    });
+    // Nao vaza detalhes internos em producao.
+    const clientMessage = config.isProduction ? "Erro interno." : error.message || "Erro interno.";
+    return sendError(res, 500, clientMessage);
   }
 }
 
