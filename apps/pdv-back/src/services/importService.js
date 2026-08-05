@@ -51,6 +51,26 @@ function extractTables(payload = {}) {
   return {};
 }
 
+// Converte datas do banco local para colunas timestamp do Postgres.
+// O local guarda epoca em ms (Date.now()); colunas bigInteger no online
+// continuam recebendo o numero cru (nao passam por aqui).
+function coerceTimestamp(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const asNumber =
+    typeof value === "number"
+      ? value
+      : /^\d{10,}$/.test(String(value).trim())
+        ? Number(String(value).trim())
+        : null;
+  if (asNumber !== null && Number.isFinite(asNumber)) {
+    const ms = asNumber < 1e12 ? asNumber * 1000 : asNumber; // 10 digitos=seg, 13=ms
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function coerceBoolean(value) {
   if (value === null || value === undefined) return null;
   if (typeof value === "boolean") return value;
@@ -97,6 +117,9 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
       const booleanColumns = new Set(
         Object.keys(columnInfo).filter((c) => columnInfo[c].type === "boolean"),
       );
+      const dateColumns = new Set(
+        Object.keys(columnInfo).filter((c) => /timestamp|date/i.test(columnInfo[c].type)),
+      );
       if (pk) idMaps[table] = {};
 
       let inserted = 0;
@@ -105,7 +128,11 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
         for (const [key, value] of Object.entries(row)) {
           if (SKIP_COLUMNS.has(key)) continue;
           if (!validColumns.has(key)) continue; // ignora colunas locais que nao existem online
-          mapped[key] = booleanColumns.has(key) ? coerceBoolean(value) : value;
+          mapped[key] = booleanColumns.has(key)
+            ? coerceBoolean(value)
+            : dateColumns.has(key)
+              ? coerceTimestamp(value)
+              : value;
         }
 
         // Reescreve as FKs usando os mapas dos pais ja importados.
