@@ -122,8 +122,7 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
       );
       if (pk) idMaps[table] = {};
 
-      let inserted = 0;
-      for (const row of rows) {
+      const buildMapped = (row) => {
         const mapped = {};
         for (const [key, value] of Object.entries(row)) {
           if (SKIP_COLUMNS.has(key)) continue;
@@ -134,7 +133,6 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
               ? coerceTimestamp(value)
               : value;
         }
-
         // Reescreve as FKs usando os mapas dos pais ja importados.
         for (const [fkColumn, parentTable] of Object.entries(fks)) {
           if (!validColumns.has(fkColumn)) continue;
@@ -143,20 +141,28 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
             mapped[fkColumn] = null;
             continue;
           }
-          const parentMap = idMaps[parentTable] || {};
-          mapped[fkColumn] = parentMap[oldValue] ?? null;
+          mapped[fkColumn] = (idMaps[parentTable] || {})[oldValue] ?? null;
         }
-
         mapped.loja_id = lojaId;
+        return mapped;
+      };
 
-        if (table === "configuracoes") {
-          await trx(table).insert(mapped).onConflict(["loja_id", "chave"]).merge();
+      let inserted = 0;
+
+      // configuracoes: upsert por (loja_id, chave) — poucas linhas.
+      if (table === "configuracoes") {
+        for (const row of rows) {
+          await trx(table).insert(buildMapped(row)).onConflict(["loja_id", "chave"]).merge();
           inserted += 1;
-          continue;
         }
+        summary[table] = inserted;
+        continue;
+      }
 
-        // Reaproveita linha ja existente (ex.: cargos/usuarios semeados na criacao).
-        if (pk && step.uniqueBy) {
+      // cargos/usuarios: reaproveita existentes (poucas linhas) — individual.
+      if (pk && step.uniqueBy) {
+        for (const row of rows) {
+          const mapped = buildMapped(row);
           const where = { loja_id: lojaId };
           for (const col of step.uniqueBy) where[col] = mapped[col];
           const existing = await trx(table).where(where).first();
@@ -164,17 +170,31 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
             if (row.id !== undefined && row.id !== null) idMaps[table][row.id] = existing.id;
             continue;
           }
-        }
-
-        if (pk) {
           const [created] = await trx(table).insert(mapped).returning(["id"]);
           if (row.id !== undefined && row.id !== null) idMaps[table][row.id] = created.id;
-        } else {
-          await trx(table).insert(mapped);
+          inserted += 1;
         }
-        inserted += 1;
+        summary[table] = inserted;
+        continue;
       }
 
+      // Demais tabelas: insercao em LOTE (chunks) — muito mais rapido no banco remoto.
+      const CHUNK = 500;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const slice = rows.slice(i, i + CHUNK);
+        const mappedChunk = slice.map(buildMapped);
+        if (pk) {
+          // Postgres retorna os ids na mesma ordem das linhas inseridas.
+          const created = await trx(table).insert(mappedChunk).returning(["id"]);
+          for (let j = 0; j < created.length; j += 1) {
+            const oldId = slice[j].id;
+            if (oldId !== undefined && oldId !== null) idMaps[table][oldId] = created[j].id;
+          }
+        } else {
+          await trx(table).insert(mappedChunk);
+        }
+        inserted += mappedChunk.length;
+      }
       summary[table] = inserted;
     }
 
