@@ -2,7 +2,6 @@
  * Handler de migracao: exporta todo o banco local (SQLite) em um dump
  * JSON no formato consumido pelo endpoint online POST /store/import-sqlite.
  */
-const { requireAdmin } = require("../lib/authSession");
 
 // Tabelas do banco local que fazem parte dos dados de uma loja.
 const LOCAL_TABLES = [
@@ -25,8 +24,13 @@ const LOCAL_TABLES = [
 
 function register(safeHandle, knex, authSession) {
   safeHandle("export-local-data", async (event) => {
-    const authError = await requireAdmin(event, knex, authSession);
-    if (authError) return authError;
+    // No modo online nao ha login local (a autorizacao acontece na API, que
+    // exige admin da loja online). So exigimos admin local se houver um usuario
+    // local logado e ele nao for admin (ex.: caixa no modo local).
+    const localUser = authSession?.getUser?.(event);
+    if (localUser && !authSession.isAdmin(event)) {
+      return { success: false, error: "Permissao de administrador necessaria." };
+    }
 
     const tables = {};
     for (const table of LOCAL_TABLES) {

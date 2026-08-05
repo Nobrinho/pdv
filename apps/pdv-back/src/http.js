@@ -56,14 +56,20 @@ function sendError(res, statusCode, message, details) {
   });
 }
 
+// Limite do corpo da requisicao. Importacao/backup enviam dumps grandes,
+// entao o teto e generoso (configuravel por MAX_BODY_MB, padrao 25MB).
+const MAX_BODY_BYTES = Number(process.env.MAX_BODY_MB || 25) * 1024 * 1024;
+
 function readJson(req) {
   return new Promise((resolve, reject) => {
     let body = "";
+    let aborted = false;
     req.on("data", (chunk) => {
+      if (aborted) return;
       body += chunk;
-      if (body.length > 1024 * 1024) {
+      if (body.length > MAX_BODY_BYTES) {
+        aborted = true;
         reject(new Error("Payload muito grande."));
-        req.destroy();
       }
     });
     req.on("end", () => {
