@@ -9,11 +9,13 @@
 // fks: coluna no destino -> tabela pai cujo mapa de ids sera usado.
 const IMPORT_PLAN = [
   { table: "configuracoes", pk: false, fks: {} },
-  { table: "cargos", pk: true, fks: {} },
+  // uniqueBy: reaproveita linhas ja existentes (semeadas na criacao da loja)
+  // em vez de duplicar e violar a constraint unica.
+  { table: "cargos", pk: true, fks: {}, uniqueBy: ["nome"] },
   { table: "pessoas", pk: true, fks: { cargo_id: "cargos" } },
   { table: "clientes", pk: true, fks: {} },
   { table: "produtos", pk: true, fks: {} },
-  { table: "usuarios", pk: true, fks: {} },
+  { table: "usuarios", pk: true, fks: {}, uniqueBy: ["username"] },
   {
     table: "vendas",
     pk: true,
@@ -124,6 +126,17 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
           await trx(table).insert(mapped).onConflict(["loja_id", "chave"]).merge();
           inserted += 1;
           continue;
+        }
+
+        // Reaproveita linha ja existente (ex.: cargos/usuarios semeados na criacao).
+        if (pk && step.uniqueBy) {
+          const where = { loja_id: lojaId };
+          for (const col of step.uniqueBy) where[col] = mapped[col];
+          const existing = await trx(table).where(where).first();
+          if (existing) {
+            if (row.id !== undefined && row.id !== null) idMaps[table][row.id] = existing.id;
+            continue;
+          }
         }
 
         if (pk) {
