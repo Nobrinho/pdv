@@ -1,0 +1,8 @@
+{
+  "name": "@syscontrol/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Contratos e funções puras compartilhadas entre app (Electron), web, back e admin.",
+  "main": "index.js",
+  "license": "MIT"
+}

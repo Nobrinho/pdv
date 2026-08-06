@@ -1,3 +1,10 @@
+// Regra de cálculo (pura) vem do contrato compartilhado; aqui fica só o
+// carregamento das taxas do banco (específico do backend multi-loja).
+const {
+  calcularComissaoItem,
+  calcularComissaoVenda,
+} = require("../../../../packages/shared/domain/commission");
+
 async function carregarTaxas(knex, lojaId) {
   const rows = await knex("configuracoes")
     .where("loja_id", lojaId)
@@ -10,26 +17,4 @@ async function carregarTaxas(knex, lojaId) {
   };
 }
 
-function calcularComissaoItem(item, venda, taxaNovos, taxaUsados) {
-  const totalItem = Number(item.preco_unitario) * Number(item.quantidade);
-  const ratio = Number(venda.subtotal) > 0 ? totalItem / Number(venda.subtotal) : 0;
-  const descontoItem = Number(venda.desconto_valor || 0) * ratio;
-  const receitaLiqItem = totalItem - descontoItem;
-
-  if (item.tipo === "usado") {
-    const custoItem = Number(item.custo_unitario) * Number(item.quantidade);
-    const lucroItem = receitaLiqItem - custoItem;
-    return lucroItem > 0 ? lucroItem * taxaUsados : 0;
-  }
-
-  return receitaLiqItem > 0 ? receitaLiqItem * taxaNovos : 0;
-}
-
-function calcularComissaoVenda(itensVenda, venda, taxaNovos, taxaUsados) {
-  return itensVenda.reduce(
-    (total, item) => total + calcularComissaoItem(item, venda, taxaNovos, taxaUsados),
-    0,
-  );
-}
-
-module.exports = { carregarTaxas, calcularComissaoVenda };
+module.exports = { carregarTaxas, calcularComissaoItem, calcularComissaoVenda };

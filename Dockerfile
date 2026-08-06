@@ -17,6 +17,8 @@ RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund
 
 # Codigo da API + migrations.
 COPY apps/pdv-back ./apps/pdv-back
+# Codigo compartilhado (contratos + funcoes puras) usado pela API em runtime.
+COPY packages ./packages
 
 ENV NODE_ENV=production
 ENV SERVER_PORT=3333

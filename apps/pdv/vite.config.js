@@ -12,6 +12,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Permite servir o código compartilhado (packages/shared) que fica fora
+    // da raiz do app durante o `npm run dev`.
+    fs: {
+      allow: [fileURLToPath(new URL('../..', import.meta.url))],
+    },
   },
   build: {
     outDir: 'dist',

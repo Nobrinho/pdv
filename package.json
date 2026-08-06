@@ -22,6 +22,7 @@
     "server:smoke": "node apps/pdv-back/scripts/smoke.js",
     "server:dunning": "node apps/pdv-back/scripts/dunning.js",
     "server:smoke:local": "node apps/pdv-back/scripts/smoke-local.mjs",
+    "schema:parity": "node scripts/schema-parity.mjs",
     "build": "vite build --config apps/pdv/vite.config.js",
     "electron": "electron .",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
@@ -50,6 +51,7 @@
       "apps/pdv/dist/**/*",
       "apps/pdv/electron/**/*",
       "apps/pdv/database/**/*",
+      "packages/shared/**/*",
       "package.json"
     ],
     "extraResources": [

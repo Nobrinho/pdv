@@ -6,6 +6,7 @@
 // =============================================================
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from "react";
 import { api } from "../services/api";
+import { TENANT_FIELD_MAP, parseTenantResponse } from "../../../../packages/shared/domain/tenant";
 
 // --- Utilitários de cores ---
 
@@ -319,20 +320,9 @@ export const TenantProvider = ({ children }) => {
     try {
       const raw = await api.config.getTenant();
       if (raw) {
-        const mapped = {
-          nome: raw.loja_nome || DEFAULT_TENANT.nome,
-          subtitulo: raw.loja_subtitulo || DEFAULT_TENANT.subtitulo,
-          endereco: raw.loja_endereco || "",
-          cidade: raw.loja_cidade || "",
-          telefone: raw.loja_telefone || "",
-          documento: raw.loja_documento || "",
-          logoBase64: raw.loja_logo_base64 || "",
-          bgBase64: raw.loja_bg_base64 || "",
-          corPrimaria: raw.cor_primaria || DEFAULT_TENANT.corPrimaria,
-          corSecundaria: raw.cor_secundaria || DEFAULT_TENANT.corSecundaria,
-          devNome: raw.dev_nome || "",
-          devLink: raw.dev_link || "",
-        };
+        // Contrato único (packages/shared): converte a resposta snake_case
+        // para o tenant camelCase usado pela UI.
+        const mapped = parseTenantResponse(raw);
         setTenant(mapped);
         writeBrandCache(mapped);
         injectCSSVars(mapped.corPrimaria, mapped.corSecundaria);
@@ -351,22 +341,8 @@ export const TenantProvider = ({ children }) => {
 
   /** Atualiza uma chave do tenant e persiste no banco */
   const updateTenant = useCallback(async (key, value) => {
-    // Mapeia chave do frontend para chave do banco
-    const keyMap = {
-      nome: "loja_nome",
-      subtitulo: "loja_subtitulo",
-      endereco: "loja_endereco",
-      cidade: "loja_cidade",
-      telefone: "loja_telefone",
-      documento: "loja_documento",
-      logoBase64: "loja_logo_base64",
-      bgBase64: "loja_bg_base64",
-      corPrimaria: "cor_primaria",
-      corSecundaria: "cor_secundaria",
-      devNome: "dev_nome",
-      devLink: "dev_link",
-    };
-    const dbKey = keyMap[key];
+    // Mapeia chave do frontend para chave do banco (contrato compartilhado)
+    const dbKey = TENANT_FIELD_MAP[key];
     if (!dbKey) return;
 
     await api.config.save(dbKey, value);
@@ -386,23 +362,8 @@ export const TenantProvider = ({ children }) => {
 
   /** Salva múltiplas chaves do tenant de uma vez */
   const saveTenantBatch = useCallback(async (updates) => {
-    const keyMap = {
-      nome: "loja_nome",
-      subtitulo: "loja_subtitulo",
-      endereco: "loja_endereco",
-      cidade: "loja_cidade",
-      telefone: "loja_telefone",
-      documento: "loja_documento",
-      logoBase64: "loja_logo_base64",
-      bgBase64: "loja_bg_base64",
-      corPrimaria: "cor_primaria",
-      corSecundaria: "cor_secundaria",
-      devNome: "dev_nome",
-      devLink: "dev_link",
-    };
-
     const promises = Object.entries(updates).map(([key, value]) => {
-      const dbKey = keyMap[key];
+      const dbKey = TENANT_FIELD_MAP[key];
       if (dbKey) return api.config.save(dbKey, value);
       return Promise.resolve();
     });

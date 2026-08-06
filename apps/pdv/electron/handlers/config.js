@@ -4,20 +4,13 @@
 const fs = require("fs");
 const { dialog } = require("electron");
 const { requireAdmin } = require("../lib/authSession");
+const {
+  TENANT_CONFIG_KEYS,
+  buildTenantResponse,
+} = require("../../../../packages/shared/domain/tenant");
 
 const ALLOWED_CONFIG_KEYS = new Set([
-  "loja_nome",
-  "loja_subtitulo",
-  "loja_endereco",
-  "loja_cidade",
-  "loja_telefone",
-  "loja_documento",
-  "loja_logo_base64",
-  "loja_bg_base64",
-  "cor_primaria",
-  "cor_secundaria",
-  "dev_nome",
-  "dev_link",
+  ...TENANT_CONFIG_KEYS,
   "comissao_padrao",
   "comissao_usados",
   "impressora_padrao",
@@ -32,7 +25,9 @@ function register(safeHandle, knex, mainWindow, authSession) {
   safeHandle("get-tenant-config", async () => {
     const rows = await knex("configuracoes")
       .whereRaw("chave LIKE 'loja_%' OR chave LIKE 'cor_%' OR chave LIKE 'dev_%'");
-    return Object.fromEntries(rows.map((r) => [r.chave, r.valor]));
+    const map = Object.fromEntries(rows.map((r) => [r.chave, r.valor]));
+    // Mesmo contrato do backend online (packages/shared).
+    return buildTenantResponse(map);
   });
 
   safeHandle("save-config", async (event, k, v) => {
