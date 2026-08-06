@@ -375,11 +375,12 @@ td span {
 }
 
 .drawer {
-  width: min(520px, 100%);
+  width: min(680px, 100%);
   height: 100%;
   background: #fff;
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: -20px 0 50px rgba(9, 22, 43, 0.25);
   animation: drawer-in 0.2s ease;
 }
@@ -429,20 +430,55 @@ td span {
   margin-bottom: 8px;
 }
 
-table.mini {
-  width: 100%;
-  border-collapse: collapse;
+/* Cards de detalhe (usuarios/dispositivos) — flexiveis, sem overflow. */
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-table.mini td {
-  padding: 10px 8px;
-  border-bottom: 1px solid #eef2f7;
-  vertical-align: middle;
+.detail-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 14px;
+  border: 1px solid #e8edf4;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
-table.mini td strong {
+.detail-info {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.detail-info strong {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
+  color: #142033;
+}
+
+.detail-info span {
+  color: #64748b;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.detail-info span.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.detail-actions .ghost {
+  white-space: nowrap;
 }
 
 @media (max-width: 860px) {
@@ -477,5 +513,33 @@ table.mini td strong {
   header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .toolbar .search {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .drawer {
+    padding: 18px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .detail-card {
+    align-items: flex-start;
+  }
+
+  .detail-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .detail-actions .ghost {
+    flex: 1;
+    justify-content: center;
   }
 }

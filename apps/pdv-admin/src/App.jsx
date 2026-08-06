@@ -208,53 +208,54 @@ function StoreDrawer({ store, onClose }) {
         <section className="drawer-block">
           <h3><i className="fas fa-users"></i> Usuarios ({users.length})</h3>
           {loading ? <p className="muted">Carregando...</p> : (
-            <table className="mini">
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td><strong>{u.nome}</strong><span>{u.username}</span></td>
-                    <td>{u.cargo}</td>
-                    <td><span className={`pill ${u.ativo ? "ok" : "danger"}`}>{u.ativo ? "Ativo" : "Inativo"}</span></td>
-                    <td className="actions">
-                      <button className="ghost" disabled={busyUser === u.id} onClick={() => resetPassword(u)}>
-                        <i className="fas fa-key"></i> Senha
-                      </button>
-                      <button className={`ghost ${u.ativo ? "danger" : "ok"}`} disabled={busyUser === u.id} onClick={() => toggleUser(u)}>
-                        <i className={`fas ${u.ativo ? "fa-user-slash" : "fa-user-check"}`}></i>
-                        {u.ativo ? "Desativar" : "Ativar"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!users.length && <tr><td className="empty">Nenhum usuario.</td></tr>}
-              </tbody>
-            </table>
+            <div className="detail-list">
+              {users.map((u) => (
+                <div key={u.id} className="detail-card">
+                  <div className="detail-info">
+                    <strong>{u.nome}</strong>
+                    <span>{u.username} · {u.cargo}</span>
+                  </div>
+                  <span className={`pill ${u.ativo ? "ok" : "danger"}`}>{u.ativo ? "Ativo" : "Inativo"}</span>
+                  <div className="detail-actions">
+                    <button className="ghost" disabled={busyUser === u.id} onClick={() => resetPassword(u)}>
+                      <i className="fas fa-key"></i> Senha
+                    </button>
+                    <button className={`ghost ${u.ativo ? "danger" : "ok"}`} disabled={busyUser === u.id} onClick={() => toggleUser(u)}>
+                      <i className={`fas ${u.ativo ? "fa-user-slash" : "fa-user-check"}`}></i>
+                      {u.ativo ? "Desativar" : "Ativar"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!users.length && <p className="muted">Nenhum usuario.</p>}
+            </div>
           )}
         </section>
 
         <section className="drawer-block">
           <h3><i className="fas fa-desktop"></i> Dispositivos ({devices.length})</h3>
           {loading ? <p className="muted">Carregando...</p> : (
-            <table className="mini">
-              <tbody>
-                {devices.map((d) => (
-                  <tr key={d.id}>
-                    <td><strong>{d.nome_maquina}</strong><span>{d.device_id}</span></td>
-                    <td><span className={`pill ${d.autorizado ? "ok" : "danger"}`}>{d.autorizado ? "Autorizado" : "Bloqueado"}</span></td>
-                    <td className="actions">
-                      <button className={`ghost ${d.autorizado ? "danger" : "ok"}`} disabled={busyDevice === d.id} onClick={() => toggleDevice(d)}>
-                        <i className={`fas ${d.autorizado ? "fa-ban" : "fa-check"}`}></i>
-                        {d.autorizado ? "Bloquear" : "Autorizar"}
-                      </button>
-                      <button className="ghost danger" disabled={busyDevice === d.id} onClick={() => removeDevice(d)} title="Excluir dispositivo">
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!devices.length && <tr><td className="empty">Nenhum dispositivo.</td></tr>}
-              </tbody>
-            </table>
+            <div className="detail-list">
+              {devices.map((d) => (
+                <div key={d.id} className="detail-card">
+                  <div className="detail-info">
+                    <strong>{d.nome_maquina}</strong>
+                    <span className="mono">{d.device_id}</span>
+                  </div>
+                  <span className={`pill ${d.autorizado ? "ok" : "danger"}`}>{d.autorizado ? "Autorizado" : "Bloqueado"}</span>
+                  <div className="detail-actions">
+                    <button className={`ghost ${d.autorizado ? "danger" : "ok"}`} disabled={busyDevice === d.id} onClick={() => toggleDevice(d)}>
+                      <i className={`fas ${d.autorizado ? "fa-ban" : "fa-check"}`}></i>
+                      {d.autorizado ? "Bloquear" : "Autorizar"}
+                    </button>
+                    <button className="ghost danger" disabled={busyDevice === d.id} onClick={() => removeDevice(d)} title="Excluir dispositivo">
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!devices.length && <p className="muted">Nenhum dispositivo.</p>}
+            </div>
           )}
         </section>
       </aside>
@@ -485,7 +486,7 @@ function Dashboard({ user, onLogout }) {
             </h1>
             <p>{user?.nome || user?.email}</p>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {view === "subscriptions" && (
               <button className="refresh" onClick={runDunning} disabled={loading}>
                 <i className="fas fa-gavel"></i>
