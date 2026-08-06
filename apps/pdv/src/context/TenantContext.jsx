@@ -6,7 +6,8 @@
 // =============================================================
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from "react";
 import { api } from "../services/api";
-import { TENANT_FIELD_MAP, parseTenantResponse } from "../../../../packages/shared/domain/tenant";
+// Versão ESM do contrato (o frontend/Vite não faz interop de CJS de fonte).
+import { TENANT_FIELD_MAP, parseTenantResponse } from "../../../../packages/shared/domain/tenant.mjs";
 
 // --- Utilitários de cores ---
 

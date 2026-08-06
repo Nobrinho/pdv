@@ -1,10 +1,16 @@
 import { describe, it, expect } from "vitest";
+import { createRequire } from "module";
 import {
   TENANT_FIELD_MAP,
   TENANT_CONFIG_KEYS,
+  TENANT_DEFAULTS,
   buildTenantResponse,
   parseTenantResponse,
-} from "../../packages/shared/domain/tenant.js";
+} from "../../packages/shared/domain/tenant.mjs";
+
+// O lado CommonJS (Node/Electron) é carregado via require para comparar paridade.
+const require = createRequire(import.meta.url);
+const cjs = require("../../packages/shared/domain/tenant.js");
 
 describe("contrato de tenant (packages/shared)", () => {
   it("mapeia todos os campos camelCase -> snake_case", () => {
@@ -20,7 +26,6 @@ describe("contrato de tenant (packages/shared)", () => {
     expect(resp.loja_nome).toBe("Minha Loja");
     expect(resp.loja_subtitulo).toBe("Terminal de Vendas");
     expect(resp.cor_primaria).toBe("#111");
-    // todas as chaves de identidade presentes
     for (const key of TENANT_CONFIG_KEYS) {
       expect(resp).toHaveProperty(key);
     }
@@ -52,5 +57,19 @@ describe("contrato de tenant (packages/shared)", () => {
     expect(parsed.corPrimaria).toBe("#abc123");
     expect(parsed.corSecundaria).toBe("#654321");
     expect(parsed.devLink).toBe("https://x");
+  });
+});
+
+describe("paridade CommonJS x ESM", () => {
+  it("tenant.js (CJS) e tenant.mjs (ESM) têm o mesmo mapa e defaults", () => {
+    expect(cjs.TENANT_FIELD_MAP).toEqual(TENANT_FIELD_MAP);
+    expect(cjs.TENANT_DEFAULTS).toEqual(TENANT_DEFAULTS);
+  });
+
+  it("as duas versões produzem o mesmo resultado", () => {
+    const map = { loja_nome: "Y", cor_primaria: "#123", dev_nome: "@x" };
+    expect(cjs.buildTenantResponse(map)).toEqual(buildTenantResponse(map));
+    const raw = { loja_nome: "Y", cor_primaria: "#123", dev_link: "z" };
+    expect(cjs.parseTenantResponse(raw)).toEqual(parseTenantResponse(raw));
   });
 });

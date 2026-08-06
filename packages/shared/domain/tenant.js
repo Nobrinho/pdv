@@ -1,4 +1,8 @@
 // =============================================================
+// (CommonJS — usado por Node/Electron via require.)
+// Existe uma cópia ESM em ./tenant.mjs para o frontend (Vite não faz interop
+// de CommonJS de fonte). tests/shared/tenant.test.js garante a paridade.
+// =============================================================
 // Contrato da identidade da loja (tenant / white-label).
 // Fonte única de verdade para o formato dos dados de identidade,
 // usado por:

@@ -6,6 +6,9 @@ import SaleEntryBar from "../components/sales/SaleEntryBar";
 import SalePaymentPanel from "../components/sales/SalePaymentPanel";
 import QuickClientModal from "../components/sales/QuickClientModal";
 import SaleReceiptModal from "../components/sales/SaleReceiptModal";
+import Sheet from "../components/ui/Sheet";
+import StickyActionBar from "../components/ui/StickyActionBar";
+import { formatCurrency } from "../utils/format";
 import { applyCpfCnpjMask, validarDocumento } from "../utils/validators";
 import { findSavedClient, findSelectedClient, getSalesPeopleByRole } from "../utils/salesViewModel";
 import { thermalizeReceiptHtml } from "../context/TenantContext";
@@ -51,6 +54,18 @@ const Vendas = () => {
   const [isFinishingSale, setIsFinishingSale] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
+  // Fluxo mobile por passos: pagamento vira um bottom sheet acionado por "Cobrar".
+  const [paymentSheetOpen, setPaymentSheetOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : true,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = (e) => setIsDesktop(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   // --- CPF RECIBO ---
   const [optsCpfReceipt, setOptsCpfReceipt] = useState(false);
@@ -329,6 +344,7 @@ const Vendas = () => {
         });
 
         setShowReceipt(true);
+        setPaymentSheetOpen(false);
         showAlert("Venda realizada com sucesso!", "Sucesso", "success");
 
         // Reset via hooks
@@ -371,8 +387,51 @@ const Vendas = () => {
     }
   };
 
+  const renderPaymentPanel = () => (
+    <SalePaymentPanel
+      laborInput={laborInput}
+      onLaborInputChange={setLaborInput}
+      selectedMechanic={selectedMechanic}
+      onMechanicChange={setSelectedMechanic}
+      mechanics={mechanics}
+      surchargeType={surchargeType}
+      onSurchargeTypeChange={setSurchargeType}
+      surchargeValue={surchargeValue}
+      onSurchargeValueChange={setSurchargeValue}
+      discountType={discountType}
+      onDiscountTypeChange={setDiscountType}
+      discountValue={discountValue}
+      onDiscountValueChange={setDiscountValue}
+      totals={totals}
+      payments={payments}
+      onRemovePayment={removePayment}
+      currentPaymentMethod={currentPaymentMethod}
+      onCurrentPaymentMethodChange={setCurrentPaymentMethod}
+      installments={installments}
+      onInstallmentsChange={setInstallments}
+      paymentInputRef={paymentInputRef}
+      currentPaymentValue={currentPaymentValue}
+      onCurrentPaymentValueChange={setCurrentPaymentValue}
+      onPaymentValueFocus={autoFillRemaining}
+      onAddPayment={addPayment}
+      optsCpfReceipt={optsCpfReceipt}
+      onOptsCpfReceiptChange={setOptsCpfReceipt}
+      selectedClient={selectedClient}
+      selectedClientHasValidDocument={selectedClientHasValidDocument}
+      receiptCpf={receiptCpf}
+      onReceiptCpfChange={setReceiptCpf}
+      receiptName={receiptName}
+      onReceiptNameChange={setReceiptName}
+      receiptClientFound={receiptClientFound}
+      receiptSearching={receiptSearching}
+      onHandleReceiptCpfChange={handleReceiptCpfChange}
+      onFinishSale={handleFinishSale}
+      isFinishingSale={isFinishingSale}
+    />
+  );
+
   return (
-    <div className="h-full p-4 bg-surface-200 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+    <div className="h-full px-4 pt-4 pb-28 lg:pb-4 bg-surface-200 overflow-y-auto lg:overflow-hidden custom-scrollbar">
       <div className="flex h-full min-h-0 flex-col gap-4">
         {(loadingData || loadError) && (
           <div className={`rounded-xl border px-4 py-3 text-sm ${
@@ -419,48 +478,34 @@ const Vendas = () => {
         />
           </div>
 
-          {/* Direita: Pagamento */}
-          <SalePaymentPanel
-        laborInput={laborInput}
-        onLaborInputChange={setLaborInput}
-        selectedMechanic={selectedMechanic}
-        onMechanicChange={setSelectedMechanic}
-        mechanics={mechanics}
-        surchargeType={surchargeType}
-        onSurchargeTypeChange={setSurchargeType}
-        surchargeValue={surchargeValue}
-        onSurchargeValueChange={setSurchargeValue}
-        discountType={discountType}
-        onDiscountTypeChange={setDiscountType}
-        discountValue={discountValue}
-        onDiscountValueChange={setDiscountValue}
-        totals={totals}
-        payments={payments}
-        onRemovePayment={removePayment}
-        currentPaymentMethod={currentPaymentMethod}
-        onCurrentPaymentMethodChange={setCurrentPaymentMethod}
-        installments={installments}
-        onInstallmentsChange={setInstallments}
-        paymentInputRef={paymentInputRef}
-        currentPaymentValue={currentPaymentValue}
-        onCurrentPaymentValueChange={setCurrentPaymentValue}
-        onPaymentValueFocus={autoFillRemaining}
-        onAddPayment={addPayment}
-        optsCpfReceipt={optsCpfReceipt}
-        onOptsCpfReceiptChange={setOptsCpfReceipt}
-        selectedClient={selectedClient}
-        selectedClientHasValidDocument={selectedClientHasValidDocument}
-        receiptCpf={receiptCpf}
-        onReceiptCpfChange={setReceiptCpf}
-        receiptName={receiptName}
-        onReceiptNameChange={setReceiptName}
-        receiptClientFound={receiptClientFound}
-        receiptSearching={receiptSearching}
-        onHandleReceiptCpfChange={handleReceiptCpfChange}
-        onFinishSale={handleFinishSale}
-        isFinishingSale={isFinishingSale}
-          />
+          {/* Direita: Pagamento — inline no desktop; no mobile vai para o sheet. */}
+          {isDesktop && renderPaymentPanel()}
         </div>
+
+        {/* Mobile: barra fixa "Cobrar" + pagamento em bottom sheet */}
+        {!isDesktop && (
+          <>
+            <StickyActionBar>
+              <button
+                type="button"
+                onClick={() => cart.length > 0 && setPaymentSheetOpen(true)}
+                disabled={cart.length === 0}
+                className="w-full flex items-center justify-between gap-3 rounded-xl bg-green-600 px-5 py-3.5 font-black text-white shadow-lg active:scale-[0.99] transition disabled:bg-surface-400 disabled:opacity-70"
+              >
+                <span className="text-sm uppercase tracking-widest">Cobrar</span>
+                <span className="text-lg">{formatCurrency(totals.total)}</span>
+              </button>
+            </StickyActionBar>
+            <Sheet
+              isOpen={paymentSheetOpen}
+              onClose={() => setPaymentSheetOpen(false)}
+              title="Pagamento"
+              size="full"
+            >
+              {renderPaymentPanel()}
+            </Sheet>
+          </>
+        )}
 
         {showClientModal && (
           <QuickClientModal

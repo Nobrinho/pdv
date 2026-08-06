@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import {
-  calcularComissaoItem,
-  calcularComissaoVenda,
-} from "../../packages/shared/domain/commission.js";
+import { createRequire } from "module";
+
+// commission é CommonJS (usado por Node/Electron); carrega via require.
+const require = createRequire(import.meta.url);
+const { calcularComissaoItem, calcularComissaoVenda } = require("../../packages/shared/domain/commission.js");
 
 describe("comissão (packages/shared)", () => {
   const venda = { subtotal: 100, desconto_valor: 0 };
@@ -14,7 +15,6 @@ describe("comissão (packages/shared)", () => {
 
   it("item USADO: % sobre o lucro (receita - custo)", () => {
     const item = { preco_unitario: 100, quantidade: 1, custo_unitario: 60, tipo: "usado" };
-    // lucro = 100 - 60 = 40; 40 * 0.25 = 10
     expect(calcularComissaoItem(item, venda, 0.3, 0.25)).toBe(10);
   });
 
@@ -24,9 +24,8 @@ describe("comissão (packages/shared)", () => {
   });
 
   it("rateia o desconto da venda proporcionalmente ao item", () => {
-    const v = { subtotal: 200, desconto_valor: 20 }; // 10% de desconto
+    const v = { subtotal: 200, desconto_valor: 20 };
     const item = { preco_unitario: 100, quantidade: 1, tipo: "novo" };
-    // receita líquida item = 100 - (20 * 100/200) = 90; 90 * 0.3 = 27
     expect(calcularComissaoItem(item, v, 0.3, 0.25)).toBe(27);
   });
 
@@ -36,7 +35,6 @@ describe("comissão (packages/shared)", () => {
       { preco_unitario: 100, quantidade: 1, tipo: "novo" },
       { preco_unitario: 50, quantidade: 1, custo_unitario: 30, tipo: "usado" },
     ];
-    // novo: 100*0.3=30 ; usado: (50-30)*0.25=5 ; total=35
     expect(calcularComissaoVenda(itens, v, 0.3, 0.25)).toBe(35);
   });
 
