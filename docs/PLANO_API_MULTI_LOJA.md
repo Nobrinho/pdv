@@ -756,6 +756,76 @@ Rodada de fechamento do MVP do SaaS. O que foi validado e entregue:
 5. **Lembretes de vencimento por e-mail** (depende de canal de e-mail, inexistente).
 6. **Modo offline somente-leitura** no Electron quando a internet cair.
 
+## Roadmap de produto
+
+### Versao web responsiva do app (PWA) — FEITO
+
+O mesmo `apps/pdv` roda no navegador (desktop/tablet/celular) em modo online, sem
+Electron/SQLite. Entregue:
+- **Web-safe**: nenhum componente usa `window.api` direto (tudo via `api.js`); o
+  `online.system` ja tem no-ops (auto-update vira no-op na web). Impressao na web passou a
+  abrir a **caixa de impressao do navegador** (`online.print.silent`).
+- **Layout responsivo**: sidebar vira **drawer** com hamburguer no mobile (backdrop +
+  top bar), colapso so no desktop (via `matchMedia`). Login/onboarding online ja existiam.
+- **PWA**: `manifest.webmanifest`, icone SVG, `theme-color`, meta Apple e **service worker**
+  (network-first, nao intercepta a API) registrado so na web. Instalavel na tela inicial.
+- **Deploy**: `docs/DEPLOY-WEB.md` (build `apps/pdv/dist` com `VITE_API_URL`, host estatico,
+  incluir a URL do app web no `CORS_ORIGINS` da API). O app desktop e liberado no CORS
+  automaticamente (origem localhost/file).
+- Validado: bundle completo do app compila (esbuild, todo o grafo de imports resolve).
+
+Refinos futuros: ajustar telas densas (Vendas/Produtos) para telas bem pequenas; leitor de
+codigo de barras via camera no celular; icones PNG dedicados.
+
+Resultado: mesma base de codigo servindo Electron (balcao Windows) e Web (qualquer
+dispositivo), ambos falando com a API multi-loja.
+
+### Exportacao de recibos para WhatsApp — FEITO
+
+Compartilha o recibo da venda direto pra qualquer app (WhatsApp incluso). Entregue:
+- Util `utils/whatsapp.js`: `shareReceiptImage` captura o cupom como **imagem PNG**
+  (`html2canvas`) e abre a **tela nativa de compartilhamento** (Web Share API com arquivo)
+  — o usuario escolhe o app. Fallbacks: baixa a imagem + abre o WhatsApp em texto (desktop
+  sem file-share), ou so o texto (`wa.me`) se a captura falhar.
+- `buildReceiptMessage` monta o recibo em texto e `normalizePhone` formata o telefone do
+  cliente para o link `wa.me` (com DDI Brasil).
+- Botao **"Compartilhar recibo"** no `SaleReceiptModal` (pos-venda) e na pagina **Recibos**
+  (recibos antigos). `html2canvas` fixado como dependencia direta.
+- Validado: compilacao, normalizacao de telefone e geracao da mensagem.
+
+Futuro opcional: template de mensagem configuravel por loja.
+
+### Secao de despesas da loja — FEITO
+
+Registra as despesas de cada loja para calcular o **lucro liquido real** e o resultado
+consolidado no painel. Entregue:
+- **Tabelas `despesas`** (online: migration `20260805_0008`, com indices por data/categoria;
+  local SQLite: migration `20260805_expenses`).
+- **API**: CRUD `/expenses` (listar por periodo/categoria com total, criar, editar, excluir;
+  escrita restrita a admin) + `/expenses/categories`. No Swagger.
+- **App**: pagina **Despesas** (menu, admin-only) com formulario, filtros por periodo/categoria,
+  cards de resumo e resumo por categoria — funciona em modo local (IPC) e online (HTTP).
+  Handlers Electron + preload adicionados; importador SQLite->online inclui `despesas`
+  (converte data ms->timestamp e boolean).
+- **Relatorios**: `reportsService` traz `despesas` e `lucro_liquido`
+  (faturamento - custo - comissao - despesas).
+- **Painel admin**: `listStores` agrega `despesas` e `resultado_liquido` por loja; aba
+  Faturamento mostra colunas Despesas/Resultado + cards de despesas e resultado liquido.
+- Validado E2E: CRUD, relatorio com lucro liquido, agregado no admin e importacao de despesas.
+
+### Login por convite/link — FEITO
+
+Reduz a friccao do login online: um link embute a loja, o caixa so digita usuario/senha.
+- **Backend** (`inviteService`): gerar/listar/revogar convite (codigo reutilizavel, sem
+  ambiguidade) + **resolver publico** (`GET /invite/:codigo` -> nome da loja, sem token).
+  `joinStore` aceita `codigo` e nao consome o convite (link reutilizavel ate expirar/revogar).
+  Rotas admin `POST/GET /invites`, `DELETE /invites/:id`. No Swagger.
+- **Frontend**: o login le `?c=<codigo>` da URL, resolve a loja e mostra "Entrando na loja X",
+  logando por codigo (sem pedir o ID). Painel em Config > Ferramentas (so na web) para o admin
+  **gerar, copiar e revogar** o link. Servidor da API virou opcao "avancada" (oculta); a loja
+  fica lembrada num chip "Loja #X - trocar".
+- Validado E2E: criar, resolver, login por codigo, reutilizacao, listar e revogar.
+
 ## Riscos Principais
 
 - Vendas simultaneas sem transacao correta.

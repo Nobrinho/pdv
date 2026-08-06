@@ -6,6 +6,7 @@
 // =============================================================
 const { listSales } = require("./salesService");
 const { listServices } = require("./serviceService");
+const { getExpensesTotal } = require("./expenseService");
 
 function standardizeMethod(method) {
   if (!method) return "Outros";
@@ -23,9 +24,10 @@ async function getSalesReport(knex, lojaId, filters = {}) {
   const selectedPayment = filters.payment && filters.payment !== "all" ? standardizeMethod(filters.payment) : "all";
   const selectedSeller = filters.sellerId && filters.sellerId !== "all" ? Number(filters.sellerId) : "all";
 
-  const [salesRaw, servicesRaw] = await Promise.all([
+  const [salesRaw, servicesRaw, despesas] = await Promise.all([
     listSales(knex, lojaId, { startDate: filters.startDate, endDate: filters.endDate }),
     listServices(knex, lojaId, { startDate: filters.startDate, endDate: filters.endDate }),
+    getExpensesTotal(knex, lojaId, { startDate: filters.startDate, endDate: filters.endDate }),
   ]);
   const sales = Array.isArray(salesRaw) ? salesRaw : salesRaw?.data || [];
   const services = Array.isArray(servicesRaw) ? servicesRaw : servicesRaw?.data || [];
@@ -130,6 +132,9 @@ async function getSalesReport(knex, lojaId, filters = {}) {
         descontos: round(descontos),
         comissoes: round(comissoes),
         lucro: round(faturamento - (custo + comissoes)),
+        despesas: round(despesas),
+        // Lucro liquido = resultado operacional menos as despesas da loja no periodo.
+        lucro_liquido: round(faturamento - custo - comissoes - despesas),
       },
       laborSummary: Object.values(laborMap),
       paymentSummary,

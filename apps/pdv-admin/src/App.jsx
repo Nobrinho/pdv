@@ -178,6 +178,20 @@ function StoreDrawer({ store, onClose }) {
     }
   };
 
+  const removeDevice = async (device) => {
+    if (!window.confirm(`Excluir o dispositivo "${device.nome_maquina}"? Ele libera uma vaga do limite do plano.`)) return;
+    setBusyDevice(device.id);
+    try {
+      const res = await api.deleteDevice(store.id, device.id);
+      if (res.success) await load();
+      else setError(res.error || "Falha ao excluir dispositivo.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyDevice(null);
+    }
+  };
+
   return (
     <div className="drawer-overlay" onClick={onClose}>
       <aside className="drawer" onClick={(e) => e.stopPropagation()}>
@@ -231,6 +245,9 @@ function StoreDrawer({ store, onClose }) {
                       <button className={`ghost ${d.autorizado ? "danger" : "ok"}`} disabled={busyDevice === d.id} onClick={() => toggleDevice(d)}>
                         <i className={`fas ${d.autorizado ? "fa-ban" : "fa-check"}`}></i>
                         {d.autorizado ? "Bloquear" : "Autorizar"}
+                      </button>
+                      <button className="ghost danger" disabled={busyDevice === d.id} onClick={() => removeDevice(d)} title="Excluir dispositivo">
+                        <i className="fas fa-trash"></i>
                       </button>
                     </td>
                   </tr>
@@ -301,6 +318,8 @@ function Dashboard({ user, onLogout }) {
       revenueMonth: stats?.faturamento_mes ?? 0,
       sales: stats?.total_vendas ?? 0,
       devices: stats?.total_dispositivos ?? 0,
+      expenses: stores.reduce((sum, s) => sum + Number(s.despesas || 0), 0),
+      net: stores.reduce((sum, s) => sum + Number(s.resultado_liquido ?? (Number(s.faturamento || 0) - Number(s.despesas || 0))), 0),
     }),
     [stats, stores],
   );
@@ -491,7 +510,8 @@ function Dashboard({ user, onLogout }) {
           <article><span>Ativas</span><strong>{totals.active}</strong></article>
           <article><span>Bloqueadas</span><strong>{totals.blocked}</strong></article>
           <article><span>Faturamento</span><strong>{money.format(totals.revenue)}</strong></article>
-          {view === "billing" && <article><span>No mês</span><strong>{money.format(totals.revenueMonth)}</strong></article>}
+          {view === "billing" && <article><span>Despesas</span><strong>{money.format(totals.expenses)}</strong></article>}
+          {view === "billing" && <article><span>Resultado líquido</span><strong>{money.format(totals.net)}</strong></article>}
           {view === "billing" && <article><span>Vendas</span><strong>{totals.sales}</strong></article>}
           {view === "access" && <article><span>Dispositivos</span><strong>{totals.devices}</strong></article>}
           {view === "subscriptions" && <article><span>MRR</span><strong>{money.format(billing?.mrr || 0)}</strong></article>}
@@ -561,21 +581,28 @@ function Dashboard({ user, onLogout }) {
                   <th>Status</th>
                   <th>Vendas</th>
                   <th>Faturamento</th>
+                  <th>Despesas</th>
+                  <th>Resultado</th>
                 </tr>
               </thead>
               <tbody>
-                {rankedStores.map((store, index) => (
-                  <tr key={store.id}>
-                    <td>{index + 1}</td>
-                    <td><strong>{store.nome}</strong><span>#{store.id}</span></td>
-                    <td>{store.plano_nome || "Padrao"}</td>
-                    <td><span className={`pill ${blockedStatuses.includes(store.status) ? "danger" : "ok"}`}>{statusLabel(store.status)}</span></td>
-                    <td>{store.total_vendas || 0}</td>
-                    <td><strong>{money.format(store.faturamento || 0)}</strong></td>
-                  </tr>
-                ))}
+                {rankedStores.map((store, index) => {
+                  const net = Number(store.resultado_liquido ?? (Number(store.faturamento || 0) - Number(store.despesas || 0)));
+                  return (
+                    <tr key={store.id}>
+                      <td>{index + 1}</td>
+                      <td><strong>{store.nome}</strong><span>#{store.id}</span></td>
+                      <td>{store.plano_nome || "Padrao"}</td>
+                      <td><span className={`pill ${blockedStatuses.includes(store.status) ? "danger" : "ok"}`}>{statusLabel(store.status)}</span></td>
+                      <td>{store.total_vendas || 0}</td>
+                      <td>{money.format(store.faturamento || 0)}</td>
+                      <td>{money.format(store.despesas || 0)}</td>
+                      <td><strong style={{ color: net < 0 ? "#991b1b" : "#166534" }}>{money.format(net)}</strong></td>
+                    </tr>
+                  );
+                })}
                 {!loading && rankedStores.length === 0 && (
-                  <tr><td colSpan="6" className="empty">Sem dados de faturamento.</td></tr>
+                  <tr><td colSpan="8" className="empty">Sem dados de faturamento.</td></tr>
                 )}
               </tbody>
             </table>

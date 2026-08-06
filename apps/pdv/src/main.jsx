@@ -10,6 +10,18 @@ import { AuthProvider } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { ThemeProvider } from './context/ThemeContext';
 
+// PWA: registra o service worker apenas na web (nao no Electron/file://).
+if (
+  "serviceWorker" in navigator &&
+  typeof window !== "undefined" &&
+  !window.api &&
+  window.location.protocol.startsWith("http")
+) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

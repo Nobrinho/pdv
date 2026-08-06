@@ -102,6 +102,12 @@ contextBridge.exposeInMainWorld("api", {
   getClientDebts: (id) => ipcRenderer.invoke("get-client-debts", id),
   payDebt: (data) => ipcRenderer.invoke("pay-debt", data),
 
+  // --- DESPESAS ---
+  getExpenses: (filters) => ipcRenderer.invoke("get-expenses", filters),
+  getExpenseCategories: () => ipcRenderer.invoke("get-expense-categories"),
+  saveExpense: (data) => ipcRenderer.invoke("save-expense", data),
+  deleteExpense: (id) => ipcRenderer.invoke("delete-expense", id),
+
   // --- EVENT LOGS ---
   logEvent: (payload) => ipcRenderer.invoke("log-event", payload),
   getEventLogs: (filters) => ipcRenderer.invoke("get-event-logs", filters),

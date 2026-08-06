@@ -38,6 +38,7 @@ const IMPORT_PLAN = [
   },
   { table: "orcamento_itens", pk: false, fks: { orcamento_id: "orcamentos", produto_id: "produtos" } },
   { table: "event_logs", pk: false, fks: { user_id: "usuarios" } },
+  { table: "despesas", pk: false, fks: { criado_por: "usuarios" } },
 ];
 
 // Colunas que nunca devem vir do dump (o destino gera/gerencia).

@@ -180,9 +180,7 @@ async function joinStore(knex, payload = {}) {
   const deviceResult = await registerDevice(knex, lojaId, payload.device || {}, plan);
   if (!deviceResult.success) return { success: false, error: deviceResult.error };
 
-  if (invite) {
-    await knex("store_invites").where("id", invite.id).update({ usado_em: knex.fn.now(), ativo: false });
-  }
+  // Convite e um link de acesso reutilizavel (nao consome ao entrar).
 
   return {
     success: true,

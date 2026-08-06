@@ -384,6 +384,21 @@ const online = {
     sales: async (filters = {}) => (await http(`/reports/sales${buildQuery(filters)}`)).report,
   },
 
+  expenses: {
+    list: async (filters = {}) => await http(`/expenses${buildQuery(filters)}`),
+    categories: async () => (await http("/expenses/categories")).categories || [],
+    create: async (data) => await http("/expenses", { method: "POST", body: data }),
+    update: async (data) => await http(`/expenses/${data.id}`, { method: "PUT", body: data }),
+    delete: async (id) => await http(`/expenses/${id}`, { method: "DELETE" }),
+  },
+
+  invites: {
+    list: async () => (await http("/invites")).invites || [],
+    create: async (data = {}) => await http("/invites", { method: "POST", body: data }),
+    revoke: async (id) => await http(`/invites/${id}`, { method: "DELETE" }),
+    resolve: async (codigo) => await http(`/invite/${encodeURIComponent(codigo)}`, { token: null }),
+  },
+
   roles: {
     list: async () => (await http("/roles")).roles || [],
     save: async (name) => await http("/roles", { method: "POST", body: { nome: name } }),
@@ -392,7 +407,24 @@ const online = {
 
   print: {
     printers: async () => [],
-    silent: async () => ({ success: false, error: "Impressao silenciosa exige Electron." }),
+    // Na web nao ha impressao silenciosa: abre a caixa de impressao do navegador.
+    silent: async (html) => {
+      try {
+        if (!html || typeof window === "undefined") {
+          return { success: false, error: "Nada para imprimir." };
+        }
+        const win = window.open("", "_blank", "width=380,height=640");
+        if (!win) return { success: false, error: "Pop-up bloqueado. Libere pop-ups para imprimir." };
+        win.document.write(
+          `<html><head><title>Recibo</title><style>body{margin:0}</style></head><body onload="window.print()">${html}</body></html>`,
+        );
+        win.document.close();
+        win.focus();
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
   },
 
   system: {
@@ -456,6 +488,19 @@ const electron = {
   services: {
     list: (filters) => safeCall(window.api.getServices, filters),
     create: (data) => safeCall(window.api.createService, data),
+  },
+  expenses: {
+    list: (filters) => safeCall(window.api.getExpenses, filters),
+    categories: () => safeCall(window.api.getExpenseCategories),
+    create: (data) => safeCall(window.api.saveExpense, data),
+    update: (data) => safeCall(window.api.saveExpense, data),
+    delete: (id) => safeCall(window.api.deleteExpense, id),
+  },
+  invites: {
+    list: async () => [],
+    create: async () => ({ success: false, error: "Links de acesso estao disponiveis apenas no modo online." }),
+    revoke: async () => ({ success: false }),
+    resolve: async () => ({ success: false }),
   },
   auth: {
     checkExist: () => safeCall(window.api.checkUsersExist),

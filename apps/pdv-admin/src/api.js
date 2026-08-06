@@ -99,6 +99,10 @@ export const api = {
     return await http(`/platform/stores/${storeId}/devices/${deviceId}/block`, { method: "POST" });
   },
 
+  async deleteDevice(storeId, deviceId) {
+    return await http(`/platform/stores/${storeId}/devices/${deviceId}`, { method: "DELETE" });
+  },
+
   async billing() {
     return (await http("/platform/billing")).billing || {};
   },

@@ -5,6 +5,8 @@ import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import CupomFiscal from "../components/CupomFiscal";
+import { useTenant } from "../context/TenantContext";
+import { shareReceiptImage } from "../utils/whatsapp";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import Modal from "../components/ui/Modal";
@@ -44,7 +46,9 @@ const Recibos = () => {
   const [saleToCancel, setSaleToCancel] = useState(null);
   const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
   const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [isCancellingSale, setIsCancellingSale] = useState(false);
+  const { tenant } = useTenant();
   
   const [cancelForm, setCancelForm] = useState({
     adminUser: "",
@@ -144,6 +148,17 @@ const Recibos = () => {
       showAlert("Erro ao carregar itens da venda.", "Erro", "error");
     } finally {
       setIsLoadingReceipt(false);
+    }
+  };
+
+  const handleShareReceipt = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    try {
+      const element = document.getElementById("cupom-fiscal");
+      await shareReceiptImage(element, { ...selectedSale, itens: saleItems }, tenant);
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -409,12 +424,20 @@ const Recibos = () => {
               Fechar
             </button>
             <button
+              onClick={handleShareReceipt}
+              disabled={isSharing}
+              className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl font-black text-sm hover:bg-green-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <i className={`mr-2 ${isSharing ? "fas fa-circle-notch fa-spin" : "fab fa-whatsapp"}`}></i>
+              {isSharing ? "Gerando..." : "Compartilhar"}
+            </button>
+            <button
               onClick={handleSilentPrint}
               disabled={isPrintingReceipt}
               className="flex-[2] px-4 py-2.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <i className={`fas mr-2 ${isPrintingReceipt ? "fa-circle-notch fa-spin" : "fa-print"}`}></i>
-              {isPrintingReceipt ? "Imprimindo..." : "Reimprimir Recibo"}
+              {isPrintingReceipt ? "Imprimindo..." : "Reimprimir"}
             </button>
           </div>
         }

@@ -20,6 +20,7 @@ const LOCAL_TABLES = [
   "orcamentos",
   "orcamento_itens",
   "event_logs",
+  "despesas",
 ];
 
 function register(safeHandle, knex, authSession) {

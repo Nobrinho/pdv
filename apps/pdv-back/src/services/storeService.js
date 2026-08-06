@@ -1,4 +1,5 @@
 const { createStoreAdmin } = require("./authService");
+const { getExpensesByStore } = require("./expenseService");
 
 async function createStore(knex, payload = {}) {
   const store = payload.store || {};
@@ -90,6 +91,8 @@ async function listStores(knex) {
     )
     .orderBy("lojas.id", "desc");
 
+  const expensesByStore = await getExpensesByStore(knex);
+
   const metrics = await Promise.all(
     stores.map(async (store) => {
       const [sales, users, products] = await Promise.all([
@@ -102,12 +105,17 @@ async function listStores(knex) {
         knex("produtos").where({ loja_id: store.id, ativo: true }).count("id as total_produtos").first(),
       ]);
 
+      const faturamento = Number(sales?.faturamento || 0);
+      const despesas = Number(expensesByStore[store.id] || 0);
+
       return {
         ...store,
-        faturamento: Number(sales?.faturamento || 0),
+        faturamento,
         total_vendas: Number(sales?.total_vendas || 0),
         total_usuarios: Number(users?.total_usuarios || 0),
         total_produtos: Number(products?.total_produtos || 0),
+        despesas,
+        resultado_liquido: Number((faturamento - despesas).toFixed(2)),
       };
     }),
   );
@@ -191,6 +199,12 @@ async function setDeviceAuthorization(knex, lojaId, deviceId, autorizado) {
   return { success: true, device };
 }
 
+async function deleteStoreDevice(knex, lojaId, deviceId) {
+  const removed = await knex("dispositivos").where({ id: deviceId, loja_id: lojaId }).del();
+  if (!removed) return { success: false, error: "Dispositivo nao encontrado." };
+  return { success: true };
+}
+
 module.exports = {
   createStore,
   listStores,
@@ -199,4 +213,5 @@ module.exports = {
   listStoreUsersForPlatform,
   listStoreDevices,
   setDeviceAuthorization,
+  deleteStoreDevice,
 };

@@ -6,6 +6,7 @@ import { useTenant } from "../context/TenantContext";
 const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const { showAlert } = useAlert();
   const { tenant, reloadTenant } = useTenant();
   const [appVersion, setAppVersion] = useState("");
@@ -13,6 +14,12 @@ const Login = ({ onLoginSuccess }) => {
   const [dataMode, setDataMode] = useState(api.dataMode);
   // Sub-modo online: entrar em loja existente (join) ou criar nova loja
   const [onlineSubMode, setOnlineSubMode] = useState("join");
+  // Campo de servidor fica oculto (avancado); loja e lembrada num chip.
+  const [showServer, setShowServer] = useState(false);
+  const [changingStore, setChangingStore] = useState(false);
+  // Login por convite/link: ?c=<codigo> na URL embute a loja.
+  const [inviteCode, setInviteCode] = useState(null);
+  const [inviteStore, setInviteStore] = useState(null);
 
   // Login State
   const [lojaId, setLojaId] = useState(() =>
@@ -62,6 +69,27 @@ const Login = ({ onLoginSuccess }) => {
     checkStatus();
   }, [checkStatus]);
 
+  // Le o codigo do convite da URL (?c=CODIGO) e resolve a loja.
+  useEffect(() => {
+    if (!isOnlineMode || typeof window === "undefined") return;
+    let code = new URLSearchParams(window.location.search || "").get("c");
+    if (!code && window.location.hash.includes("?")) {
+      code = new URLSearchParams(window.location.hash.split("?")[1]).get("c");
+    }
+    if (!code) return;
+    setInviteCode(code);
+    api.invites
+      .resolve(code)
+      .then((r) => {
+        if (r && r.success && r.loja) {
+          setInviteStore(r.loja);
+          setLojaId(String(r.loja.id));
+          setChangingStore(false);
+        }
+      })
+      .catch(() => {});
+  }, [isOnlineMode]);
+
   const handleDataModeChange = (mode) => {
     if (mode === dataMode) return;
     if (mode === "online" && apiUrl) api.setApiUrl(apiUrl);
@@ -74,11 +102,13 @@ const Login = ({ onLoginSuccess }) => {
     if (e) e.preventDefault();
     if (isOnlineMode && !lojaId) return showAlert("Informe o ID da loja.", "Atenção", "warning");
     if (!username || !password) return showAlert("Informe usuário e senha.", "Atenção", "warning");
+    if (submitting) return;
 
+    setSubmitting(true);
     try {
       // Modo online: usa join (registra dispositivo e respeita limites do plano).
       const result = isOnlineMode
-        ? await api.auth.joinStore({ lojaId, username, password })
+        ? await api.auth.joinStore({ lojaId, codigo: inviteCode || undefined, username, password })
         : await api.auth.login({ lojaId, username, password });
       if (result.success) {
         if (isOnlineMode) {
@@ -92,6 +122,8 @@ const Login = ({ onLoginSuccess }) => {
     } catch (error) {
       console.error(error);
       showAlert(error.message || "Falha técnica no processo de login.", "Erro", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -103,7 +135,9 @@ const Login = ({ onLoginSuccess }) => {
       return showAlert("Informe nome e usuário do administrador.", "Atenção", "warning");
     if (createData.adminPass.length < 4)
       return showAlert("A senha do administrador deve ter ao menos 4 dígitos.", "Senha Curta", "warning");
+    if (submitting) return;
 
+    setSubmitting(true);
     try {
       const created = await api.auth.createStore({
         store: {
@@ -143,6 +177,8 @@ const Login = ({ onLoginSuccess }) => {
     } catch (error) {
       console.error(error);
       showAlert(error.message || "Erro ao criar loja online.", "Erro", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -152,7 +188,9 @@ const Login = ({ onLoginSuccess }) => {
       return showAlert("As senhas digitadas não coincidem.", "Divergência", "warning");
     if (setupData.password.length < 4)
       return showAlert("A senha deve possuir ao menos 4 dígitos.", "Senha Curta", "warning");
+    if (submitting) return;
 
+    setSubmitting(true);
     try {
       const result = await api.auth.register({
         nome: setupData.nome,
@@ -171,6 +209,8 @@ const Login = ({ onLoginSuccess }) => {
       }
     } catch (error) {
       showAlert("Erro ao realizar configuração inicial.", "Erro", "error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -269,16 +309,18 @@ const Login = ({ onLoginSuccess }) => {
 
           {isOnlineMode && (
             <div className="mb-6 space-y-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Servidor da API</label>
-                <input
-                  className="w-full bg-surface-50 border border-surface-200 p-3 rounded-2xl text-xs font-bold outline-none transition focus:bg-surface-100 text-surface-800"
-                  placeholder="http://localhost:3333"
-                  value={apiUrl}
-                  onChange={(e) => setApiUrl(e.target.value)}
-                  onBlur={() => api.setApiUrl(apiUrl)}
-                />
-              </div>
+              {showServer && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Servidor da API</label>
+                  <input
+                    className="w-full bg-surface-50 border border-surface-200 p-3 rounded-2xl text-xs font-bold outline-none transition focus:bg-surface-100 text-surface-800"
+                    placeholder="http://localhost:3333"
+                    value={apiUrl}
+                    onChange={(e) => setApiUrl(e.target.value)}
+                    onBlur={() => api.setApiUrl(apiUrl)}
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 rounded-2xl bg-surface-200/70 p-1 text-[10px] font-black uppercase tracking-widest">
                 <button
                   type="button"
@@ -303,6 +345,13 @@ const Login = ({ onLoginSuccess }) => {
                   Criar loja
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowServer((v) => !v)}
+                className="text-[10px] font-bold text-surface-400 hover:text-surface-600 flex items-center gap-1 mx-auto transition"
+              >
+                <i className="fas fa-gear text-[9px]"></i> {showServer ? "Ocultar servidor" : "Avançado: servidor"}
+              </button>
             </div>
           )}
 
@@ -330,8 +379,8 @@ const Login = ({ onLoginSuccess }) => {
                   <input type="password" className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.adminPass} onChange={(e) => setCreateData({ ...createData, adminPass: e.target.value })} placeholder="Senha" required />
                 </div>
               </div>
-              <button type="submit" className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl" style={{ backgroundColor: tenant.corPrimaria, boxShadow: `0 12px 30px -10px ${tenant.corPrimaria}66` }}>
-                CRIAR LOJA <i className="fas fa-plus text-xs"></i>
+              <button type="submit" disabled={submitting} className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl disabled:opacity-70 disabled:cursor-not-allowed" style={{ backgroundColor: tenant.corPrimaria, boxShadow: `0 12px 30px -10px ${tenant.corPrimaria}66` }}>
+                {submitting ? (<><i className="fas fa-circle-notch fa-spin"></i> CRIANDO...</>) : (<>CRIAR LOJA <i className="fas fa-plus text-xs"></i></>)}
               </button>
             </form>
           ) : isSetupMode ? (
@@ -399,32 +448,56 @@ const Login = ({ onLoginSuccess }) => {
 
               <button
                 type="submit"
-                className="w-full bg-surface-900 border border-surface-700 text-white h-14 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-xl mt-4 active:scale-95"
+                disabled={submitting}
+                className="w-full bg-surface-900 border border-surface-700 text-white h-14 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-xl mt-4 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Ativar Sistema
+                {submitting ? (<><i className="fas fa-circle-notch fa-spin"></i> Ativando...</>) : "Ativar Sistema"}
               </button>
             </form>
           ) : (
             <form onSubmit={handleLogin} className="space-y-6 animate-fade-in">
               {isOnlineMode && (
-                <div className="space-y-1 group">
-                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">ID da loja</label>
-                  <div className="relative">
-                    <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
-                      <i className="fas fa-store text-lg"></i>
+                inviteStore ? (
+                  <div className="flex items-center gap-3 bg-surface-50 border rounded-2xl p-3 pl-4" style={{ borderColor: `${tenant.corPrimaria}44` }}>
+                    <i className="fas fa-store text-lg" style={{ color: tenant.corPrimaria }}></i>
+                    <div>
+                      <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest leading-none">Entrando na loja</p>
+                      <p className="text-sm font-black text-surface-800 leading-tight mt-0.5">{inviteStore.nome}</p>
                     </div>
-                    <input
-                      className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
-                      style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
-                      onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                      onBlur={(e) => e.target.style.borderColor = ''}
-                      placeholder="Ex: 1"
-                      value={lojaId}
-                      onChange={(e) => setLojaId(e.target.value)}
-                      autoFocus
-                    />
                   </div>
-                </div>
+                ) : lojaId && !changingStore ? (
+                  <div className="flex items-center justify-between bg-surface-50 border border-surface-200 rounded-2xl p-3 pl-4">
+                    <span className="text-sm font-black text-surface-700 flex items-center gap-2">
+                      <i className="fas fa-store text-surface-400"></i> Loja #{lojaId}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setChangingStore(true); setLojaId(""); }}
+                      className="text-[11px] font-bold text-primary hover:underline"
+                    >
+                      trocar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1 group">
+                    <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">ID da loja</label>
+                    <div className="relative">
+                      <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
+                        <i className="fas fa-store text-lg"></i>
+                      </div>
+                      <input
+                        className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
+                        style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
+                        onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
+                        onBlur={(e) => e.target.style.borderColor = ''}
+                        placeholder="Ex: 1"
+                        value={lojaId}
+                        onChange={(e) => setLojaId(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                )
               )}
 
               <div className="space-y-1 group">
@@ -467,15 +540,16 @@ const Login = ({ onLoginSuccess }) => {
 
               <button
                 type="submit"
-                className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition transform active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl"
+                disabled={submitting}
+                className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition transform active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl disabled:opacity-70 disabled:cursor-not-allowed"
                 style={{
                   backgroundColor: tenant.corPrimaria,
                   boxShadow: `0 12px 30px -10px ${tenant.corPrimaria}66`,
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+                onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.filter = 'brightness(1.1)'; }}
                 onMouseLeave={(e) => e.currentTarget.style.filter = ''}
               >
-                ENTRAR <i className="fas fa-arrow-right text-xs"></i>
+                {submitting ? (<><i className="fas fa-circle-notch fa-spin"></i> ENTRANDO...</>) : (<>ENTRAR <i className="fas fa-arrow-right text-xs"></i></>)}
               </button>
             </form>
           )}

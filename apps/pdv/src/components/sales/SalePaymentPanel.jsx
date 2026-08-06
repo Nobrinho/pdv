@@ -301,9 +301,9 @@ const SalePaymentPanel = ({
           <button
             onClick={onFinishSale}
             disabled={totals.remaining > 0.01 || isFinishingSale}
-            className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg ${totals.remaining > 0.01 || isFinishingSale ? "bg-surface-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
+            className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg flex items-center justify-center gap-2 ${totals.remaining > 0.01 || isFinishingSale ? "bg-surface-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
           >
-            {isFinishingSale ? "A GUARDAR..." : "CONCLUIR VENDA"}
+            {isFinishingSale ? (<><i className="fas fa-circle-notch fa-spin"></i> SALVANDO...</>) : "CONCLUIR VENDA"}
           </button>
         </div>
       </div>

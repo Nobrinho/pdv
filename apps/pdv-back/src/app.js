@@ -28,6 +28,7 @@ const {
   listStoreUsersForPlatform,
   listStoreDevices,
   setDeviceAuthorization,
+  deleteStoreDevice,
 } = require("./services/storeService");
 const { logPlatformAction } = require("./services/auditService");
 const {
@@ -89,6 +90,19 @@ const {
 } = require("./services/backupService");
 const { importSqliteBackup } = require("./services/importService");
 const { getSalesReport } = require("./services/reportsService");
+const {
+  createInvite,
+  listInvites,
+  revokeInvite,
+  resolveInvite,
+} = require("./services/inviteService");
+const {
+  DEFAULT_CATEGORIES,
+  listExpenses,
+  createExpense,
+  updateExpense,
+  deleteExpense,
+} = require("./services/expenseService");
 const {
   listPlans,
   savePlan,
@@ -171,6 +185,13 @@ async function handleRequest(req, res) {
       const body = await readJson(req);
       const result = await joinStore(knex, body);
       return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    // Publico: resolve um convite (link de acesso) para exibir a loja no login.
+    const resolveInviteParams = match(req.method, pathname, "GET", /^\/invite\/(?<codigo>[A-Za-z0-9]+)$/);
+    if (resolveInviteParams) {
+      const result = await resolveInvite(knex, resolveInviteParams.codigo);
+      return sendJson(res, result.success ? 200 : 404, result);
     }
 
     if (req.method === "GET" && pathname === "/platform/me") {
@@ -414,6 +435,34 @@ async function handleRequest(req, res) {
           acao: `device.${authDeviceParams.action}`,
           entidade: "dispositivos",
           entidadeId: authDeviceParams.deviceId,
+          ip: req.socket.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        });
+      }
+      return sendJson(res, result.success ? 200 : 404, result);
+    }
+
+    const deleteDeviceParams = match(
+      req.method,
+      pathname,
+      "DELETE",
+      /^\/platform\/stores\/(?<id>\d+)\/devices\/(?<deviceId>\d+)$/,
+    );
+    if (deleteDeviceParams) {
+      const auth = requirePlatform(req);
+      if (!auth) return sendError(res, 401, "Token de plataforma invalido.");
+      const result = await deleteStoreDevice(
+        knex,
+        Number(deleteDeviceParams.id),
+        Number(deleteDeviceParams.deviceId),
+      );
+      if (result.success) {
+        await logPlatformAction(knex, {
+          platformUserId: auth.userId,
+          lojaId: Number(deleteDeviceParams.id),
+          acao: "device.delete",
+          entidade: "dispositivos",
+          entidadeId: deleteDeviceParams.deviceId,
           ip: req.socket.remoteAddress,
           userAgent: req.headers["user-agent"],
         });
@@ -1000,6 +1049,92 @@ async function handleRequest(req, res) {
         budgetId: Number(convertBudgetParams.id),
       });
       return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    if (req.method === "POST" && pathname === "/invites") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      const body = await readJson(req);
+      const result = await createInvite(knex, auth.lojaId, auth.userId, body);
+      return sendJson(res, result.success ? 201 : 400, result);
+    }
+
+    if (req.method === "GET" && pathname === "/invites") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      return sendJson(res, 200, await listInvites(knex, auth.lojaId));
+    }
+
+    const revokeInviteParams = match(req.method, pathname, "DELETE", /^\/invites\/(?<id>\d+)$/);
+    if (revokeInviteParams) {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      const result = await revokeInvite(knex, auth.lojaId, Number(revokeInviteParams.id));
+      return sendJson(res, result.success ? 200 : 404, result);
+    }
+
+    if (req.method === "GET" && pathname === "/expenses/categories") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      return sendJson(res, 200, { success: true, categories: DEFAULT_CATEGORIES });
+    }
+
+    if (req.method === "GET" && pathname === "/expenses") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      const result = await listExpenses(knex, auth.lojaId, {
+        page: url.searchParams.get("page"),
+        limit: url.searchParams.get("limit"),
+        startDate: url.searchParams.get("startDate"),
+        endDate: url.searchParams.get("endDate"),
+        categoria: url.searchParams.get("categoria"),
+      });
+      return sendJson(res, 200, { success: true, ...result });
+    }
+
+    if (req.method === "POST" && pathname === "/expenses") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      const body = await readJson(req);
+      const result = await createExpense(knex, auth.lojaId, auth.userId, body);
+      return sendJson(res, result.success ? 201 : 400, result);
+    }
+
+    const updateExpenseParams = match(req.method, pathname, "PUT", /^\/expenses\/(?<id>\d+)$/);
+    if (updateExpenseParams) {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      const body = await readJson(req);
+      const result = await updateExpense(knex, auth.lojaId, Number(updateExpenseParams.id), body);
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const deleteExpenseParams = match(req.method, pathname, "DELETE", /^\/expenses\/(?<id>\d+)$/);
+    if (deleteExpenseParams) {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+      const result = await deleteExpense(knex, auth.lojaId, Number(deleteExpenseParams.id));
+      return sendJson(res, result.success ? 200 : 404, result);
     }
 
     if (req.method === "GET" && pathname === "/reports/sales") {

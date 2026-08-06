@@ -1,5 +1,109 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../../services/api";
+
+const AccessLinkCard = () => {
+  const [invites, setInvites] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [copied, setCopied] = useState(null);
+
+  const buildLink = (codigo) => `${window.location.origin}${window.location.pathname}?c=${codigo}`;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setInvites(await api.invites.list());
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const generate = async () => {
+    setCreating(true);
+    try {
+      const res = await api.invites.create({});
+      if (res.success) await load();
+      else window.alert(res.error || "Falha ao gerar link.");
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const copy = async (codigo) => {
+    try {
+      await navigator.clipboard.writeText(buildLink(codigo));
+      setCopied(codigo);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      window.prompt("Copie o link:", buildLink(codigo));
+    }
+  };
+
+  const revoke = async (id) => {
+    if (!window.confirm("Revogar este link? Quem usar o link antigo não conseguirá mais entrar por ele.")) return;
+    try {
+      await api.invites.revoke(id);
+      await load();
+    } catch (error) {
+      window.alert(error.message);
+    }
+  };
+
+  return (
+    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
+      <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+        <i className="fas fa-link text-indigo-600"></i> Links de acesso da loja
+      </h2>
+      <p className="text-xs text-surface-500 mb-4 leading-relaxed">
+        Gere um link que já embute esta loja. Quem abrir o link cai na tela de login com a loja
+        preenchida — só digita usuário e senha (sem precisar do ID da loja).
+      </p>
+
+      <button
+        onClick={generate}
+        disabled={creating}
+        className="w-full mb-4 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition shadow-md active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        <i className={`fas ${creating ? "fa-circle-notch fa-spin" : "fa-plus"}`}></i>
+        {creating ? "Gerando..." : "Gerar novo link"}
+      </button>
+
+      <div className="space-y-2">
+        {loading && <p className="text-xs text-surface-400">Carregando...</p>}
+        {!loading && invites.length === 0 && (
+          <p className="text-xs text-surface-400">Nenhum link ativo. Gere o primeiro acima.</p>
+        )}
+        {invites.map((inv) => (
+          <div key={inv.id} className="flex items-center gap-2 bg-surface-50 border border-surface-200 rounded-xl p-2 pl-3">
+            <code className="text-xs font-black text-surface-700 flex-1 truncate">{inv.codigo}</code>
+            <button
+              onClick={() => copy(inv.codigo)}
+              className="text-[10px] font-black uppercase tracking-widest bg-surface-200 text-surface-700 px-3 py-1.5 rounded-lg hover:bg-surface-300 transition"
+            >
+              <i className={`fas ${copied === inv.codigo ? "fa-check text-green-600" : "fa-copy"} mr-1`}></i>
+              {copied === inv.codigo ? "Copiado" : "Copiar link"}
+            </button>
+            <button
+              onClick={() => revoke(inv.id)}
+              className="text-surface-400 hover:text-red-500 px-2"
+              title="Revogar"
+            >
+              <i className="fas fa-trash"></i>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const MigrateLocalCard = () => {
   const [running, setRunning] = useState(false);
@@ -132,6 +236,7 @@ const SystemToolsPanel = ({
         </div>
       </div>
 
+      {api.isRemote && !api.isElectron && <AccessLinkCard />}
       {api.isElectron && api.isRemote && <MigrateLocalCard />}
     </div>
   );

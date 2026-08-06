@@ -27,6 +27,7 @@ const HistoricoPrecos = lazy(() => import("./pages/HistoricoPrecos"));
 const EventLogs = lazy(() => import("./pages/EventLogs"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Comissoes = lazy(() => import("./pages/Comissoes"));
+const Despesas = lazy(() => import("./pages/Despesas"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 
@@ -96,6 +97,12 @@ const MENU_ITEMS = [
     restricted: true,
   },
   {
+    path: "/despesas",
+    label: "Despesas",
+    icon: "fa-file-invoice-dollar",
+    restricted: true,
+  },
+  {
     path: "/clientes",
     label: "Clientes",
     icon: "fa-users",
@@ -127,10 +134,16 @@ function App() {
   const { tenant } = useTenant();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [appVersion, setAppVersion] = useState("");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+  const [desktopCollapsed, setDesktopCollapsed] = useState(() => {
     const saved = localStorage.getItem("sidebarCollapsed");
     return saved === "true";
   });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : true,
+  );
+  // No mobile a sidebar vira drawer (sempre expandida); o "colapsar" so vale no desktop.
+  const sidebarCollapsed = isDesktop ? desktopCollapsed : false;
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -166,12 +179,24 @@ function App() {
   }, []);
 
   const toggleSidebar = () => {
-    setSidebarCollapsed(prev => {
+    setDesktopCollapsed((prev) => {
       const newVal = !prev;
       localStorage.setItem("sidebarCollapsed", String(newVal));
       return newVal;
     });
   };
+
+  // Alterna entre desktop e mobile: fecha o drawer ao voltar pro desktop.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handler = (e) => {
+      setIsDesktop(e.matches);
+      if (e.matches) setMobileMenuOpen(false);
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const handleMenuClick = (path) => {
     if (user) {
@@ -192,6 +217,7 @@ function App() {
       }).catch(() => {});
     }
     requestRouteAccess(path, navigate);
+    setMobileMenuOpen(false);
   };
 
   useEffect(() => {
@@ -237,11 +263,18 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50 font-sans text-surface-800 transition-colors duration-200">
-      <aside className={`${sidebarCollapsed ? "w-20" : "w-64"} bg-surface-100 text-surface-800 flex flex-col flex-shrink-0 transition-all duration-300 shadow-2xl z-[60] border-r border-surface-200 relative`}>
-        {/* Toggle Button */}
+      {/* Backdrop do drawer no mobile */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 bg-black/50 z-[55] lg:hidden"
+        ></div>
+      )}
+      <aside className={`${sidebarCollapsed ? "lg:w-20" : "lg:w-64"} w-64 bg-surface-100 text-surface-800 flex flex-col flex-shrink-0 transition-transform duration-300 shadow-2xl z-[60] border-r border-surface-200 fixed lg:relative inset-y-0 left-0 ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        {/* Toggle Button (desktop) */}
         <button
           onClick={toggleSidebar}
-          className="absolute -right-3 top-20 bg-primary-600 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 z-[70] active:scale-95"
+          className="hidden lg:flex absolute -right-3 top-20 bg-primary-600 text-white w-6 h-6 rounded-full items-center justify-center shadow-lg transition-transform hover:scale-110 z-[70] active:scale-95"
           style={{ transform: sidebarCollapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
         >
           <i className="fas fa-chevron-left text-[10px]"></i>
@@ -368,7 +401,15 @@ function App() {
         )}
       </aside>
 
-      <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50">
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar mobile */}
+        <header className="lg:hidden flex items-center gap-3 h-14 px-4 border-b border-surface-200 bg-surface-100 shadow-sm z-40 flex-shrink-0">
+          <button onClick={() => setMobileMenuOpen(true)} className="text-surface-700 text-xl w-8" aria-label="Abrir menu">
+            <i className="fas fa-bars"></i>
+          </button>
+          <span className="font-black text-surface-800 truncate">{tenant.nome}</span>
+        </header>
+        <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50">
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/" element={hasAccess("/") ? <Dashboard /> : <Navigate to="/vendas" replace />} />
@@ -382,6 +423,7 @@ function App() {
             <Route path="/orcamentos" element={hasAccess("/orcamentos") ? <Orcamentos /> : <Navigate to="/vendas" replace />} />
             <Route path="/relatorios" element={hasAccess("/relatorios") ? <Relatorios /> : <Navigate to="/vendas" replace />} />
             <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
+            <Route path="/despesas" element={hasAccess("/despesas") ? <Despesas /> : <Navigate to="/vendas" replace />} />
             <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
             <Route path="/logs" element={hasAccess("/logs") ? <EventLogs /> : <Navigate to="/vendas" replace />} />
 
@@ -389,7 +431,8 @@ function App() {
 
           </Routes>
         </Suspense>
-      </main>
+        </main>
+      </div>
 
       {/* Auto Updater Component */}
       <Updater />

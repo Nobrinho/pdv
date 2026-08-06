@@ -291,6 +291,8 @@ const spec = {
           total_vendas: { type: "integer" },
           total_usuarios: { type: "integer" },
           total_produtos: { type: "integer" },
+          despesas: { type: "number" },
+          resultado_liquido: { type: "number", description: "faturamento - despesas." },
         },
       },
       PlatformDashboard: {
@@ -303,6 +305,19 @@ const spec = {
           faturamento_mes: { type: "number" },
           total_vendas: { type: "integer" },
           total_dispositivos: { type: "integer" },
+        },
+      },
+      Expense: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          descricao: { type: "string", example: "Aluguel de julho" },
+          categoria: { type: "string", example: "Aluguel" },
+          valor: { type: "number", example: 1500 },
+          data_despesa: { type: "string", format: "date", example: "2026-08-01" },
+          forma_pagamento: { type: "string", nullable: true },
+          recorrente: { type: "boolean" },
+          observacoes: { type: "string", nullable: true },
         },
       },
       Plan: {
@@ -341,7 +356,9 @@ const spec = {
               acrescimos: { type: "number" },
               descontos: { type: "number" },
               comissoes: { type: "number" },
-              lucro: { type: "number" },
+              lucro: { type: "number", description: "Resultado operacional (faturamento - custo - comissoes)." },
+              despesas: { type: "number" },
+              lucro_liquido: { type: "number", description: "faturamento - custo - comissoes - despesas." },
             },
           },
           laborSummary: {
@@ -387,6 +404,12 @@ const spec = {
     "/store/onboarding/create": {
       post: op({ tags: publico, summary: "Criar nova loja", security: false, body: ref("OnboardingCreateRequest"), responseSchema: ref("AuthTokenResponse") }),
     },
+    "/invite/{codigo}": { get: op({ tags: publico, summary: "Resolver convite (link de acesso) -> dados da loja", security: false, params: [{ name: "codigo", in: "path", required: true, schema: { type: "string" } }] }) },
+    "/invites": {
+      get: op({ tags: store, summary: "Listar convites/links de acesso ativos (admin)" }),
+      post: op({ tags: store, summary: "Gerar convite/link de acesso (admin)", body: { type: "object", properties: { expiraEmDias: { type: "integer", description: "Opcional; sem valor = nao expira." } } } }),
+    },
+    "/invites/{id}": { delete: op({ tags: store, summary: "Revogar convite (admin)", params: [idParam] }) },
     "/store/onboarding/join": {
       post: op({ tags: publico, summary: "Entrar em loja existente (registra dispositivo)", security: false, body: ref("OnboardingJoinRequest"), responseSchema: ref("AuthTokenResponse") }),
     },
@@ -404,6 +427,7 @@ const spec = {
     "/platform/stores/{id}/devices": { get: op({ tags: platform, summary: "Dispositivos de uma loja", params: [idParam], responseSchema: listResp("devices", "Device") }) },
     "/platform/stores/{id}/devices/{deviceId}/authorize": { post: op({ tags: platform, summary: "Autorizar dispositivo", params: [idParam, { name: "deviceId", in: "path", required: true, schema: { type: "integer" } }] }) },
     "/platform/stores/{id}/devices/{deviceId}/block": { post: op({ tags: platform, summary: "Bloquear dispositivo", params: [idParam, { name: "deviceId", in: "path", required: true, schema: { type: "integer" } }] }) },
+    "/platform/stores/{id}/devices/{deviceId}": { delete: op({ tags: platform, summary: "Excluir dispositivo (libera vaga do limite do plano)", params: [idParam, { name: "deviceId", in: "path", required: true, schema: { type: "integer" } }] }) },
     "/platform/stores/{id}/block": { post: op({ tags: platform, summary: "Bloquear loja", params: [idParam], body: { type: "object", properties: { motivo: { type: "string" } } } }) },
     "/platform/stores/{id}/unblock": { post: op({ tags: platform, summary: "Liberar loja", params: [idParam] }) },
     "/platform/billing": { get: op({ tags: platform, summary: "Visao geral de faturamento (MRR, planos, assinaturas)", responseSchema: { type: "object", properties: { success: { type: "boolean" }, billing: ref("BillingOverview") } } }) },
@@ -487,6 +511,15 @@ const spec = {
     "/budgets/{id}/duplicate": { post: op({ tags: store, summary: "Duplicar orcamento", params: [idParam] }) },
     "/budgets/{id}/convert": { post: op({ tags: store, summary: "Converter orcamento em venda", params: [idParam], body: { type: "object" } }) },
 
+    "/expenses": {
+      get: op({ tags: store, summary: "Listar despesas da loja (com total no periodo)", params: [...paginationParams, { name: "categoria", in: "query", schema: { type: "string" } }] }),
+      post: op({ tags: store, summary: "Criar despesa (admin)", body: ref("Expense") }),
+    },
+    "/expenses/categories": { get: op({ tags: store, summary: "Categorias sugeridas de despesa" }) },
+    "/expenses/{id}": {
+      put: op({ tags: store, summary: "Atualizar despesa (admin)", params: [idParam], body: ref("Expense") }),
+      delete: op({ tags: store, summary: "Excluir despesa (admin)", params: [idParam] }),
+    },
     "/reports/sales": { get: op({ tags: store, summary: "Relatorio de vendas (metricas, comissoes, mao de obra, pagamentos)", params: [{ name: "startDate", in: "query", schema: { type: "string" } }, { name: "endDate", in: "query", schema: { type: "string" } }, { name: "sellerId", in: "query", schema: { type: "integer" } }, { name: "payment", in: "query", schema: { type: "string" } }], responseSchema: { type: "object", properties: { success: { type: "boolean" }, report: ref("SalesReport") } } }) },
     "/dashboard/stats": { get: op({ tags: store, summary: "KPIs do dashboard" }) },
     "/dashboard/weekly-sales": { get: op({ tags: store, summary: "Vendas da semana" }) },
