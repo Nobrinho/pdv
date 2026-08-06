@@ -150,6 +150,15 @@ const SaleEntryBar = ({
           </div>
         )}
       </div>
+
+      <BarcodeScannerModal
+        isOpen={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onDetected={(code) => {
+          setScanOpen(false);
+          if (onScanCode) onScanCode(code);
+        }}
+      />
     </div>
   );
 };
