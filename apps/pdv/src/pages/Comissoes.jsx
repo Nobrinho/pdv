@@ -4,6 +4,7 @@ import "dayjs/locale/pt-br";
 import { useAlert } from "../context/AlertSystem";
 import { formatCurrency } from "../utils/format";
 import useReportData from "../hooks/useReportData";
+import PageSkeleton from "../components/ui/PageSkeleton";
 import { api } from "../services/api";
 
 dayjs.locale("pt-br");
@@ -132,11 +133,7 @@ const Comissoes = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+    return <PageSkeleton cards={3} />;
   }
 
   return (

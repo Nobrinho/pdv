@@ -227,6 +227,21 @@ const Orcamentos = () => {
     [addProductToCart, searchResults],
   );
 
+  const handleScanCode = useCallback(
+    (rawCode) => {
+      const code = String(rawCode || "").trim();
+      if (!code) return;
+      const exact = products.find((p) => String(p.codigo).trim() === code);
+      if (exact) {
+        addProductToCart(exact);
+      } else {
+        setSearchTerm(code);
+        setTimeout(() => searchInputRef.current?.focus(), 10);
+      }
+    },
+    [products, addProductToCart],
+  );
+
   const handleQuantityChange = useCallback((itemId, value) => {
     const quantity = Number.parseInt(value, 10);
     setCart((currentCart) =>
@@ -758,6 +773,8 @@ const Orcamentos = () => {
           data={budgets}
           loading={loading}
           error={loadError}
+          onRefresh={loadPageData}
+          emptyIcon="fa-file-invoice-dollar"
           emptyMessage="Nenhum orcamento cadastrado ainda."
         />
       </div>
@@ -794,6 +811,7 @@ const Orcamentos = () => {
               onSearchKeyDown={handleSearchKeyDown}
               searchResults={searchResults}
               onSelectProduct={addProductToCart}
+              onScanCode={handleScanCode}
             />
 
             {selectedClientData && (

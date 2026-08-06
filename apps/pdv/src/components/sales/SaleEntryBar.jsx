@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import BarcodeScannerModal from "./BarcodeScannerModal";
 
 const SaleEntryBar = ({
   selectedSeller = "",
@@ -20,7 +21,9 @@ const SaleEntryBar = ({
   onSearchKeyDown,
   searchResults = [],
   onSelectProduct,
+  onScanCode,
 }) => {
+  const [scanOpen, setScanOpen] = useState(false);
   return (
     <div className="bg-surface-100 p-4 rounded-xl shadow-sm border border-surface-200">
       <div className="flex gap-4 mb-3">
@@ -107,13 +110,24 @@ const SaleEntryBar = ({
         </label>
         <input
           ref={searchInputRef}
-          className="w-full border border-surface-300 rounded-lg p-2.5 pl-10 text-lg outline-none focus:ring-2 focus:ring-primary-500 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+          className="w-full border border-surface-300 rounded-lg p-2.5 pl-10 pr-14 text-lg outline-none focus:ring-2 focus:ring-primary-500 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
           placeholder="Código ou Nome..."
           value={searchTerm}
           onChange={(e) => onSearchTermChange(e.target.value)}
           onKeyDown={onSearchKeyDown}
         />
         <i className="fas fa-barcode absolute left-3 top-9 text-surface-400 text-lg"></i>
+        {onScanCode && (
+          <button
+            type="button"
+            onClick={() => setScanOpen(true)}
+            className="absolute right-2 top-[26px] flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600 text-white shadow-sm active:scale-95 hover:bg-primary-700 transition"
+            title="Escanear com a câmera"
+            aria-label="Escanear código de barras"
+          >
+            <i className="fas fa-camera"></i>
+          </button>
+        )}
 
         {searchResults.length > 0 && (
           <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto z-50">

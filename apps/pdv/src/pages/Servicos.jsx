@@ -310,6 +310,8 @@ const Servicos = () => {
               columns={columns}
               data={filteredServices}
               loading={loading}
+              onRefresh={loadData}
+              emptyIcon="fa-clipboard-list"
               emptyMessage="Nenhum serviço registrado para este período."
             />
             {totalPages > 1 && (

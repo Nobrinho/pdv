@@ -8,6 +8,7 @@ import { useAlert } from "../context/AlertSystem";
 import { formatCurrency } from "../utils/format";
 import useReportData, { standardizeMethod } from "../hooks/useReportData";
 import StatCard from "../components/ui/StatCard";
+import PageSkeleton from "../components/ui/PageSkeleton";
 
 dayjs.locale("pt-br");
 
@@ -182,11 +183,7 @@ const Relatorios = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <PageSkeleton cards={6} />;
   }
 
   return (

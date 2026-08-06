@@ -4,6 +4,7 @@ import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import StatCard from "../components/ui/StatCard";
+import PageSkeleton from "../components/ui/PageSkeleton";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -171,11 +172,7 @@ const Dashboard = () => {
   };
 
   if (loading && !stats.faturamento) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <PageSkeleton cards={5} />;
   }
 
   return (

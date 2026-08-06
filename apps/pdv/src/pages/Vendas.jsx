@@ -151,7 +151,7 @@ const Vendas = () => {
 
   const {
     searchTerm, setSearchTerm, searchResults, searchInputRef,
-    handleSearchKeyDown, selectProduct, focusSearch,
+    handleSearchKeyDown, selectProduct, focusSearch, scanCode,
   } = useProductSearch(products, addToCart);
 
   const {
@@ -467,6 +467,7 @@ const Vendas = () => {
           onSearchKeyDown={handleSearchKeyDown}
           searchResults={searchResults}
           onSelectProduct={selectProduct}
+          onScanCode={scanCode}
         />
 
         {/* Tabela do Carrinho */}

@@ -12,6 +12,7 @@ const ProductListPanel = ({
   totalItems = 0,
   onPreviousPage,
   onNextPage,
+  onRefresh,
 }) => {
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
@@ -21,6 +22,8 @@ const ProductListPanel = ({
         loading={loading}
         error={error}
         emptyMessage={emptyMessage}
+        emptyIcon="fa-box-open"
+        onRefresh={onRefresh}
       />
 
       {totalPages > 1 && (

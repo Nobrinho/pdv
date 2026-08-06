@@ -490,6 +490,7 @@ const Produtos = () => {
         totalItems={filteredAndSortedProducts.length}
         onPreviousPage={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
         onNextPage={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
+        onRefresh={loadProducts}
       />
       {/* --- MODAL DE PRODUTO --- */}
       <ProductFormModal

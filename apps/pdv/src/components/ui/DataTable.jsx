@@ -1,44 +1,41 @@
 import React from "react";
+import { SkeletonBar, SkeletonCard } from "./Skeleton";
+import EmptyState from "./EmptyState";
+import usePullToRefresh from "../../hooks/usePullToRefresh";
 
 /**
  * DataTable responsivo.
  * Desktop (md+): tabela. Mobile (< md): cards (evita overflow horizontal).
+ * Carregamento: skeletons. Vazio: estado ilustrado (EmptyState).
  * @param {Object[]} columns - { key, label, align, format, bold }
  * @param {Object[]} data
  * @param {function} onRowClick - opcional
+ * @param {string} emptyMessage - texto do estado vazio
+ * @param {string} emptyIcon - ícone (FontAwesome) do estado vazio
  */
 const DataTable = ({
   columns = [],
   data = [],
   emptyMessage = "Nenhum registro encontrado.",
+  emptyIcon = "fa-inbox",
   error = "",
   loading = false,
   onRowClick,
+  onRefresh,
+  skeletonRows = 6,
 }) => {
   const primaryCol = columns.find((c) => c.bold) || columns[0];
   const otherCols = columns.filter((c) => c !== primaryCol);
+  const ptr = usePullToRefresh(onRefresh);
 
-  const StateBlock = () => {
-    if (loading) {
-      return (
-        <div className="flex flex-col items-center justify-center gap-2 py-20 text-surface-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <span className="text-xs font-medium">Carregando dados...</span>
-        </div>
-      );
-    }
-    if (error) {
-      return (
-        <div className="flex flex-col items-center justify-center gap-2 py-20 text-red-600">
-          <i className="fas fa-triangle-exclamation text-xl"></i>
-          <span className="text-sm font-semibold">{error}</span>
-        </div>
-      );
-    }
-    return <div className="py-20 text-center text-surface-400 italic text-sm">{emptyMessage}</div>;
-  };
+  const ErrorBlock = () => (
+    <div className="flex flex-col items-center justify-center gap-2 py-20 text-red-600">
+      <i className="fas fa-triangle-exclamation text-xl"></i>
+      <span className="text-sm font-semibold">{error}</span>
+    </div>
+  );
 
-  const showState = loading || error || data.length === 0;
+  const showEmpty = !loading && !error && data.length === 0;
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden md:bg-surface-100 md:border md:border-surface-200 md:rounded-xl md:shadow-sm">
@@ -61,10 +58,30 @@ const DataTable = ({
               </tr>
             </thead>
             <tbody className="bg-surface-100 divide-y divide-surface-200">
-              {showState ? (
+              {loading ? (
+                Array.from({ length: skeletonRows }).map((_, rowIdx) => (
+                  <tr key={`sk-${rowIdx}`}>
+                    {columns.map((col, colIdx) => (
+                      <td key={col.key} className="px-4 py-3.5">
+                        <SkeletonBar
+                          className={`h-4 ${colIdx === 0 ? "w-3/4" : "w-1/2"} ${
+                            col.align === "right" ? "ml-auto" : col.align === "center" ? "mx-auto" : ""
+                          }`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : error ? (
                 <tr>
                   <td colSpan={columns.length}>
-                    <StateBlock />
+                    <ErrorBlock />
+                  </td>
+                </tr>
+              ) : showEmpty ? (
+                <tr>
+                  <td colSpan={columns.length}>
+                    <EmptyState icon={emptyIcon} title={emptyMessage} />
                   </td>
                 </tr>
               ) : (
@@ -97,9 +114,33 @@ const DataTable = ({
       </div>
 
       {/* ===== Mobile: cards ===== */}
-      <div className="md:hidden flex-1 overflow-y-auto custom-scrollbar space-y-2">
-        {showState ? (
-          <StateBlock />
+      <div
+        ref={ptr.scrollRef}
+        {...ptr.handlers}
+        className="md:hidden flex-1 overflow-y-auto custom-scrollbar"
+        style={{ overscrollBehaviorY: "contain" }}
+      >
+        {onRefresh && (
+          <div
+            className="flex items-center justify-center overflow-hidden text-surface-400"
+            style={{ height: ptr.pull, transition: ptr.dragging ? "none" : "height 0.25s ease" }}
+          >
+            <i
+              className={`fas ${ptr.refreshing ? "fa-spinner fa-spin" : "fa-arrow-down"} transition-transform`}
+              style={{
+                transform: !ptr.refreshing && ptr.pull >= ptr.threshold ? "rotate(180deg)" : "none",
+                opacity: Math.min(ptr.pull / ptr.threshold, 1),
+              }}
+            ></i>
+          </div>
+        )}
+        <div className="space-y-2">
+        {loading ? (
+          Array.from({ length: Math.min(skeletonRows, 5) }).map((_, idx) => <SkeletonCard key={`skc-${idx}`} />)
+        ) : error ? (
+          <ErrorBlock />
+        ) : showEmpty ? (
+          <EmptyState icon={emptyIcon} title={emptyMessage} />
         ) : (
           data.map((row, idx) => {
             const clickable = !!onRowClick;
@@ -131,6 +172,7 @@ const DataTable = ({
             );
           })
         )}
+        </div>
       </div>
     </div>
   );

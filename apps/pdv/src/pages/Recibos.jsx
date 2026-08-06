@@ -391,10 +391,12 @@ const Recibos = () => {
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col">
-        <DataTable 
-          columns={columns} 
-          data={filteredSales} 
+        <DataTable
+          columns={columns}
+          data={filteredSales}
           loading={loading}
+          onRefresh={loadData}
+          emptyIcon="fa-receipt"
           emptyMessage="Nenhuma venda encontrada para o filtro selecionado."
         />
         {totalPages > 1 && (

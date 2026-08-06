@@ -84,6 +84,27 @@ const useProductSearch = (products, addToCart) => {
     searchInputRef.current?.focus();
   }, []);
 
+  // Código lido pela câmera: se bater exatamente com um produto, adiciona;
+  // senão joga o código na busca para o operador refinar.
+  const scanCode = useCallback(
+    (rawCode) => {
+      const code = String(rawCode || "").trim();
+      if (!code) return { found: false };
+      const exact = products.find((p) => String(p.codigo).trim() === code);
+      if (exact) {
+        addToCart(exact);
+        setSearchTerm("");
+        setSearchResults([]);
+        setTimeout(() => searchInputRef.current?.focus(), 10);
+        return { found: true, product: exact };
+      }
+      setSearchTerm(code);
+      setTimeout(() => searchInputRef.current?.focus(), 10);
+      return { found: false, code };
+    },
+    [products, addToCart],
+  );
+
   return {
     searchTerm,
     setSearchTerm,
@@ -92,6 +113,7 @@ const useProductSearch = (products, addToCart) => {
     handleSearchKeyDown,
     selectProduct,
     focusSearch,
+    scanCode,
   };
 };
 
