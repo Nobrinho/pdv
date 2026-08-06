@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
-import { processLogoForThermal, processBackgroundImage } from "../context/TenantContext";
+import { processLogoForWeb, processBackgroundImage } from "../context/TenantContext";
 import { api } from "../services/api";
 import FormField from "../components/ui/FormField";
 import CommissionSettings from "../components/config/CommissionSettings";
@@ -328,9 +328,9 @@ const Config = () => {
     }
 
     try {
-      const processed = await processLogoForThermal(file);
+      const processed = await processLogoForWeb(file);
       setLogoPreview(processed);
-      showAlert("Logo processada para impressora térmica (P&B, 200px).", "Pré-visualização", "success");
+      showAlert("Logo enviada (colorida). Na impressão do recibo ela sai em P&B automaticamente.", "Pré-visualização", "success");
     } catch (err) {
       showAlert("Erro ao processar logo: " + err.message, "Erro", "error");
     }

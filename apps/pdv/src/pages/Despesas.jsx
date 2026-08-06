@@ -4,6 +4,17 @@ import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
 import { formatCurrency } from "../utils/format";
 
+const PAYMENT_METHODS = [
+  "Dinheiro",
+  "Pix",
+  "Cartão de Débito",
+  "Cartão de Crédito",
+  "Transferência",
+  "Boleto",
+  "Cheque",
+  "Outros",
+];
+
 const emptyForm = {
   id: null,
   descricao: "",
@@ -186,7 +197,12 @@ const Despesas = () => {
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest">Pagamento</label>
-                  <input className={inputClass} value={form.forma_pagamento} onChange={(e) => setForm({ ...form, forma_pagamento: e.target.value })} placeholder="Dinheiro, Pix..." />
+                  <select className={inputClass} value={form.forma_pagamento} onChange={(e) => setForm({ ...form, forma_pagamento: e.target.value })}>
+                    <option value="">Selecione...</option>
+                    {[...new Set([form.forma_pagamento, ...PAYMENT_METHODS])].filter(Boolean).map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <label className="flex items-center gap-2 text-xs font-bold text-surface-600 cursor-pointer">

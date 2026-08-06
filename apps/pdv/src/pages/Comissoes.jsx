@@ -28,6 +28,7 @@ const Comissoes = () => {
 
   const [statusFilter, setStatusFilter] = useState("all"); // 'all', 'pending', 'paid'
   const [viewMode, setViewMode] = useState("condensed"); // 'condensed', 'detailed'
+  const [showFilters, setShowFilters] = useState(false); // avançados colapsados no mobile
   const [selectedIds, setSelectedIds] = useState([]);
   const [processing, setProcessing] = useState(false);
   const [page, setPage] = useState(1);
@@ -164,22 +165,33 @@ const Comissoes = () => {
             Data inicial nao pode ser maior que a data final.
           </div>
         )}
-        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b pb-4">
+          <div className="flex gap-2 overflow-x-auto flex-1">
+            <button
+              onClick={() => handlePeriodChange("weekly")}
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+            >
+              Esta Semana
+            </button>
+            <button
+              onClick={() => handlePeriodChange("monthly")}
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+            >
+              Este Mês
+            </button>
+          </div>
           <button
-            onClick={() => handlePeriodChange("weekly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+            onClick={() => setShowFilters((v) => !v)}
+            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
+              selectedSeller !== "all" || statusFilter !== "all" ? "bg-indigo-600 text-white" : "bg-surface-200 text-surface-500"
+            }`}
           >
-            Esta Semana
-          </button>
-          <button
-            onClick={() => handlePeriodChange("monthly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
-          >
-            Este Mês
+            <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+            Filtros
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+        <div className={`${showFilters ? "grid" : "hidden"} lg:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end`}>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Início</label>
             <input

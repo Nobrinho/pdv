@@ -38,6 +38,7 @@ const Servicos = () => {
     dayjs().endOf("week").format("YYYY-MM-DD"),
   );
   const [selectedMechanicFilter, setSelectedMechanicFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false); // avançados colapsados no mobile
 
   const loadData = useCallback(async () => {
     if (startDate && endDate && dayjs(startDate).isAfter(dayjs(endDate))) {
@@ -164,7 +165,7 @@ const Servicos = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden bg-surface-50">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto lg:overflow-hidden custom-scrollbar bg-surface-50">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Gestão de Serviços</h1>
@@ -172,7 +173,7 @@ const Servicos = () => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-6 lg:h-full lg:overflow-hidden">
         {/* --- COLUNA ESQUERDA: REGISTRO --- */}
         <div className="w-full lg:w-80 xl:w-96 bg-surface-100 p-6 rounded-2xl shadow-sm h-fit border border-surface-200 shrink-0">
           <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
@@ -230,25 +231,36 @@ const Servicos = () => {
         </div>
 
         {/* --- COLUNA DIREITA: RELATÓRIO --- */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden gap-4">
+        <div className="flex-1 flex flex-col lg:h-full lg:overflow-hidden gap-4">
           <div className="bg-surface-100 p-4 rounded-2xl shadow-sm border border-surface-200 flex flex-col gap-4">
-            <div className="flex gap-2 pb-2 overflow-x-auto custom-scrollbar">
-              {['weekly', 'monthly', 'yearly'].map(period => (
-                <button
-                  key={period}
-                  onClick={() => handlePeriodChange(period)}
-                  className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${
-                    periodType === period
-                      ? "bg-primary-600 text-white shadow-[0_8px_20px_-12px_rgba(37,99,235,0.85)]"
-                      : "bg-surface-200 text-surface-400 hover:bg-surface-300"
-                  }`}
-                >
-                  {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <div className="flex gap-2 overflow-x-auto custom-scrollbar flex-1">
+                {['weekly', 'monthly', 'yearly'].map(period => (
+                  <button
+                    key={period}
+                    onClick={() => handlePeriodChange(period)}
+                    className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider whitespace-nowrap ${
+                      periodType === period
+                        ? "bg-primary-600 text-white shadow-[0_8px_20px_-12px_rgba(37,99,235,0.85)]"
+                        : "bg-surface-200 text-surface-400 hover:bg-surface-300"
+                    }`}
+                  >
+                    {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+                  selectedMechanicFilter !== "all" ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-500"
+                }`}
+              >
+                <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+                Filtros
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div className={`${showFilters ? "grid" : "hidden"} lg:grid grid-cols-1 md:grid-cols-3 gap-3 items-end`}>
               <FormField
                 label="Início"
                 type="date"
@@ -293,10 +305,10 @@ const Servicos = () => {
             />
           </div>
 
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <DataTable 
-              columns={columns} 
-              data={filteredServices} 
+          <div className="flex flex-col lg:flex-1 lg:overflow-hidden min-h-[55vh] lg:min-h-0">
+            <DataTable
+              columns={columns}
+              data={filteredServices}
               loading={loading}
               emptyMessage="Nenhum serviço registrado para este período."
             />

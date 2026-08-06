@@ -82,3 +82,26 @@ body {
 [data-theme='dark'] .animate-fade-in .login-input::placeholder {
     color: rgb(var(--color-surface-500));
 }
+
+/* ====== MOBILE / PWA — utilitarios ====== */
+/* Safe-area (notch/barra do iOS/Android) */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.h-safe-bottom { height: env(safe-area-inset-bottom); }
+
+/* Espaco para a barra de navegacao inferior (mobile) nao cobrir o conteudo */
+@media (max-width: 1023px) {
+  .mobile-nav-space { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+}
+
+/* Alvos de toque confortaveis em telas de toque */
+@media (pointer: coarse) {
+  button, [role="button"], a.btn { min-height: 44px; }
+}
+
+/* Sheet (bottom sheet) — arrasta de baixo no mobile */
+.sheet-grabber {
+  width: 40px; height: 4px; border-radius: 999px;
+  background: rgb(var(--color-surface-300));
+  margin: 8px auto 4px;
+}

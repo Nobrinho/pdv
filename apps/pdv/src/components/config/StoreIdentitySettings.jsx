@@ -17,7 +17,7 @@ const StoreIdentitySettings = ({
         <i className="fas fa-palette text-primary"></i> Identidade da Loja
       </h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
           <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
             Dados da Empresa
@@ -68,45 +68,17 @@ const StoreIdentitySettings = ({
 
         <div className="space-y-4">
           <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
-            Aparência
-          </h3>
-
-          <div className="pt-4 border-t border-surface-200">
-            <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-3">
-              Créditos do Desenvolvedor
-            </h3>
-            <FormField
-              label="Nome / @usuario"
-              placeholder="Ex: @eminobre"
-              value={identity.devNome}
-              onChange={(value) => onIdentityChange("devNome", value)}
-              icon="fa-code"
-            />
-            <div className="mt-3">
-              <FormField
-                label="Link (opcional)"
-                placeholder="https://instagram.com/..."
-                value={identity.devLink}
-                onChange={(value) => onIdentityChange("devLink", value)}
-                icon="fa-link"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
             Imagens
           </h3>
 
           <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
             <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
-              Logo do Recibo (Impressora Térmica)
+              Logo do Recibo
             </label>
             <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
-              A imagem será automaticamente convertida para{" "}
-              <strong>preto e branco</strong>, redimensionada para{" "}
-              <strong>200px</strong> de largura e otimizada para impressão térmica.
+              A logo é exibida <strong>colorida</strong> na tela e no
+              compartilhamento (WhatsApp). Na <strong>impressão do recibo</strong> ela
+              é convertida automaticamente para <strong>preto e branco</strong>.
             </p>
             <input
               ref={logoInputRef}

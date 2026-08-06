@@ -8,6 +8,7 @@ import QuickClientModal from "../components/sales/QuickClientModal";
 import SaleReceiptModal from "../components/sales/SaleReceiptModal";
 import { applyCpfCnpjMask, validarDocumento } from "../utils/validators";
 import { findSavedClient, findSelectedClient, getSalesPeopleByRole } from "../utils/salesViewModel";
+import { thermalizeReceiptHtml } from "../context/TenantContext";
 import useCart from "../hooks/useCart";
 import usePayments from "../hooks/usePayments";
 import useProductSearch from "../hooks/useProductSearch";
@@ -358,8 +359,9 @@ const Vendas = () => {
       return showAlert("Erro interno: Cupom não encontrado.", "Erro", "error");
     try {
       setIsPrintingReceipt(true);
+      const html = await thermalizeReceiptHtml(receiptElement);
       const result = await api.print.silent(
-        receiptElement.outerHTML,
+        html,
         await api.config.get("impressora_padrao"),
       );
       if (result.success) showAlert("Enviado para impressão.", "Sucesso", "success");

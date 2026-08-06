@@ -8,6 +8,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import Updater from "./components/Updater";
+import BottomNav from "./components/ui/BottomNav";
 
 import { useAuth } from "./context/AuthContext";
 import { useTenant } from "./context/TenantContext";
@@ -30,6 +31,14 @@ const Comissoes = lazy(() => import("./pages/Comissoes"));
 const Despesas = lazy(() => import("./pages/Despesas"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
+
+// Itens da barra inferior (mobile) — os mais usados e acessiveis a todos os cargos.
+const BOTTOM_NAV = [
+  { path: "/vendas", label: "Venda", icon: "fa-cash-register" },
+  { path: "/produtos", label: "Produtos", icon: "fa-box-open" },
+  { path: "/recibos", label: "Recibos", icon: "fa-receipt" },
+  { path: "/servicos", label: "Serviços", icon: "fa-wrench" },
+];
 
 const PageFallback = () => (
   <div className="flex h-full items-center justify-center bg-surface-50 text-surface-500">
@@ -120,12 +129,8 @@ const MENU_ITEMS = [
     icon: "fa-cog",
     restricted: true,
   },
-  {
-    path: "/logs",
-    label: "Logs de Eventos",
-    icon: "fa-clipboard-list",
-    restricted: true,
-  },
+  // Logs de Eventos ocultado do menu (funcionalidade instável). Rota mantida
+  // acessível por URL direta, mas sem link na navegação.
 ];
 
 function App() {
@@ -409,7 +414,7 @@ function App() {
           </button>
           <span className="font-black text-surface-800 truncate">{tenant.nome}</span>
         </header>
-        <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50">
+        <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50 mobile-nav-space">
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/" element={hasAccess("/") ? <Dashboard /> : <Navigate to="/vendas" replace />} />
@@ -433,6 +438,15 @@ function App() {
         </Suspense>
         </main>
       </div>
+
+      {/* Barra de navegacao inferior (mobile) */}
+      <BottomNav
+        items={BOTTOM_NAV}
+        currentPath={location.pathname}
+        onNavigate={handleMenuClick}
+        onMore={() => setMobileMenuOpen(true)}
+        accent={tenant.corPrimaria}
+      />
 
       {/* Auto Updater Component */}
       <Updater />

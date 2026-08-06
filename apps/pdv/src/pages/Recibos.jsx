@@ -5,7 +5,8 @@ import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import CupomFiscal from "../components/CupomFiscal";
-import { useTenant } from "../context/TenantContext";
+import MobileReceipt from "../components/MobileReceipt";
+import { useTenant, thermalizeReceiptHtml } from "../context/TenantContext";
 import { shareReceiptImage } from "../utils/whatsapp";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
@@ -27,6 +28,7 @@ const Recibos = () => {
 
   // Filtros de Data e Período
   const [periodType, setPeriodType] = useState("weekly");
+  const [showFilters, setShowFilters] = useState(false); // avançados colapsados no mobile
   const [filters, setFilters] = useState({
     startDate: dayjs().startOf("week").format("YYYY-MM-DD"),
     endDate: dayjs().endOf("week").format("YYYY-MM-DD"),
@@ -170,7 +172,8 @@ const Recibos = () => {
     try {
       setIsPrintingReceipt(true);
       const printerName = await api.config.get("impressora_padrao");
-      const result = await api.print.silent(receiptElement.outerHTML, printerName);
+      const html = await thermalizeReceiptHtml(receiptElement);
+      const result = await api.print.silent(html, printerName);
       if (result.success) showAlert("Enviado para impressão.", "Sucesso", "success");
       else showAlert("Erro na impressão: " + result.error, "Erro", "error");
     } catch (error) {
@@ -304,24 +307,35 @@ const Recibos = () => {
         <p className="text-xs text-surface-500 mt-1">Consulte notas antigas, imprima segundas vias ou realize cancelamentos.</p>
       </div>
 
-      <div className="bg-surface-100 p-4 rounded-2xl shadow-sm border border-surface-200 mb-4 flex flex-col gap-4">
-        <div className="flex gap-2 pb-2 overflow-x-auto custom-scrollbar">
-          {['weekly', 'monthly', 'yearly'].map(period => (
-            <button
-              key={period}
-              onClick={() => handlePeriodChange(period)}
-              className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider ${
-                periodType === period
-                  ? "bg-primary-600 text-white shadow-[0_8px_20px_-12px_rgba(37,99,235,0.85)]"
-                  : "bg-surface-200 text-surface-400 hover:bg-surface-300"
-              }`}
-            >
-              {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
-            </button>
-          ))}
+      <div className="bg-surface-100 p-3 md:p-4 rounded-2xl shadow-sm border border-surface-200 mb-4 flex flex-col gap-3 md:gap-4">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-2 overflow-x-auto custom-scrollbar flex-1">
+            {['weekly', 'monthly', 'yearly'].map(period => (
+              <button
+                key={period}
+                onClick={() => handlePeriodChange(period)}
+                className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider whitespace-nowrap ${
+                  periodType === period
+                    ? "bg-primary-600 text-white shadow-[0_8px_20px_-12px_rgba(37,99,235,0.85)]"
+                    : "bg-surface-200 text-surface-400 hover:bg-surface-300"
+                }`}
+              >
+                {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+              filters.sellerId || filters.clientId ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-500"
+            }`}
+          >
+            <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+            Filtros
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <div className={`${showFilters ? "grid" : "hidden"} lg:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end`}>
           <FormField label="Início" type="date" value={filters.startDate} onChange={(v) => { setFilters({ ...filters, startDate: v }); setPeriodType("custom"); setPage(1); }} />
           <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); setPage(1); }} />
           
@@ -442,10 +456,17 @@ const Recibos = () => {
           </div>
         }
       >
-        <div className="flex justify-center bg-surface-200 p-4 rounded-xl">
-           <div id="cupom-fiscal-wrapper" className="bg-surface-100 p-2 shadow-sm rounded">
+        <div className="relative">
+          {/* Mobile: recibo digital amigável */}
+          <div className="lg:hidden">
+            <MobileReceipt sale={selectedSale} items={saleItems} />
+          </div>
+          {/* Desktop: cupom térmico. No mobile fica fora da tela (renderizado) para compartilhar/imprimir. */}
+          <div className="flex w-full justify-center bg-surface-200 p-4 rounded-xl absolute -left-[9999px] top-0 lg:static lg:left-auto lg:top-auto">
+            <div id="cupom-fiscal-wrapper" className="bg-white p-2 shadow-sm rounded">
               <CupomFiscal sale={selectedSale} items={saleItems} />
-           </div>
+            </div>
+          </div>
         </div>
       </Modal>
 

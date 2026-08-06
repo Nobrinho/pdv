@@ -9,9 +9,11 @@ import SaleEntryBar from "../components/sales/SaleEntryBar";
 import SaleCartPanel from "../components/sales/SaleCartPanel";
 import BudgetSummaryPanel from "../components/budgets/BudgetSummaryPanel";
 import BudgetDocument from "../components/budgets/BudgetDocument";
+import QuickClientModal from "../components/sales/QuickClientModal";
 import { formatCurrency } from "../utils/format";
+import { validarDocumento } from "../utils/validators";
 import useClientSearch from "../hooks/useClientSearch";
-import { getSalesPeopleByRole, findSelectedClient } from "../utils/salesViewModel";
+import { getSalesPeopleByRole, findSelectedClient, findSavedClient } from "../utils/salesViewModel";
 import { calculateBudgetTotals } from "../utils/budgetTotals";
 import { exportBudgetAsImage, exportBudgetAsPdf } from "../utils/budgetExport";
 import { useTenant } from "../context/TenantContext";
@@ -44,6 +46,13 @@ const INITIAL_CONVERSION_STATE = {
   installments: 1,
 };
 
+const INITIAL_NEW_CLIENT_DATA = {
+  nome: "",
+  documento: "",
+  telefone: "",
+  endereco: "",
+};
+
 const Orcamentos = () => {
   const { showAlert, showConfirm } = useAlert();
   const { tenant } = useTenant();
@@ -65,6 +74,9 @@ const Orcamentos = () => {
   const [editingBudgetCode, setEditingBudgetCode] = useState("");
   const [previewBudget, setPreviewBudget] = useState(null);
   const [conversionData, setConversionData] = useState(INITIAL_CONVERSION_STATE);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [newClientData, setNewClientData] = useState(INITIAL_NEW_CLIENT_DATA);
+  const [isSavingClient, setIsSavingClient] = useState(false);
   const [cart, setCart] = useState(INITIAL_EDITOR_STATE.cart);
   const [selectedSeller, setSelectedSeller] = useState(INITIAL_EDITOR_STATE.selectedSeller);
   const [selectedMechanic, setSelectedMechanic] = useState(INITIAL_EDITOR_STATE.selectedMechanic);
@@ -236,13 +248,52 @@ const Orcamentos = () => {
     requestAnimationFrame(() => searchInputRef.current?.focus());
   }, [resetEditorState]);
 
-  const openClientModalInfo = useCallback(() => {
-    showAlert(
-      "Nesta primeira etapa, o cadastro rapido nao entra no fluxo de orcamento. Use a tela de clientes para cadastrar um novo registro.",
-      "Cadastro de cliente",
-      "info",
-    );
-  }, [showAlert]);
+  const openQuickClientModal = useCallback(() => {
+    setNewClientData(INITIAL_NEW_CLIENT_DATA);
+    setShowClientModal(true);
+  }, []);
+
+  const updateNewClientField = useCallback((field, value) => {
+    setNewClientData((current) => ({ ...current, [field]: value }));
+  }, []);
+
+  const handleSaveNewClient = useCallback(
+    async (event) => {
+      if (event) event.preventDefault();
+      if (isSavingClient) return;
+      if (!newClientData.nome || !newClientData.telefone) {
+        return showAlert("Nome e Telefone são obrigatórios!", "Dados Incompletos", "warning");
+      }
+      if (newClientData.documento && !validarDocumento(newClientData.documento)) {
+        return showAlert("CPF/CNPJ inválido. Verifique o documento.", "Atenção", "error");
+      }
+      try {
+        setIsSavingClient(true);
+        const result = await api.clients.save(newClientData);
+        if (result.success) {
+          const updatedClients = await api.clients.list();
+          setClients(updatedClients);
+          const newClient = findSavedClient(updatedClients, result.id, newClientData.documento);
+          if (newClient) {
+            setSelectedClient(String(newClient.id));
+            setClientSearchTerm(newClient.nome);
+            setShowClientResults(false);
+          }
+          setShowClientModal(false);
+          setNewClientData(INITIAL_NEW_CLIENT_DATA);
+          showAlert("Cliente cadastrado e vinculado ao orçamento!", "Sucesso", "success");
+        } else {
+          showAlert("Erro ao salvar: " + result.error, "Erro", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showAlert("Erro técnico ao salvar cliente.", "Erro", "error");
+      } finally {
+        setIsSavingClient(false);
+      }
+    },
+    [isSavingClient, newClientData, setClientSearchTerm, setSelectedClient, setShowClientResults, showAlert],
+  );
 
   const hydrateBudgetEditor = useCallback(
     (budget) => {
@@ -701,11 +752,6 @@ const Orcamentos = () => {
         </button>
       </div>
 
-      <div className="mb-4 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-700">
-        Nesta etapa, ja temos criacao, edicao, duplicacao, cancelamento, preview, PDF, imagem e
-        impressao com persistencia separada de vendas.
-      </div>
-
       <div className="flex-1 overflow-hidden">
         <DataTable
           columns={columns}
@@ -741,7 +787,7 @@ const Orcamentos = () => {
               clients={clients}
               filteredClients={filteredClients}
               onSelectClient={handleSelectClient}
-              onOpenClientModal={openClientModalInfo}
+              onOpenClientModal={openQuickClientModal}
               searchInputRef={searchInputRef}
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
@@ -794,6 +840,19 @@ const Orcamentos = () => {
         </div>
       </Modal>
 
+      {/* Cadastro rapido de cliente (abre por cima do editor) */}
+      {showClientModal && (
+        <div className="relative z-[210]">
+          <QuickClientModal
+            newClientData={newClientData}
+            onClientFieldChange={updateNewClientField}
+            onClose={() => setShowClientModal(false)}
+            onSubmit={handleSaveNewClient}
+            isSavingClient={isSavingClient}
+          />
+        </div>
+      )}
+
       <Modal
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
@@ -842,8 +901,10 @@ const Orcamentos = () => {
         }
       >
         {previewBudget ? (
-          <div className="rounded-xl bg-surface-200 p-4">
-            <BudgetDocument ref={budgetDocumentRef} budget={previewBudget} tenant={tenant} />
+          <div className="rounded-xl bg-surface-200 p-2 md:p-4 -mx-2 md:mx-0 overflow-x-auto custom-scrollbar">
+            <div className="min-w-[680px] lg:min-w-0">
+              <BudgetDocument ref={budgetDocumentRef} budget={previewBudget} tenant={tenant} />
+            </div>
           </div>
         ) : (
           <div className="flex min-h-48 items-center justify-center text-sm text-surface-500">

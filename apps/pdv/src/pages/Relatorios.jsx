@@ -15,6 +15,7 @@ const Relatorios = () => {
   const { showAlert } = useAlert();
   const [page, setPage] = useState(1);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [showFilters, setShowFilters] = useState(false); // avançados colapsados no mobile
   const PAGE_SIZE = 100;
 
   const {
@@ -212,29 +213,40 @@ const Relatorios = () => {
           </div>
         )}
         {/* Filtros Rápidos */}
-        <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b pb-4">
+          <div className="flex gap-2 overflow-x-auto flex-1">
+            <button
+              onClick={() => handlePeriodChange("weekly")}
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+            >
+              Esta Semana
+            </button>
+            <button
+              onClick={() => handlePeriodChange("monthly")}
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+            >
+              Este Mês
+            </button>
+            <button
+              onClick={() => handlePeriodChange("yearly")}
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+            >
+              Este Ano
+            </button>
+          </div>
           <button
-            onClick={() => handlePeriodChange("weekly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+            onClick={() => setShowFilters((v) => !v)}
+            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
+              selectedSeller !== "all" || selectedPayment !== "all" ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-500"
+            }`}
           >
-            Esta Semana
-          </button>
-          <button
-            onClick={() => handlePeriodChange("monthly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
-          >
-            Este Mês
-          </button>
-          <button
-            onClick={() => handlePeriodChange("yearly")}
-            className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
-          >
-            Este Ano
+            <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+            Filtros
           </button>
         </div>
 
         {/* Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <div className={`${showFilters ? "grid" : "hidden"} lg:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end`}>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
               Início
