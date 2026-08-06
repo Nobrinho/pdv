@@ -239,7 +239,7 @@ const Login = ({ onLoginSuccess }) => {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden font-sans select-none ${
+      className={`min-h-[100dvh] w-full flex p-4 relative overflow-x-hidden overflow-y-auto font-sans select-none ${
         !tenant.bgBase64 ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-950" : ""
       }`}
       style={bgStyle}
@@ -254,21 +254,21 @@ const Login = ({ onLoginSuccess }) => {
       )}
 
       {/* Card de Login com Glass Effect */}
-      <div className="bg-surface-100/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden w-full max-w-[420px] flex flex-col border border-white/40 relative z-10">
+      <div className="bg-surface-100/90 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden w-full max-w-[420px] m-auto flex flex-col border border-white/40 relative z-10">
         
         {/* Banner de Topo com cores dinâmicas */}
         <div
-          className="py-10 px-8 text-center relative overflow-hidden"
+          className="py-6 sm:py-10 px-6 sm:px-8 text-center relative overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${tenant.corPrimaria}, ${tenant.corSecundaria})` }}
         >
           <div className="absolute top-[-20%] right-[-10%] w-40 h-40 bg-surface-100/10 rounded-full blur-3xl"></div>
           <div className="absolute bottom-[-20%] left-[-10%] w-32 h-32 rounded-full blur-2xl" style={{ backgroundColor: `${tenant.corSecundaria}33` }}></div>
           
           <div className="relative z-10">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-surface-100/20 backdrop-blur-md rounded-3xl mb-4 shadow-xl border border-white/30 transform rotate-12">
-               <i className="fas fa-store text-white text-4xl -rotate-12"></i>
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-surface-100/20 backdrop-blur-md rounded-3xl mb-3 sm:mb-4 shadow-xl border border-white/30 transform rotate-12">
+               <i className="fas fa-store text-white text-3xl sm:text-4xl -rotate-12"></i>
             </div>
-            <h1 className="text-4xl font-black text-white tracking-tighter mb-1">{tenant.nome}</h1>
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter mb-1">{tenant.nome}</h1>
             <div className="flex items-center justify-center gap-2">
                <div className="h-px bg-surface-100/30 w-8"></div>
                <p className="text-[10px] font-black uppercase tracking-widest text-white/70">
@@ -279,7 +279,7 @@ const Login = ({ onLoginSuccess }) => {
           </div>
         </div>
 
-        <div className="p-10">
+        <div className="p-6 sm:p-10">
           {api.isElectron && (
             <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-surface-200/70 p-1 text-[10px] font-black uppercase tracking-widest">
               <button
@@ -308,7 +308,7 @@ const Login = ({ onLoginSuccess }) => {
           )}
 
           {isOnlineMode && (
-            <div className="mb-6 space-y-3">
+            <div className="mb-4 sm:mb-6 space-y-3">
               {showServer && (
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Servidor da API</label>
@@ -455,7 +455,7 @@ const Login = ({ onLoginSuccess }) => {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleLogin} className="space-y-6 animate-fade-in">
+            <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6 animate-fade-in">
               {isOnlineMode && (
                 inviteStore ? (
                   <div className="flex items-center gap-3 bg-surface-50 border rounded-2xl p-3 pl-4" style={{ borderColor: `${tenant.corPrimaria}44` }}>
@@ -556,8 +556,8 @@ const Login = ({ onLoginSuccess }) => {
         </div>
 
         {/* Footer */}
-        <div className="bg-surface-200/50 p-6 text-center border-t border-surface-200">
-           <div className="text-[9px] font-black text-surface-400 uppercase tracking-[0.2em] mb-3">
+        <div className="bg-surface-200/50 p-4 sm:p-6 text-center border-t border-surface-200">
+           <div className="text-[9px] font-black text-surface-400 uppercase tracking-[0.2em] mb-2 sm:mb-3">
              v{appVersion} • build production
            </div>
            <div className="text-[10px] text-surface-500 font-bold">
