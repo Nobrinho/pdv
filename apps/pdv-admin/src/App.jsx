@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { api, clearSession, getBaseUrl, getStoredUser, getToken } from "./api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryClient } from "./queryClient";
+import { api, clearSession, getBaseUrl, getStoredUser, getToken, setUnauthorizedHandler } from "./api";
+
+// Limpa o cache (memória + persistido) ao encerrar a sessão do admin.
+const clearAdminCache = () => {
+  try {
+    queryClient.clear();
+    localStorage.removeItem("syscontrol-admin-rq-cache");
+  } catch {
+    /* ignore */
+  }
+};
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -21,8 +33,8 @@ function statusLabel(status) {
 }
 
 function Login({ onLogin }) {
-  const [email, setEmail] = useState("admin@syscontrol.local");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -111,31 +123,19 @@ function StoreRow({ store, onBlock, onUnblock, onDetails, busy }) {
 }
 
 function StoreDrawer({ store, onClose }) {
-  const [users, setUsers] = useState([]);
-  const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+  const usersQuery = useQuery({ queryKey: ["admin-store-users", store.id], queryFn: () => api.storeUsers(store.id) });
+  const devicesQuery = useQuery({ queryKey: ["admin-store-devices", store.id], queryFn: () => api.storeDevices(store.id) });
+  const users = usersQuery.data || [];
+  const devices = devicesQuery.data || [];
+  const loading = usersQuery.isLoading || devicesQuery.isLoading;
+  const [actionError, setError] = useState("");
+  const error = actionError || usersQuery.error?.message || devicesQuery.error?.message || "";
   const [busyDevice, setBusyDevice] = useState(null);
   const [busyUser, setBusyUser] = useState(null);
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [u, d] = await Promise.all([api.storeUsers(store.id), api.storeDevices(store.id)]);
-      setUsers(u);
-      setDevices(d);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.id]);
+  const reloadUsers = () => queryClient.invalidateQueries({ queryKey: ["admin-store-users", store.id] });
+  const reloadDevices = () => queryClient.invalidateQueries({ queryKey: ["admin-store-devices", store.id] });
 
   const resetPassword = async (user) => {
     setBusyUser(user.id);
@@ -156,7 +156,7 @@ function StoreDrawer({ store, onClose }) {
     setError("");
     try {
       const res = await api.setUserActive(store.id, user.id, !user.ativo);
-      if (res.success) await load();
+      if (res.success) await reloadUsers();
       else setError(res.error || "Falha ao alterar usuario.");
     } catch (err) {
       setError(err.message);
@@ -170,7 +170,7 @@ function StoreDrawer({ store, onClose }) {
     try {
       if (device.autorizado) await api.blockDevice(store.id, device.id);
       else await api.authorizeDevice(store.id, device.id);
-      await load();
+      await reloadDevices();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -183,7 +183,7 @@ function StoreDrawer({ store, onClose }) {
     setBusyDevice(device.id);
     try {
       const res = await api.deleteDevice(store.id, device.id);
-      if (res.success) await load();
+      if (res.success) await reloadDevices();
       else setError(res.error || "Falha ao excluir dispositivo.");
     } catch (err) {
       setError(err.message);
@@ -264,41 +264,31 @@ function StoreDrawer({ store, onClose }) {
 }
 
 function Dashboard({ user, onLogout }) {
+  const queryClient = useQueryClient();
   const [view, setView] = useState("stores");
-  const [stores, setStores] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [billing, setBilling] = useState(null);
-  const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const storesQuery = useQuery({ queryKey: ["admin-stores"], queryFn: () => api.stores() });
+  const statsQuery = useQuery({ queryKey: ["admin-dashboard"], queryFn: () => api.dashboard().catch(() => null) });
+  const billingQuery = useQuery({ queryKey: ["admin-billing"], queryFn: () => api.billing().catch(() => null) });
+  const plansQuery = useQuery({ queryKey: ["admin-plans"], queryFn: () => api.plans().catch(() => []) });
+  const stores = storesQuery.data || [];
+  const stats = statsQuery.data || null;
+  const billing = billingQuery.data || null;
+  const plans = plansQuery.data || [];
+  const loading =
+    storesQuery.isFetching || statsQuery.isFetching || billingQuery.isFetching || plansQuery.isFetching;
   const [busyId, setBusyId] = useState(null);
   const [query, setQuery] = useState("");
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
+  const error = actionError || storesQuery.error?.message || "";
   const [detailStore, setDetailStore] = useState(null);
 
-  const loadAll = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [s, st, bl, pl] = await Promise.all([
-        api.stores(),
-        api.dashboard().catch(() => null),
-        api.billing().catch(() => null),
-        api.plans().catch(() => []),
-      ]);
-      setStores(s);
-      setStats(st);
-      setBilling(bl);
-      setPlans(pl);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAll();
-  }, []);
+  const refreshAll = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["admin-stores"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-billing"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] }),
+    ]);
 
   const filteredStores = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -336,7 +326,7 @@ function Dashboard({ user, onLogout }) {
     setBusyId(store.id);
     try {
       await api.blockStore(store.id, motivo);
-      await loadAll();
+      await refreshAll();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -348,7 +338,7 @@ function Dashboard({ user, onLogout }) {
     setBusyId(store.id);
     try {
       await api.unblockStore(store.id);
-      await loadAll();
+      await refreshAll();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -361,7 +351,7 @@ function Dashboard({ user, onLogout }) {
     setBusyId(sub.loja_id);
     try {
       await api.changePlan(sub.loja_id, Number(planoId));
-      await loadAll();
+      await refreshAll();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -373,7 +363,7 @@ function Dashboard({ user, onLogout }) {
     setBusyId(sub.loja_id);
     try {
       await api.registerPayment(sub.loja_id, {});
-      await loadAll();
+      await refreshAll();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -386,7 +376,7 @@ function Dashboard({ user, onLogout }) {
     setBusyId(sub.loja_id);
     try {
       await api.cancelStore(sub.loja_id, "Assinatura cancelada pelo admin");
-      await loadAll();
+      await refreshAll();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -395,15 +385,13 @@ function Dashboard({ user, onLogout }) {
   };
 
   const runDunning = async () => {
-    setLoading(true);
     setError("");
     try {
       const res = await api.runDunning();
       window.alert(`Cobrança executada:\n${res.marcadas_vencidas} marcada(s) como vencida, ${res.bloqueadas} bloqueada(s). Carência: ${res.graceDays} dias.`);
-      await loadAll();
+      await refreshAll();
     } catch (err) {
       setError(err.message);
-      setLoading(false);
     }
   };
 
@@ -424,7 +412,6 @@ function Dashboard({ user, onLogout }) {
         if (!adminUser) return;
         const adminPass = window.prompt("Senha do admin (min 4):", "1234");
         if (!adminPass) return;
-        setLoading(true);
         const res = await api.restoreToNewStore({
           store: { nome },
           admin: { nome: "Administrador", username: adminUser, password: adminPass },
@@ -432,14 +419,12 @@ function Dashboard({ user, onLogout }) {
         });
         if (res.success) {
           window.alert(`Loja restaurada! ID ${res.loja.id}.`);
-          await loadAll();
+          await refreshAll();
         } else {
           setError(res.error || "Falha ao restaurar.");
         }
       } catch (err) {
         setError(err.message);
-      } finally {
-        setLoading(false);
       }
     };
     input.click();
@@ -499,7 +484,7 @@ function Dashboard({ user, onLogout }) {
                 Restaurar de backup
               </button>
             )}
-            <button className="refresh" onClick={loadAll} disabled={loading}>
+            <button className="refresh" onClick={refreshAll} disabled={loading}>
               <i className={`fas ${loading ? "fa-circle-notch fa-spin" : "fa-rotate"}`}></i>
               Atualizar
             </button>
@@ -693,6 +678,29 @@ function Dashboard({ user, onLogout }) {
 export default function App() {
   const [user, setUser] = useState(() => (getToken() ? getStoredUser() : null));
 
+  useEffect(() => {
+    // 401 global (token expirado) → volta ao login.
+    setUnauthorizedHandler(() => {
+      clearSession();
+      clearAdminCache();
+      setUser(null);
+    });
+    // Valida o token no boot: se expirou, cai para o login em vez de abrir
+    // a interface "logada" que falha nas requisições.
+    if (getToken()) {
+      api
+        .me()
+        .then((u) => {
+          if (u) setUser(u);
+        })
+        .catch(() => {
+          clearSession();
+          setUser(null);
+        });
+    }
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
   if (!user) return <Login onLogin={setUser} />;
 
   return (
@@ -700,6 +708,7 @@ export default function App() {
       user={user}
       onLogout={() => {
         clearSession();
+        clearAdminCache();
         setUser(null);
       }}
     />
