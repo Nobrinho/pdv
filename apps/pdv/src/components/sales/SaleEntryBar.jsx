@@ -20,6 +20,7 @@ const SaleEntryBar = ({
   onSearchTermChange,
   onSearchKeyDown,
   searchResults = [],
+  searching = false,
   onSelectProduct,
   onScanCode,
 }) => {
@@ -129,24 +130,35 @@ const SaleEntryBar = ({
           </button>
         )}
 
-        {searchResults.length > 0 && (
+        {searchTerm.trim().length >= 2 && (
           <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto z-50">
-            {searchResults.map((product) => (
-              <div
-                key={product.id}
-                onClick={() => onSelectProduct(product)}
-                className="p-3 hover:bg-primary-500/10 cursor-pointer border-b border-surface-200 flex justify-between items-center group transition-colors"
-              >
-                <div>
-                  <div className="font-medium text-surface-800">{product.descricao}</div>
-                  <div className="text-xs text-surface-500">{product.codigo}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-primary-600">R$ {product.preco_venda.toFixed(2)}</div>
-                  <div className="text-xs text-surface-400">Estoque: {product.estoque_atual}</div>
-                </div>
+            {searching ? (
+              <div className="p-4 flex items-center justify-center gap-2 text-sm text-surface-500">
+                <i className="fas fa-circle-notch fa-spin"></i> Buscando produtos...
               </div>
-            ))}
+            ) : searchResults.length > 0 ? (
+              searchResults.map((product) => (
+                <div
+                  key={product.id}
+                  onClick={() => onSelectProduct(product)}
+                  className="p-3 hover:bg-primary-500/10 cursor-pointer border-b border-surface-200 flex justify-between items-center group transition-colors"
+                >
+                  <div>
+                    <div className="font-medium text-surface-800">{product.descricao}</div>
+                    <div className="text-xs text-surface-500">{product.codigo}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-primary-600">R$ {product.preco_venda.toFixed(2)}</div>
+                    <div className="text-xs text-surface-400">Estoque: {product.estoque_atual}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-sm text-surface-400">
+                <i className="fas fa-box-open block text-lg mb-1 text-surface-300"></i>
+                Nenhum produto encontrado
+              </div>
+            )}
           </div>
         )}
       </div>

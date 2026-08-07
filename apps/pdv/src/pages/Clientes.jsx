@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
 import {
@@ -18,9 +19,13 @@ import StatusBadge from "../components/ui/StatusBadge";
 const Clientes = () => {
   const { showAlert, showConfirm } = useAlert();
 
-  const [clients, setClients] = useState([]);
+  const queryClient = useQueryClient();
+  const { data: clients = [], isLoading: loading } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => api.clients.list(),
+  });
+  const refreshClients = () => queryClient.invalidateQueries({ queryKey: ["clients"] });
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [deletingClientId, setDeletingClientId] = useState(null);
   const [payingDebtId, setPayingDebtId] = useState(null);
@@ -43,23 +48,6 @@ const Clientes = () => {
   const [debts, setDebts] = useState([]);
   const [paymentValue, setPaymentValue] = useState("");
   const [debtLoading, setDebtLoading] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const data = await api.clients.list();
-      setClients(data || []);
-    } catch (error) {
-      console.error(error);
-      showAlert("Erro ao carregar clientes.", "Erro", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredClients = useMemo(() => {
     if (!searchTerm) return clients;
@@ -112,7 +100,7 @@ const Clientes = () => {
       if (result.success) {
         setShowModal(false);
         resetForm();
-        loadData();
+        refreshClients();
         showAlert(
           editingId ? "Cliente atualizado!" : "Cliente cadastrado!",
           "Sucesso",
@@ -136,7 +124,7 @@ const Clientes = () => {
       try {
         const result = await api.clients.delete(id);
         if (result.success) {
-          loadData();
+          refreshClients();
           showAlert("Cliente excluído.", "Sucesso", "success");
         } else {
           showAlert(result.error, "Não permitido", "warning");
@@ -200,7 +188,7 @@ const Clientes = () => {
         const updatedDebts = await api.clients.debts(selectedClient.id);
         setDebts(updatedDebts);
         setPaymentValue("");
-        loadData();
+        refreshClients();
       } else {
         showAlert("Erro: " + result.error, "Erro", "error");
       }

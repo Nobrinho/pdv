@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
@@ -53,15 +54,35 @@ const INITIAL_NEW_CLIENT_DATA = {
   endereco: "",
 };
 
+// Selects estáveis (fora do componente) para o React Query memoizar o resultado.
+const selectBudgets = (res) => (Array.isArray(res) ? res : res?.data || []);
+const selectArray = (r) => (Array.isArray(r) ? r : []);
+const selectProductsCoerced = (rows) =>
+  (Array.isArray(rows) ? rows : []).map((p) => ({
+    ...p,
+    preco_venda: Number(p.preco_venda || 0),
+    custo: Number(p.custo || 0),
+    estoque_atual: Number(p.estoque_atual || 0),
+  }));
+
 const Orcamentos = () => {
   const { showAlert, showConfirm } = useAlert();
   const { tenant } = useTenant();
-  const [budgets, setBudgets] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [people, setPeople] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState("");
+  const queryClient = useQueryClient();
+  const budgetsQuery = useQuery({ queryKey: ["budgets"], queryFn: () => api.budgets.list(), select: selectBudgets });
+  const productsQuery = useQuery({ queryKey: ["products"], queryFn: () => api.products.list(), select: selectProductsCoerced });
+  const peopleQuery = useQuery({ queryKey: ["people"], queryFn: () => api.people.list(), select: selectArray });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => api.clients.list(), select: selectArray });
+  const budgets = budgetsQuery.data || [];
+  const products = productsQuery.data || [];
+  const people = peopleQuery.data || [];
+  const clients = clientsQuery.data || [];
+  const loading = budgetsQuery.isLoading;
+  const loadError = budgetsQuery.isError ? "Nao foi possivel carregar os dados de orcamentos." : "";
+  const refreshBudgets = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ["budgets"] }),
+    [queryClient],
+  );
   const [showEditor, setShowEditor] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -130,46 +151,6 @@ const Orcamentos = () => {
     setShowEditor(false);
     resetEditorState();
   }, [resetEditorState]);
-
-  const loadPageData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setLoadError("");
-      const [budgetResult, productResult, peopleResult, clientResult] = await Promise.all([
-        api.budgets.list(),
-        api.products.list(),
-        api.people.list(),
-        api.clients.list(),
-      ]);
-
-      const budgetRows = Array.isArray(budgetResult) ? budgetResult : budgetResult?.data || [];
-      const productRows = Array.isArray(productResult) ? productResult : [];
-      const peopleRows = Array.isArray(peopleResult) ? peopleResult : [];
-      const clientRows = Array.isArray(clientResult) ? clientResult : [];
-
-      setBudgets(budgetRows);
-      setProducts(
-        productRows.map((product) => ({
-          ...product,
-          preco_venda: Number(product.preco_venda || 0),
-          custo: Number(product.custo || 0),
-          estoque_atual: Number(product.estoque_atual || 0),
-        })),
-      );
-      setPeople(peopleRows);
-      setClients(clientRows);
-    } catch (error) {
-      console.error(error);
-      setLoadError("Nao foi possivel carregar os dados de orcamentos.");
-      showAlert("Erro ao carregar dados de orcamentos.", "Erro", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showAlert]);
-
-  useEffect(() => {
-    loadPageData();
-  }, [loadPageData]);
 
   const searchResults = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
@@ -287,7 +268,7 @@ const Orcamentos = () => {
         const result = await api.clients.save(newClientData);
         if (result.success) {
           const updatedClients = await api.clients.list();
-          setClients(updatedClients);
+          queryClient.setQueryData(["clients"], updatedClients);
           const newClient = findSavedClient(updatedClients, result.id, newClientData.documento);
           if (newClient) {
             setSelectedClient(String(newClient.id));
@@ -383,14 +364,14 @@ const Orcamentos = () => {
           showAlert(result?.error || "Nao foi possivel duplicar o orcamento.", "Erro", "error");
           return;
         }
-        await loadPageData();
+        await refreshBudgets();
         showAlert(`Orcamento ${result.codigo} criado a partir da copia.`, "Duplicado", "success");
       } catch (error) {
         console.error(error);
         showAlert("Nao foi possivel duplicar o orcamento.", "Erro", "error");
       }
     },
-    [loadPageData, showAlert],
+    [refreshBudgets, showAlert],
   );
 
   const handleCancelBudget = useCallback(
@@ -407,14 +388,14 @@ const Orcamentos = () => {
           showAlert(result?.error || "Nao foi possivel cancelar o orcamento.", "Erro", "error");
           return;
         }
-        await loadPageData();
+        await refreshBudgets();
         showAlert("Orcamento cancelado com sucesso.", "Concluido", "success");
       } catch (error) {
         console.error(error);
         showAlert("Nao foi possivel cancelar o orcamento.", "Erro", "error");
       }
     },
-    [loadPageData, showAlert, showConfirm],
+    [refreshBudgets, showAlert, showConfirm],
   );
 
   const handlePreviewBudget = useCallback(
@@ -487,7 +468,8 @@ const Orcamentos = () => {
         return;
       }
 
-      await loadPageData();
+      await refreshBudgets();
+      queryClient.invalidateQueries({ queryKey: ["products"] }); // estoque baixou na venda
       closeConvertModal();
       showAlert(`Orcamento convertido em venda #${result.saleId}.`, "Conversao", "success");
     } catch (error) {
@@ -496,7 +478,7 @@ const Orcamentos = () => {
     } finally {
       setIsConverting(false);
     }
-  }, [closeConvertModal, conversionData, loadPageData, showAlert]);
+  }, [closeConvertModal, conversionData, refreshBudgets, queryClient, showAlert]);
 
   const handleExportPreviewAsPdf = useCallback(async () => {
     if (!previewBudget || !budgetDocumentRef.current) return;
@@ -597,7 +579,7 @@ const Orcamentos = () => {
         return;
       }
 
-      await loadPageData();
+      await refreshBudgets();
       closeEditor();
       showAlert(
         editingBudgetId
@@ -617,7 +599,7 @@ const Orcamentos = () => {
     closeEditor,
     editingBudgetId,
     editorTotals,
-    loadPageData,
+    refreshBudgets,
     observations,
     selectedClient,
     selectedMechanic,
@@ -773,7 +755,7 @@ const Orcamentos = () => {
           data={budgets}
           loading={loading}
           error={loadError}
-          onRefresh={loadPageData}
+          onRefresh={refreshBudgets}
           emptyIcon="fa-file-invoice-dollar"
           emptyMessage="Nenhum orcamento cadastrado ainda."
         />

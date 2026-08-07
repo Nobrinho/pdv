@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
@@ -13,12 +14,8 @@ const Servicos = () => {
   const { showAlert } = useAlert();
 
   // Dados Gerais
-  const [services, setServices] = useState([]);
-  const [mechanics, setMechanics] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalRecords, setTotalRecords] = useState(0);
   const [isSavingService, setIsSavingService] = useState(false);
   const LIMIT = 100;
 
@@ -40,48 +37,33 @@ const Servicos = () => {
   const [selectedMechanicFilter, setSelectedMechanicFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false); // avançados colapsados no mobile
 
-  const loadData = useCallback(async () => {
-    if (startDate && endDate && dayjs(startDate).isAfter(dayjs(endDate))) {
-      setServices([]);
-      setTotalPages(0);
-      setTotalRecords(0);
-      return showAlert("Data inicial não pode ser maior que a data final.", "Filtro inválido", "warning");
-    }
+  const hasInvalidRange = startDate && endDate && dayjs(startDate).isAfter(dayjs(endDate));
+  const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
+  const servicesParams = {
+    page,
+    limit: LIMIT,
+    startDate: startTimestamp,
+    endDate: endTimestamp,
+    trocadorId:
+      selectedMechanicFilter && selectedMechanicFilter !== "all" ? selectedMechanicFilter : undefined,
+  };
+  const servicesQuery = useQuery({
+    queryKey: ["services", servicesParams],
+    queryFn: () => api.services.list(servicesParams),
+    enabled: !hasInvalidRange,
+  });
+  const rawServices = servicesQuery.data;
+  const servicesList = Array.isArray(rawServices) ? rawServices : rawServices?.data || [];
+  const services = useMemo(
+    () => [...servicesList].sort((a, b) => b.data_servico - a.data_servico),
+    [servicesList],
+  );
+  const totalPages = Array.isArray(rawServices) ? 0 : rawServices?.totalPages || 0;
+  const totalRecords = Array.isArray(rawServices) ? services.length : rawServices?.total || 0;
+  const loading = servicesQuery.isLoading;
 
-    try {
-      setLoading(true);
-      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
-        startDate,
-        endDate,
-      );
-
-      const [servicesData, peopleData] = await Promise.all([
-        api.services.list({
-          page,
-          limit: LIMIT,
-          startDate: startTimestamp,
-          endDate: endTimestamp,
-          trocadorId: selectedMechanicFilter && selectedMechanicFilter !== "all" ? selectedMechanicFilter : undefined,
-        }),
-        api.people.list()
-      ]);
-
-      const servicesList = Array.isArray(servicesData) ? servicesData : (servicesData?.data || []);
-      setServices(servicesList.sort((a, b) => b.data_servico - a.data_servico));
-      setTotalPages(Array.isArray(servicesData) ? 0 : (servicesData?.totalPages || 0));
-      setTotalRecords(Array.isArray(servicesData) ? servicesList.length : (servicesData?.total || 0));
-      setMechanics(peopleData.filter((p) => p.cargo_nome === "Trocador"));
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-      showAlert("Erro ao conectar com o banco de dados.", "Erro", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [startDate, endDate, selectedMechanicFilter, showAlert, page]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const { data: people = [] } = useQuery({ queryKey: ["people"], queryFn: () => api.people.list() });
+  const mechanics = useMemo(() => people.filter((p) => p.cargo_nome === "Trocador"), [people]);
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
@@ -107,7 +89,7 @@ const Servicos = () => {
       if (result.success) {
         showAlert("Serviço registrado com sucesso!", "Sucesso", "success");
         setFormData({ ...formData, descricao: "", valor: "" });
-        loadData();
+        queryClient.invalidateQueries({ queryKey: ["services"] });
       } else {
         showAlert("Erro ao registrar: " + result.error, "Erro", "error");
       }
@@ -310,7 +292,7 @@ const Servicos = () => {
               columns={columns}
               data={filteredServices}
               loading={loading}
-              onRefresh={loadData}
+              onRefresh={() => servicesQuery.refetch()}
               emptyIcon="fa-clipboard-list"
               emptyMessage="Nenhum serviço registrado para este período."
             />

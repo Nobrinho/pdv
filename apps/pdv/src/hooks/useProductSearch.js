@@ -7,39 +7,45 @@ import { api } from "../services/api";
 const useProductSearch = (products, addToCart) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
   const searchInputRef = useRef(null);
   const searchTimerRef = useRef(null);
+  const requestIdRef = useRef(0);
 
-  // Debounce search
+  // Busca com debounce: só consulta o banco depois que o operador para de
+  // digitar (evita sobrecarga). Código exato é resolvido na hora (leitor).
   useEffect(() => {
-    if (searchTerm.length < 2) {
+    const term = searchTerm.trim();
+    if (term.length < 2) {
       setSearchResults([]);
+      setSearching(false);
       return;
     }
 
-    // Match exato por código (instantâneo, sem debounce)
-    const exactMatch = products.find(
-      (p) => p.codigo.trim() === searchTerm.trim(),
-    );
+    // Match exato por código (instantâneo, sem debounce nem rede)
+    const exactMatch = products.find((p) => String(p.codigo).trim() === term);
     if (exactMatch) {
       setSearchResults([exactMatch]);
+      setSearching(false);
       return;
     }
 
-    // Debounce 300ms para busca por texto
+    // Feedback imediato de "buscando" + debounce de 350ms para busca por texto
+    setSearching(true);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const reqId = ++requestIdRef.current;
     searchTimerRef.current = setTimeout(async () => {
       try {
-        const results = await api.products.search({
-          term: searchTerm,
-          limit: 15,
-        });
+        const results = await api.products.search({ term, limit: 15 });
+        if (reqId !== requestIdRef.current) return; // resultado obsoleto
         setSearchResults(results.filter((p) => p.estoque_atual > 0));
       } catch (err) {
         console.error("Erro na busca:", err);
-        setSearchResults([]);
+        if (reqId === requestIdRef.current) setSearchResults([]);
+      } finally {
+        if (reqId === requestIdRef.current) setSearching(false);
       }
-    }, 300);
+    }, 350);
 
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -109,6 +115,7 @@ const useProductSearch = (products, addToCart) => {
     searchTerm,
     setSearchTerm,
     searchResults,
+    searching,
     searchInputRef,
     handleSearchKeyDown,
     selectProduct,

@@ -7,6 +7,18 @@
 import React, { createContext, useState, useContext, useRef, useEffect, useMemo, useCallback } from "react";
 import { useAlert } from "./AlertSystem";
 import { api } from "../services/api";
+import { queryClient } from "../lib/queryClient";
+
+// Limpa o cache de consultas (memória + persistido) ao encerrar a sessão,
+// para não vazar dados de uma loja para outra num navegador compartilhado.
+const clearQueryCache = () => {
+  try {
+    queryClient.clear();
+    localStorage.removeItem("syscontrol-rq-cache");
+  } catch {
+    /* ignore */
+  }
+};
 
 // Definição de permissões por cargo
 const PERMISSOES_CAIXA = [
@@ -27,7 +39,10 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  // Restaura a sessão persistida no web (evita perder o login ao dar F5).
+  const [user, setUser] = useState(() =>
+    api.isRemote && api.onlineToken ? api.onlineUser : null,
+  );
   const [unlockedRoutes, setUnlockedRoutes] = useState([]);
   const [onboardingRequired, setOnboardingRequired] = useState(null); // null = carregando, true = precisa, false = pronto
 
@@ -42,6 +57,16 @@ export const AuthProvider = ({ children }) => {
   const [pendingRoute, setPendingRoute] = useState(null);
 
   const { showAlert } = useAlert();
+
+  // 401 global (token expirado/inválido) → derruba a sessão e volta ao login.
+  useEffect(() => {
+    const off = api.onUnauthorized(() => {
+      clearQueryCache();
+      setUser(null);
+      setUnlockedRoutes([]);
+    });
+    return off;
+  }, []);
 
   // Verificação de onboarding no startup
   useEffect(() => {
@@ -66,6 +91,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     api.auth.logout().catch(() => {});
+    clearQueryCache();
     setUser(null);
     setUnlockedRoutes([]);
   }, []);

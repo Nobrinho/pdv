@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useAlert } from "../context/AlertSystem";
 import { useAuth } from "../context/AuthContext";
@@ -37,9 +38,14 @@ const INITIAL_STOCK_FORM = {
 const Produtos = () => {
   const { showAlert, showConfirm } = useAlert();
   const { withPermission } = useAuth();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState("");
+  const queryClient = useQueryClient();
+  const {
+    data: products = [],
+    isLoading: loading,
+    isError: productsError,
+  } = useQuery({ queryKey: ["products"], queryFn: () => api.products.list() });
+  const loadError = productsError ? "Nao foi possivel carregar os produtos." : "";
+  const refreshProducts = () => queryClient.invalidateQueries({ queryKey: ["products"] });
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [isUpdatingStock, setIsUpdatingStock] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState(null);
@@ -69,25 +75,6 @@ const Produtos = () => {
   const [importResult, setImportResult] = useState(null);
   const [conflictMode, setConflictMode] = useState("skip");
   const [showImportHelp, setShowImportHelp] = useState(false);
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      setLoadError("");
-      const data = await api.products.list();
-      setProducts(data || []);
-    } catch (error) {
-      console.error(error);
-      setLoadError("Nao foi possivel carregar os produtos.");
-      showAlert("Erro ao carregar produtos", "Erro", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredAndSortedProducts = useMemo(() => {
     let result = products.filter(
@@ -152,7 +139,7 @@ const Produtos = () => {
       if (result.success) {
         setShowProductModal(false);
         resetForm();
-        loadProducts();
+        refreshProducts();
         showAlert(editingId ? "Produto atualizado!" : "Produto cadastrado!", "Sucesso", "success");
       } else {
         showAlert(result.error, "Erro", "error");
@@ -207,7 +194,7 @@ const Produtos = () => {
 
       await api.products.save(updatedProduct);
       setShowStockModal(false);
-      loadProducts();
+      refreshProducts();
       showAlert("Estoque atualizado!", "Sucesso", "success");
     } catch (error) {
       showAlert("Erro ao atualizar estoque.", "Erro", "error");
@@ -223,7 +210,7 @@ const Produtos = () => {
         setDeletingProductId(id);
         const result = await api.products.delete(id);
         if (result.success) {
-          loadProducts();
+          refreshProducts();
           showAlert("Produto excluído.", "Sucesso", "success");
         } else {
           showAlert(result.error, "Não foi possível excluir", "error");
@@ -357,7 +344,7 @@ const Produtos = () => {
 
       if (result.success) {
         setImportResult(result);
-        loadProducts();
+        refreshProducts();
         showAlert(
           `Importação concluída! ${result.created} criados, ${result.updated} atualizados, ${result.skipped} pulados, ${result.errors.length} erros.`,
           "Sucesso", "success"
@@ -490,7 +477,7 @@ const Produtos = () => {
         totalItems={filteredAndSortedProducts.length}
         onPreviousPage={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
         onNextPage={() => setPage((currentPage) => Math.min(totalPages, currentPage + 1))}
-        onRefresh={loadProducts}
+        onRefresh={refreshProducts}
       />
       {/* --- MODAL DE PRODUTO --- */}
       <ProductFormModal

@@ -1,5 +1,6 @@
 // @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
@@ -25,112 +26,94 @@ ChartJS.register(
   Legend,
 );
 
+const getTodayRange = () => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  return { startDate: start.getTime(), endDate: end.getTime() };
+};
+
+// queryFn do dashboard: agrega as chamadas e devolve um único objeto.
+async function fetchDashboardData() {
+  const [statsData, weeklyData, stockData, invStats] = await Promise.all([
+    api.dashboard.stats(),
+    api.dashboard.weeklySales(),
+    api.dashboard.lowStock(),
+    api.dashboard.inventoryStats(),
+  ]);
+
+  let movementData = statsData;
+  if (!statsData.hasFinancialBreakdown) {
+    const todayRange = getTodayRange();
+    const [salesResult, servicesResult] = await Promise.all([
+      api.sales.list(todayRange),
+      api.services.list(todayRange),
+    ]);
+    const sales = Array.isArray(salesResult) ? salesResult : salesResult?.data || [];
+    const services = Array.isArray(servicesResult) ? servicesResult : servicesResult?.data || [];
+    const validSales = sales.filter((sale) => !sale.cancelada);
+    movementData = {
+      ...statsData,
+      maoDeObra:
+        validSales.reduce((total, sale) => total + Number(sale.mao_de_obra || 0), 0) +
+        services.reduce((total, service) => total + Number(service.valor || 0), 0),
+      comissoes: validSales.reduce((total, sale) => total + Number(sale.comissao_real || 0), 0),
+    };
+  }
+
+  let inventoryData = invStats;
+  if (!invStats.hasStockCounters) {
+    const products = await api.products.list();
+    inventoryData = {
+      ...invStats,
+      qtdZerados: products.filter((product) => Number(product.estoque_atual || 0) <= 0).length,
+      qtdBaixoEstoque: products.filter((product) => {
+        const stock = Number(product.estoque_atual || 0);
+        return stock > 0 && stock <= 5;
+      }).length,
+      totalItensFisicos: products.reduce((total, product) => total + Number(product.estoque_atual || 0), 0),
+    };
+  }
+
+  return {
+    stats: movementData,
+    inventoryStats: inventoryData,
+    lowStock: stockData,
+    chartData: {
+      labels: weeklyData.labels,
+      datasets: [
+        {
+          label: "Faturamento (R$)",
+          data: weeklyData.data,
+          backgroundColor: "rgba(59, 130, 246, 0.7)",
+          borderRadius: 6,
+          hoverBackgroundColor: "rgba(37, 99, 235, 0.8)",
+        },
+      ],
+    },
+  };
+}
+
 const Dashboard = () => {
   const { isDarkMode } = useTheme();
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({
-    faturamento: 0,
-    lucro: 0,
-    vendasCount: 0,
-    maoDeObra: 0,
-    comissoes: 0,
+  const { data, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: fetchDashboardData,
   });
-  const [inventoryStats, setInventoryStats] = useState({
-    custoTotal: 0,
-    vendaPotencial: 0,
-    lucroProjetado: 0,
-    qtdZerados: 0,
-    qtdBaixoEstoque: 0,
-    totalItensFisicos: 0,
-  });
-  const [chartData, setChartData] = useState({ labels: [], datasets: [] });
-  const [lowStock, setLowStock] = useState([]);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const getTodayRange = () => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    return {
-      startDate: start.getTime(),
-      endDate: end.getTime(),
+  const stats = data?.stats || { faturamento: 0, lucro: 0, vendasCount: 0, maoDeObra: 0, comissoes: 0 };
+  const inventoryStats =
+    data?.inventoryStats || {
+      custoTotal: 0,
+      vendaPotencial: 0,
+      lucroProjetado: 0,
+      qtdZerados: 0,
+      qtdBaixoEstoque: 0,
+      totalItensFisicos: 0,
     };
-  };
-
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      
-      // Executar chamadas em paralelo para melhor performance
-      const [statsData, weeklyData, stockData, invStats] = await Promise.all([
-        api.dashboard.stats(),
-        api.dashboard.weeklySales(),
-        api.dashboard.lowStock(),
-        api.dashboard.inventoryStats()
-      ]);
-
-      let movementData = statsData;
-      if (!statsData.hasFinancialBreakdown) {
-        const todayRange = getTodayRange();
-        const [salesResult, servicesResult] = await Promise.all([
-          api.sales.list(todayRange),
-          api.services.list(todayRange),
-        ]);
-        const sales = Array.isArray(salesResult) ? salesResult : salesResult?.data || [];
-        const services = Array.isArray(servicesResult) ? servicesResult : servicesResult?.data || [];
-        const validSales = sales.filter((sale) => !sale.cancelada);
-        movementData = {
-          ...statsData,
-          maoDeObra:
-            validSales.reduce((total, sale) => total + Number(sale.mao_de_obra || 0), 0) +
-            services.reduce((total, service) => total + Number(service.valor || 0), 0),
-          comissoes: validSales.reduce((total, sale) => total + Number(sale.comissao_real || 0), 0),
-        };
-      }
-
-      let inventoryData = invStats;
-      if (!invStats.hasStockCounters) {
-        const products = await api.products.list();
-        inventoryData = {
-          ...invStats,
-          qtdZerados: products.filter((product) => Number(product.estoque_atual || 0) <= 0).length,
-          qtdBaixoEstoque: products.filter((product) => {
-            const stock = Number(product.estoque_atual || 0);
-            return stock > 0 && stock <= 5;
-          }).length,
-          totalItensFisicos: products.reduce(
-            (total, product) => total + Number(product.estoque_atual || 0),
-            0,
-          ),
-        };
-      }
-
-      setStats(movementData);
-      setLowStock(stockData);
-      setInventoryStats(inventoryData);
-
-      setChartData({
-        labels: weeklyData.labels,
-        datasets: [
-          {
-            label: "Faturamento (R$)",
-            data: weeklyData.data,
-            backgroundColor: "rgba(59, 130, 246, 0.7)",
-            borderRadius: 6,
-            hoverBackgroundColor: "rgba(37, 99, 235, 0.8)",
-          },
-        ],
-      });
-    } catch (error) {
-      console.error("Erro ao carregar dashboard:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const chartData = data?.chartData || { labels: [], datasets: [] };
+  const lowStock = data?.lowStock || [];
+  const loading = isFetching;
 
   const chartOptions = {
     responsive: true,
@@ -171,7 +154,7 @@ const Dashboard = () => {
     },
   };
 
-  if (loading && !stats.faturamento) {
+  if (isLoading) {
     return <PageSkeleton cards={5} />;
   }
 
@@ -183,7 +166,7 @@ const Dashboard = () => {
           <p className="text-xs text-surface-500 mt-1">Resumo operacional e saúde financeira do seu negócio.</p>
         </div>
         <button
-          onClick={loadDashboardData}
+          onClick={() => refetch()}
           className="flex items-center gap-2 text-primary-600 hover:text-primary-800 transition font-bold text-sm bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-100"
         >
           <i className={`fas fa-sync-alt ${loading ? "animate-spin" : ""}`}></i> 

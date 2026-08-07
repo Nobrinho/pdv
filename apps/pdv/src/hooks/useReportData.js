@@ -1,9 +1,13 @@
 // =============================================================
-// useReportData.js — Hook para processamento de dados de relatório
+// useReportData.js — Dados de relatório (Comissões / Relatórios) via
+// TanStack Query. Dois modos:
+//   - Online: o relatório é calculado no servidor (/reports/sales).
+//   - Local (Electron): busca dados crus e calcula no cliente (computeReport).
+// A interface de retorno é a mesma dos dois lados.
 // =============================================================
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
 import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
@@ -12,58 +16,215 @@ const standardizeMethod = (method) => {
   const upper = method.toUpperCase().trim();
   if (upper === "PIX") return "Pix";
   if (upper === "DINHEIRO") return "Dinheiro";
-  if (upper.includes("CRÉDITO") || upper.includes("CREDITO"))
-    return "Crédito";
+  if (upper.includes("CRÉDITO") || upper.includes("CREDITO")) return "Crédito";
   if (upper.includes("DÉBITO") || upper.includes("DEBITO")) return "Débito";
   if (upper.includes("FIADO")) return "Fiado";
-  if (upper.includes("MÚLTIPLOS") || upper.includes("MULTIPLOS"))
-    return "Múltiplos";
+  if (upper.includes("MÚLTIPLOS") || upper.includes("MULTIPLOS")) return "Múltiplos";
   return method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
 };
 
-const useReportData = () => {
-  const { showAlert } = useAlert();
+const EMPTY_METRICS = {
+  faturamento: 0,
+  custo: 0,
+  maoDeObra: 0,
+  acrescimos: 0,
+  descontos: 0,
+  comissoes: 0,
+  lucro: 0,
+};
 
-  const [allSales, setAllSales] = useState([]);
-  const [allServices, setAllServices] = useState([]);
-  const [allPeople, setAllPeople] = useState([]);
-  const [defaultCommission, setDefaultCommission] = useState(0.3);
+// Cálculo do relatório no cliente (modo local). Função pura.
+function computeReport({ allSales, allServices, allPeople, selectedSeller, selectedPayment, defaultCommission }) {
+  const vendasFiltradas = allSales.filter((s) => {
+    const isSeller = selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
+    const metodoNormalizado = standardizeMethod(s.forma_pagamento);
+    let isPayment = selectedPayment === "all" || metodoNormalizado === selectedPayment;
+    if (!isPayment && s.lista_pagamentos && s.lista_pagamentos.length > 0) {
+      isPayment = s.lista_pagamentos.some((p) => standardizeMethod(p.metodo) === selectedPayment);
+    }
+    return isSeller && isPayment;
+  });
+
+  const servicosFiltrados = allServices;
+
+  let totalFaturamentoPecas = 0;
+  let totalCustoPecas = 0;
+  let totalDespesaMO = 0;
+  let totalAcrescimos = 0;
+  let totalDescontos = 0;
+  let totalComissoes = 0;
+
+  const mapPagamentos = {};
+  const addPaymentToMap = (metodoRaw, valor) => {
+    const metodo = standardizeMethod(metodoRaw);
+    if (!metodo) return;
+    if (!mapPagamentos[metodo]) mapPagamentos[metodo] = 0;
+    mapPagamentos[metodo] += valor;
+  };
+
+  const vendasProcessadas = vendasFiltradas.map((venda) => {
+    const vendedor = allPeople.find((p) => p.id === venda.vendedor_id);
+    const subtotalProdutos = venda.subtotal;
+    const desconto = venda.desconto_valor || 0;
+    const acrescimo = venda.acrescimo || 0;
+    const valorFinalProdutos = subtotalProdutos - desconto;
+    const custoReal = venda.custo_total_real || 0;
+    const receitaLoja = valorFinalProdutos + acrescimo;
+
+    let comissao = 0;
+    if (venda.comissao_real !== undefined && venda.comissao_real !== null) {
+      comissao = venda.comissao_real;
+    } else {
+      const taxa = vendedor?.comissao_fixa ? vendedor.comissao_fixa / 100 : defaultCommission;
+      if (valorFinalProdutos > 0) comissao = valorFinalProdutos * taxa;
+    }
+
+    const moVenda = venda.mao_de_obra || 0;
+
+    if (!venda.cancelada) {
+      let valorConsiderado = 0;
+      if (selectedPayment === "all") {
+        valorConsiderado = receitaLoja;
+        if (venda.lista_pagamentos && venda.lista_pagamentos.length > 0) {
+          venda.lista_pagamentos.forEach((p) => addPaymentToMap(p.metodo, p.valor));
+        } else {
+          addPaymentToMap(venda.forma_pagamento, receitaLoja);
+        }
+      } else {
+        if (venda.lista_pagamentos && venda.lista_pagamentos.length > 0) {
+          const pgFiltrados = venda.lista_pagamentos.filter(
+            (p) => standardizeMethod(p.metodo) === selectedPayment,
+          );
+          valorConsiderado = pgFiltrados.reduce((acc, p) => acc + p.valor, 0);
+        } else {
+          valorConsiderado = receitaLoja;
+        }
+        addPaymentToMap(selectedPayment, valorConsiderado);
+      }
+
+      const ratio = receitaLoja > 0 && selectedPayment !== "all" ? valorConsiderado / receitaLoja : 1;
+
+      totalFaturamentoPecas += valorConsiderado;
+      totalCustoPecas += custoReal * ratio;
+      totalDespesaMO += moVenda * ratio;
+      totalAcrescimos += acrescimo * ratio;
+      totalDescontos += desconto * ratio;
+      totalComissoes += comissao * ratio;
+    }
+
+    return { ...venda, comissao_calculada: comissao };
+  });
+
+  servicosFiltrados.forEach((serv) => {
+    totalDespesaMO += serv.valor;
+  });
+
+  const paymentSummary = Object.entries(mapPagamentos)
+    .map(([metodo, valor]) => ({ metodo, valor }))
+    .sort((a, b) => b.valor - a.valor);
+
+  const mapMO = {};
+  vendasFiltradas.forEach((v) => {
+    if (!v.cancelada && v.mao_de_obra > 0 && v.trocador_id) {
+      if (!mapMO[v.trocador_id]) mapMO[v.trocador_id] = { nome: v.trocador_nome, total: 0, qtd: 0 };
+      mapMO[v.trocador_id].total += v.mao_de_obra;
+      mapMO[v.trocador_id].qtd += 1;
+    }
+  });
+  servicosFiltrados.forEach((s) => {
+    if (s.trocador_id) {
+      const nomeTrocador =
+        s.trocador_nome || allPeople.find((p) => p.id === s.trocador_id)?.nome || "Desconhecido";
+      if (!mapMO[s.trocador_id]) mapMO[s.trocador_id] = { nome: nomeTrocador, total: 0, qtd: 0 };
+      mapMO[s.trocador_id].total += s.valor;
+      mapMO[s.trocador_id].qtd += 1;
+    }
+  });
+
+  const lucroLiquido = totalFaturamentoPecas - (totalCustoPecas + totalComissoes);
+
+  return {
+    metrics: {
+      faturamento: totalFaturamentoPecas,
+      custo: totalCustoPecas,
+      maoDeObra: totalDespesaMO,
+      acrescimos: totalAcrescimos,
+      descontos: totalDescontos,
+      comissoes: totalComissoes,
+      lucro: lucroLiquido,
+    },
+    filteredSales: vendasProcessadas,
+    laborSummary: Object.values(mapMO),
+    paymentSummary,
+  };
+}
+
+const toArray = (res) => (Array.isArray(res) ? res : res?.data || []);
+
+const useReportData = () => {
+  const queryClient = useQueryClient();
 
   // --- FILTROS ---
   const [periodType, setPeriodType] = useState("weekly");
-  const [startDate, setStartDate] = useState(
-    dayjs().startOf("week").format("YYYY-MM-DD"),
-  );
-  const [endDate, setEndDate] = useState(
-    dayjs().endOf("week").format("YYYY-MM-DD"),
-  );
+  const [startDate, setStartDate] = useState(dayjs().startOf("week").format("YYYY-MM-DD"));
+  const [endDate, setEndDate] = useState(dayjs().endOf("week").format("YYYY-MM-DD"));
   const [selectedSeller, setSelectedSeller] = useState("all");
   const [selectedPayment, setSelectedPayment] = useState("all");
 
-  // --- RESULTADOS ---
-  const [metrics, setMetrics] = useState({
-    faturamento: 0,
-    custo: 0,
-    maoDeObra: 0,
-    acrescimos: 0,
-    descontos: 0,
-    comissoes: 0,
-    lucro: 0,
+  const isOnlineReports = api.isRemote && !!api.reports;
+  const validRange = !!(startDate && endDate);
+  const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
+
+  // Pessoas (cache compartilhado).
+  const peopleQuery = useQuery({ queryKey: ["people"], queryFn: () => api.people.list() });
+  const allPeople = peopleQuery.data || [];
+
+  // ----- ONLINE: relatório calculado no servidor -----
+  const onlineReportQuery = useQuery({
+    queryKey: ["report-online", { startTimestamp, endTimestamp, selectedSeller, selectedPayment }],
+    queryFn: () =>
+      api.reports.sales({
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+        sellerId: selectedSeller !== "all" ? selectedSeller : undefined,
+        payment: selectedPayment !== "all" ? selectedPayment : undefined,
+      }),
+    enabled: isOnlineReports && validRange,
   });
-  const [filteredSales, setFilteredSales] = useState([]);
-  const [laborSummary, setLaborSummary] = useState([]);
-  const [paymentSummary, setPaymentSummary] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [salesPagination, setSalesPagination] = useState({ page: 1, totalPages: 0, total: 0 });
-  const [servicesPagination, setServicesPagination] = useState({ page: 1, totalPages: 0, total: 0 });
+
+  // ----- LOCAL: dados crus + taxa de comissão -----
+  const salesQuery = useQuery({
+    queryKey: ["report-sales", { startTimestamp, endTimestamp }],
+    queryFn: () => api.sales.list({ startDate: startTimestamp, endDate: endTimestamp }),
+    enabled: !isOnlineReports && validRange,
+  });
+  const servicesQuery = useQuery({
+    queryKey: ["report-services", { startTimestamp, endTimestamp }],
+    queryFn: () => api.services.list({ startDate: startTimestamp, endDate: endTimestamp }),
+    enabled: !isOnlineReports && validRange,
+  });
+  const commissionQuery = useQuery({
+    queryKey: ["config", "comissao_padrao"],
+    queryFn: () => api.config.get("comissao_padrao"),
+    enabled: !isOnlineReports,
+  });
+  const defaultCommission = commissionQuery.data ? parseFloat(commissionQuery.data) : 0.3;
+
+  const allSales = useMemo(() => {
+    if (isOnlineReports) return onlineReportQuery.data?.sales || [];
+    return [...toArray(salesQuery.data)].sort((a, b) => b.data_venda - a.data_venda);
+  }, [isOnlineReports, onlineReportQuery.data, salesQuery.data]);
+
+  const allServices = useMemo(() => {
+    if (isOnlineReports) return [];
+    return [...toArray(servicesQuery.data)].sort((a, b) => b.data_servico - a.data_servico);
+  }, [isOnlineReports, servicesQuery.data]);
 
   const paymentMethods = useMemo(() => {
     const methods = new Set();
     allSales.forEach((s) => {
       if (s.lista_pagamentos && s.lista_pagamentos.length > 0) {
-        s.lista_pagamentos.forEach((p) =>
-          methods.add(standardizeMethod(p.metodo)),
-        );
+        s.lista_pagamentos.forEach((p) => methods.add(standardizeMethod(p.metodo)));
       } else {
         methods.add(standardizeMethod(s.forma_pagamento));
       }
@@ -71,96 +232,53 @@ const useReportData = () => {
     return Array.from(methods).sort();
   }, [allSales]);
 
-  // --- LOAD ---
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
-
-      const [salesResult, servicesResult, people, configComissao] =
-        await Promise.all([
-          api.sales.list({
-            startDate: startTimestamp,
-            endDate: endTimestamp,
-          }),
-          api.services.list({
-            startDate: startTimestamp,
-            endDate: endTimestamp,
-          }),
-          api.people.list(),
-          api.config.get("comissao_padrao"),
-        ]);
-
-      const sales = Array.isArray(salesResult) ? salesResult : salesResult?.data || [];
-      const services = Array.isArray(servicesResult) ? servicesResult : servicesResult?.data || [];
-
-      if (!Array.isArray(salesResult)) {
-        setSalesPagination({
-          page: salesResult?.page || 1,
-          totalPages: salesResult?.totalPages || 0,
-          total: salesResult?.total || 0,
-        });
-      }
-      if (!Array.isArray(servicesResult)) {
-        setServicesPagination({
-          page: servicesResult?.page || 1,
-          totalPages: servicesResult?.totalPages || 0,
-          total: servicesResult?.total || 0,
-        });
-      }
-
-      setAllSales(sales.sort((a, b) => b.data_venda - a.data_venda));
-      setAllServices(
-        services.sort((a, b) => b.data_servico - a.data_servico),
-      );
-      setAllPeople(people);
-
-      if (configComissao) setDefaultCommission(parseFloat(configComissao));
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-      showAlert("Erro ao carregar dados do banco.", "Erro", "error");
-    } finally {
-      setLoading(false);
+  // Resultado processado (online vem pronto; local é calculado aqui).
+  const processed = useMemo(() => {
+    if (isOnlineReports) {
+      const d = onlineReportQuery.data || {};
+      return {
+        metrics: d.metrics || EMPTY_METRICS,
+        filteredSales: d.sales || [],
+        laborSummary: d.laborSummary || [],
+        paymentSummary: d.paymentSummary || [],
+      };
     }
-  }, [startDate, endDate, showAlert]);
+    return computeReport({
+      allSales,
+      allServices,
+      allPeople,
+      selectedSeller,
+      selectedPayment,
+      defaultCommission,
+    });
+  }, [
+    isOnlineReports,
+    onlineReportQuery.data,
+    allSales,
+    allServices,
+    allPeople,
+    selectedSeller,
+    selectedPayment,
+    defaultCommission,
+  ]);
 
-  const isOnlineReports = api.isRemote && !!api.reports;
+  const loading = isOnlineReports
+    ? onlineReportQuery.isLoading
+    : salesQuery.isLoading || servicesQuery.isLoading;
 
-  // Modo online: o relatorio e calculado no servidor (endpoint /reports/sales).
-  const loadOnlineReport = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
-      const [report, people] = await Promise.all([
-        api.reports.sales({
-          startDate: startTimestamp,
-          endDate: endTimestamp,
-          sellerId: selectedSeller !== "all" ? selectedSeller : undefined,
-          payment: selectedPayment !== "all" ? selectedPayment : undefined,
-        }),
-        api.people.list(),
-      ]);
-      setAllPeople(people);
-      setAllSales(report.sales || []);
-      setFilteredSales(report.sales || []);
-      setMetrics(report.metrics || {});
-      setLaborSummary(report.laborSummary || []);
-      setPaymentSummary(report.paymentSummary || []);
-    } catch (error) {
-      console.error("Erro ao carregar relatorio online:", error);
-      showAlert("Erro ao carregar o relatorio online.", "Erro", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [startDate, endDate, selectedSeller, selectedPayment, showAlert]);
+  const derivePagination = (raw, fallbackLen) => {
+    if (!raw || Array.isArray(raw)) return { page: 1, totalPages: 0, total: fallbackLen };
+    return { page: raw.page || 1, totalPages: raw.totalPages || 0, total: raw.total || 0 };
+  };
+  const salesPagination = useMemo(
+    () => derivePagination(salesQuery.data, allSales.length),
+    [salesQuery.data, allSales.length],
+  );
+  const servicesPagination = useMemo(
+    () => derivePagination(servicesQuery.data, allServices.length),
+    [servicesQuery.data, allServices.length],
+  );
 
-  useEffect(() => {
-    if (!startDate || !endDate) return;
-    if (isOnlineReports) loadOnlineReport();
-    else loadData();
-  }, [startDate, endDate, isOnlineReports, loadData, loadOnlineReport]);
-
-  // --- PERIOD CHANGE ---
   const handlePeriodChange = useCallback((type) => {
     setPeriodType(type);
     const range = getPeriodRange(type);
@@ -170,200 +288,23 @@ const useReportData = () => {
     }
   }, []);
 
-  // --- PROCESS DATA ---
-  const processData = useCallback(() => {
-    // No modo online o relatorio ja vem calculado do servidor.
-    if (api.isRemote && api.reports) return;
-    let vendasFiltradas = allSales.filter((s) => {
-      const isSeller =
-        selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
-      const metodoNormalizado = standardizeMethod(s.forma_pagamento);
-      let isPayment =
-        selectedPayment === "all" || metodoNormalizado === selectedPayment;
-
-      if (
-        !isPayment &&
-        s.lista_pagamentos &&
-        s.lista_pagamentos.length > 0
-      ) {
-        isPayment = s.lista_pagamentos.some(
-          (p) => standardizeMethod(p.metodo) === selectedPayment,
-        );
-      }
-      return isSeller && isPayment;
-    });
-
-    let servicosFiltrados = allServices;
-
-    let totalFaturamentoPecas = 0;
-    let totalCustoPecas = 0;
-    let totalDespesaMO = 0;
-    let totalAcrescimos = 0;
-    let totalDescontos = 0;
-    let totalComissoes = 0;
-
-    const mapPagamentos = {};
-    const addPaymentToMap = (metodoRaw, valor) => {
-      const metodo = standardizeMethod(metodoRaw);
-      if (!metodo) return;
-      if (!mapPagamentos[metodo]) mapPagamentos[metodo] = 0;
-      mapPagamentos[metodo] += valor;
-    };
-
-    const vendasProcessadas = vendasFiltradas.map((venda) => {
-      const vendedor = allPeople.find((p) => p.id === venda.vendedor_id);
-      const subtotalProdutos = venda.subtotal;
-
-      // O banco de dados sempre hospeda desconto_valor em Reais em termos absolutos (monetários),
-      // pois a tela Vendas.jsx converte a porcentagem para R$ antes de despachar o save da venda.
-      const desconto = venda.desconto_valor || 0;
-
-      const acrescimo = venda.acrescimo || 0;
-      const valorFinalProdutos = subtotalProdutos - desconto;
-      const custoReal = venda.custo_total_real || 0;
-      const receitaLoja = valorFinalProdutos + acrescimo;
-
-      let comissao = 0;
-      if (
-        venda.comissao_real !== undefined &&
-        venda.comissao_real !== null
-      ) {
-        comissao = venda.comissao_real;
-      } else {
-        const taxa = vendedor?.comissao_fixa
-          ? vendedor.comissao_fixa / 100
-          : defaultCommission;
-        if (valorFinalProdutos > 0) comissao = valorFinalProdutos * taxa;
-      }
-
-      const moVenda = venda.mao_de_obra || 0;
-
-      if (!venda.cancelada) {
-        let valorConsiderado = 0;
-        if (selectedPayment === "all") {
-          valorConsiderado = receitaLoja;
-          if (
-            venda.lista_pagamentos &&
-            venda.lista_pagamentos.length > 0
-          ) {
-            venda.lista_pagamentos.forEach((p) =>
-              addPaymentToMap(p.metodo, p.valor),
-            );
-          } else {
-            addPaymentToMap(venda.forma_pagamento, receitaLoja);
-          }
-        } else {
-          if (
-            venda.lista_pagamentos &&
-            venda.lista_pagamentos.length > 0
-          ) {
-            const pgFiltrados = venda.lista_pagamentos.filter(
-              (p) => standardizeMethod(p.metodo) === selectedPayment,
-            );
-            valorConsiderado = pgFiltrados.reduce(
-              (acc, p) => acc + p.valor,
-              0,
-            );
-          } else {
-            valorConsiderado = receitaLoja;
-          }
-          addPaymentToMap(selectedPayment, valorConsiderado);
-        }
-
-        const ratio =
-          receitaLoja > 0 && selectedPayment !== "all"
-            ? valorConsiderado / receitaLoja
-            : 1;
-
-        totalFaturamentoPecas += valorConsiderado;
-        totalCustoPecas += custoReal * ratio;
-        totalDespesaMO += moVenda * ratio;
-        totalAcrescimos += acrescimo * ratio;
-        totalDescontos += desconto * ratio;
-        totalComissoes += comissao * ratio;
-      }
-
-      return { ...venda, comissao_calculada: comissao };
-    });
-
-    servicosFiltrados.forEach((serv) => {
-      totalDespesaMO += serv.valor;
-    });
-
-    const arrayPagamentos = Object.entries(mapPagamentos)
-      .map(([metodo, valor]) => ({ metodo, valor }))
-      .sort((a, b) => b.valor - a.valor);
-
-    const mapMO = {};
-    vendasFiltradas.forEach((v) => {
-      if (!v.cancelada && v.mao_de_obra > 0 && v.trocador_id) {
-        if (!mapMO[v.trocador_id])
-          mapMO[v.trocador_id] = {
-            nome: v.trocador_nome,
-            total: 0,
-            qtd: 0,
-          };
-        mapMO[v.trocador_id].total += v.mao_de_obra;
-        mapMO[v.trocador_id].qtd += 1;
-      }
-    });
-    servicosFiltrados.forEach((s) => {
-      if (s.trocador_id) {
-        let nomeTrocador =
-          s.trocador_nome ||
-          allPeople.find((p) => p.id === s.trocador_id)?.nome ||
-          "Desconhecido";
-        if (!mapMO[s.trocador_id])
-          mapMO[s.trocador_id] = { nome: nomeTrocador, total: 0, qtd: 0 };
-        mapMO[s.trocador_id].total += s.valor;
-        mapMO[s.trocador_id].qtd += 1;
-      }
-    });
-
-    setLaborSummary(Object.values(mapMO));
-    setFilteredSales(vendasProcessadas);
-    setPaymentSummary(arrayPagamentos);
-
-    const lucroLiquido =
-      totalFaturamentoPecas -
-      (totalCustoPecas + totalComissoes);
-
-    setMetrics({
-      faturamento: totalFaturamentoPecas,
-      custo: totalCustoPecas,
-      maoDeObra: totalDespesaMO,
-      acrescimos: totalAcrescimos,
-      descontos: totalDescontos,
-      comissoes: totalComissoes,
-      lucro: lucroLiquido,
-    });
-  }, [
-    allSales,
-    allServices,
-    allPeople,
-    selectedSeller,
-    selectedPayment,
-    defaultCommission,
-  ]);
-
-  useEffect(() => {
-    processData();
-  }, [
-    allSales,
-    allServices,
-    selectedSeller,
-    selectedPayment,
-    defaultCommission,
-  ]);
+  // Recarrega o relatório (ex.: após baixar comissões).
+  const loadData = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["report-online"] }),
+      queryClient.invalidateQueries({ queryKey: ["report-sales"] }),
+      queryClient.invalidateQueries({ queryKey: ["report-services"] }),
+    ]);
+  }, [queryClient]);
 
   return {
     // State
     allSales,
     allPeople,
-    metrics,
-    filteredSales,
-    laborSummary,
-    paymentSummary,
+    metrics: processed.metrics,
+    filteredSales: processed.filteredSales,
+    laborSummary: processed.laborSummary,
+    paymentSummary: processed.paymentSummary,
     paymentMethods,
     loading,
     // Filtros

@@ -1,5 +1,6 @@
 ﻿// @ts-nocheck
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAlert } from "../context/AlertSystem";
 import SaleCartPanel from "../components/sales/SaleCartPanel";
 import SaleEntryBar from "../components/sales/SaleEntryBar";
@@ -8,6 +9,7 @@ import QuickClientModal from "../components/sales/QuickClientModal";
 import SaleReceiptModal from "../components/sales/SaleReceiptModal";
 import Sheet from "../components/ui/Sheet";
 import StickyActionBar from "../components/ui/StickyActionBar";
+import VendasSkeleton from "../components/sales/VendasSkeleton";
 import { formatCurrency } from "../utils/format";
 import { applyCpfCnpjMask, validarDocumento } from "../utils/validators";
 import { findSavedClient, findSelectedClient, getSalesPeopleByRole } from "../utils/salesViewModel";
@@ -28,13 +30,24 @@ const INITIAL_NEW_CLIENT_DATA = {
 const Vendas = () => {
   const { showAlert } = useAlert();
 
-  // --- DADOS ---
-  const [products, setProducts] = useState([]);
-  const [sellers, setSellers] = useState([]);
-  const [mechanics, setMechanics] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
-  const [loadError, setLoadError] = useState("");
+  // --- DADOS (TanStack Query: cache + stale-while-revalidate) ---
+  const queryClient = useQueryClient();
+  const productsQuery = useQuery({ queryKey: ["products"], queryFn: () => api.products.list() });
+  const peopleQuery = useQuery({ queryKey: ["people"], queryFn: () => api.people.list() });
+  const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => api.clients.list() });
+  const products = productsQuery.data || [];
+  const clients = clientsQuery.data || [];
+  const { sellers, mechanics } = useMemo(
+    () => getSalesPeopleByRole(peopleQuery.data || []),
+    [peopleQuery.data],
+  );
+  // Skeleton só na primeira carga (sem cache); revisitas usam o cache.
+  const loadingData =
+    productsQuery.isLoading || peopleQuery.isLoading || clientsQuery.isLoading;
+  const loadError =
+    productsQuery.isError || peopleQuery.isError || clientsQuery.isError
+      ? "Nao foi possivel carregar os dados da venda."
+      : "";
 
   // --- SELEÇÃO ---
   const [selectedSeller, setSelectedSeller] = useState("");
@@ -150,7 +163,7 @@ const Vendas = () => {
   });
 
   const {
-    searchTerm, setSearchTerm, searchResults, searchInputRef,
+    searchTerm, setSearchTerm, searchResults, searching, searchInputRef,
     handleSearchKeyDown, selectProduct, focusSearch, scanCode,
   } = useProductSearch(products, addToCart);
 
@@ -163,33 +176,11 @@ const Vendas = () => {
   const selectedClientObject = clients.find((client) => client.id == selectedClient);
   const selectedClientHasValidDocument = hasValidReceiptDocument(selectedClientObject);
 
-  // ===== LOAD DATA =====
+  // Foca o campo de busca ao entrar. Os dados vêm do cache do React Query.
   useEffect(() => {
-    loadData();
     focusSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadData = async () => {
-    try {
-      setLoadingData(true);
-      setLoadError("");
-      const prods = await api.products.list();
-      const people = await api.people.list();
-      const clientsData = await api.clients.list();
-      const { sellers: sellerOptions, mechanics: mechanicOptions } = getSalesPeopleByRole(people);
-
-      setProducts(prods || []);
-      setSellers(sellerOptions);
-      setMechanics(mechanicOptions);
-      setClients(clientsData || []);
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-      setLoadError("Nao foi possivel carregar os dados da venda.");
-      showAlert("Erro ao carregar dados da venda.", "Erro", "error");
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   // --- CADASTRO RÁPIDO ---
   const handleSaveNewClient = async (e) => {
@@ -211,7 +202,7 @@ const Vendas = () => {
       if (result.success) {
         showAlert("Cliente cadastrado com sucesso!", "Sucesso", "success");
         const updatedClients = await api.clients.list();
-        setClients(updatedClients);
+        queryClient.setQueryData(["clients"], updatedClients);
         const newClient = findSavedClient(updatedClients, result.id, newClientData.documento);
         if (newClient) handleSelectClient(newClient);
         closeClientModal();
@@ -357,7 +348,9 @@ const Vendas = () => {
         clearSelectedClient();
         setSelectedMechanic("");
         resetReceiptState();
-        loadData();
+        // Estoque mudou; cliente pode ter sido criado no fluxo de CPF.
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+        queryClient.invalidateQueries({ queryKey: ["clients"] });
       } else {
         showAlert("Erro ao salvar: " + result.error, "Erro", "error");
       }
@@ -433,16 +426,16 @@ const Vendas = () => {
   return (
     <div className="h-full px-4 pt-4 pb-28 lg:pb-4 bg-surface-200 overflow-y-auto lg:overflow-hidden custom-scrollbar">
       <div className="flex h-full min-h-0 flex-col gap-4">
-        {(loadingData || loadError) && (
-          <div className={`rounded-xl border px-4 py-3 text-sm ${
-            loadError
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-primary-200 bg-primary-50 text-primary-700"
-          }`}>
-            {loadError || "Carregando dados da venda..."}
+        {loadError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {loadError}
           </div>
         )}
 
+        {loadingData ? (
+          <VendasSkeleton />
+        ) : (
+        <>
         <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
           {/* Esquerda: Produtos e Carrinho */}
           <div className="flex-1 flex flex-col gap-4">
@@ -466,6 +459,7 @@ const Vendas = () => {
           onSearchTermChange={setSearchTerm}
           onSearchKeyDown={handleSearchKeyDown}
           searchResults={searchResults}
+          searching={searching}
           onSelectProduct={selectProduct}
           onScanCode={scanCode}
         />
@@ -506,6 +500,8 @@ const Vendas = () => {
               {renderPaymentPanel()}
             </Sheet>
           </>
+        )}
+        </>
         )}
 
         {showClientModal && (

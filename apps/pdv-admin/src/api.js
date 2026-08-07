@@ -21,6 +21,13 @@ export const clearSession = () => {
   localStorage.removeItem(USER_KEY);
 };
 
+// Handler global para 401 (token expirado/inválido). O App registra um callback
+// que limpa a sessão e volta para a tela de login.
+let onUnauthorized = null;
+export const setUnauthorizedHandler = (fn) => {
+  onUnauthorized = fn;
+};
+
 async function http(path, { method = "GET", body, token = getToken() } = {}) {
   const response = await fetch(`${getBaseUrl()}${path}`, {
     method,
@@ -33,6 +40,10 @@ async function http(path, { method = "GET", body, token = getToken() } = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.success === false) {
+    if (response.status === 401 && token) {
+      clearSession();
+      if (onUnauthorized) onUnauthorized();
+    }
     throw new Error(data.error || `Erro HTTP ${response.status}`);
   }
   return data;

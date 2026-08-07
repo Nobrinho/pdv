@@ -31,6 +31,23 @@ const isRemoteMode = () => getDataMode() === "online";
 
 const getOnlineToken = () => localStorage.getItem(ONLINE_TOKEN_KEY);
 const getOnlineStoreId = () => localStorage.getItem(ONLINE_STORE_ID_KEY);
+const getStoredOnlineUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem(ONLINE_USER_KEY) || "null");
+  } catch {
+    return null;
+  }
+};
+
+// Handler global para 401 (sessão expirada/inválida). O AuthContext registra
+// um callback que derruba a sessão e volta para a tela de login.
+let unauthorizedHandler = null;
+const registerUnauthorized = (cb) => {
+  unauthorizedHandler = cb;
+  return () => {
+    if (unauthorizedHandler === cb) unauthorizedHandler = null;
+  };
+};
 
 const setOnlineSession = ({ token, user, loja }) => {
   if (token) localStorage.setItem(ONLINE_TOKEN_KEY, token);
@@ -84,6 +101,13 @@ const http = async (path, { method = "GET", body, token = getOnlineToken() } = {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.success === false) {
+    // Token expirado/invalido numa requisicao autenticada: derruba a sessao e
+    // avisa a aplicacao para voltar ao login. (Nao dispara em login/join, que
+    // usam token:null.)
+    if (response.status === 401 && token) {
+      clearOnlineSession();
+      if (unauthorizedHandler) unauthorizedHandler();
+    }
     const error = new Error(data.error || `Erro HTTP ${response.status}`);
     error.response = data;
     error.status = response.status;
@@ -278,6 +302,12 @@ const online = {
   auth: {
     checkExist: async () => true,
     checkOnboarding: async () => ({ onboardingDone: true, hasUsers: true, hasStoreConfig: true }),
+    // Restaura a sessão persistida (token + usuário) após um refresh no web.
+    getSession: async () => {
+      const token = getOnlineToken();
+      if (!token) return null;
+      return { token, user: getStoredOnlineUser(), lojaId: getOnlineStoreId() };
+    },
     register: async (data) => {
       if (getOnlineToken()) {
         return await http("/users", { method: "POST", body: data });
@@ -505,6 +535,8 @@ const electron = {
   auth: {
     checkExist: () => safeCall(window.api.checkUsersExist),
     checkOnboarding: () => safeCall(window.api.checkOnboardingStatus),
+    getSession: async () => null, // no desktop o login é por sessão de processo
+
     register: (data) => safeCall(window.api.registerUser, data),
     login: (username, password) => {
       const data = typeof username === "object" ? username : { username, password };
@@ -594,6 +626,8 @@ export const api = new Proxy(
         return (url) => localStorage.setItem("syscontrol_api_url", String(url || "").trim());
       if (prop === "onlineStoreId") return getOnlineStoreId();
       if (prop === "onlineToken") return getOnlineToken();
+      if (prop === "onlineUser") return getOnlineToken() ? getStoredOnlineUser() : null;
+      if (prop === "onUnauthorized") return registerUnauthorized;
       return (isRemoteMode() ? online : electron)[prop];
     },
   },

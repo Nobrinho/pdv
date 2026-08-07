@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
@@ -17,13 +18,8 @@ import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 const Recibos = () => {
   const { showAlert } = useAlert();
 
-  const [sales, setSales] = useState([]);
-  const [sellers, setSellers] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalRecords, setTotalRecords] = useState(0);
   const LIMIT = 100;
 
   // Filtros de Data e Período
@@ -58,55 +54,42 @@ const Recibos = () => {
     reason: "",
   });
 
-  const loadData = useCallback(async () => {
-    if (
-      filters.startDate &&
-      filters.endDate &&
-      dayjs(filters.startDate).isAfter(dayjs(filters.endDate))
-    ) {
-      setSales([]);
-      setTotalPages(0);
-      setTotalRecords(0);
-      return showAlert("Data inicial não pode ser maior que a data final.", "Filtro inválido", "warning");
-    }
+  const hasInvalidRange =
+    filters.startDate &&
+    filters.endDate &&
+    dayjs(filters.startDate).isAfter(dayjs(filters.endDate));
 
-    try {
-      setLoading(true);
-      const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
-        filters.startDate,
-        filters.endDate,
-      );
+  const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(
+    filters.startDate,
+    filters.endDate,
+  );
+  const salesParams = {
+    page,
+    limit: LIMIT,
+    startDate: startTimestamp,
+    endDate: endTimestamp,
+    sellerId: filters.sellerId && filters.sellerId !== "all" ? filters.sellerId : undefined,
+    clientId: filters.clientId && filters.clientId !== "all" ? filters.clientId : undefined,
+  };
+  // A chave inclui os filtros → cada combinação é cacheada.
+  const salesQuery = useQuery({
+    queryKey: ["sales", salesParams],
+    queryFn: () => api.sales.list(salesParams),
+    enabled: !hasInvalidRange,
+  });
+  const rawSales = salesQuery.data;
+  const salesList = Array.isArray(rawSales) ? rawSales : rawSales?.data || [];
+  const sales = useMemo(
+    () => [...salesList].sort((a, b) => b.data_venda - a.data_venda),
+    [salesList],
+  );
+  const totalPages = Array.isArray(rawSales) ? 0 : rawSales?.totalPages || 0;
+  const totalRecords = Array.isArray(rawSales) ? sales.length : rawSales?.total || 0;
+  const loading = salesQuery.isLoading;
 
-      const [salesData, peopleData, clientsData] = await Promise.all([
-        api.sales.list({
-          page,
-          limit: LIMIT,
-          startDate: startTimestamp,
-          endDate: endTimestamp,
-          sellerId: filters.sellerId && filters.sellerId !== "all" ? filters.sellerId : undefined,
-          clientId: filters.clientId && filters.clientId !== "all" ? filters.clientId : undefined,
-        }),
-        api.people.list(),
-        api.clients.list()
-      ]);
-
-      const salesList = Array.isArray(salesData) ? salesData : (salesData?.data || []);
-      setSales(salesList.sort((a, b) => b.data_venda - a.data_venda));
-      setTotalPages(Array.isArray(salesData) ? 0 : (salesData?.totalPages || 0));
-      setTotalRecords(Array.isArray(salesData) ? salesList.length : (salesData?.total || 0));
-      setSellers(peopleData.filter((p) => p.cargo_nome === "Vendedor"));
-      setClients(clientsData || []);
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-      showAlert("Erro ao conectar com o banco de dados.", "Erro", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters.startDate, filters.endDate, filters.sellerId, filters.clientId, showAlert, page]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const { data: people = [] } = useQuery({ queryKey: ["people"], queryFn: () => api.people.list() });
+  const sellers = useMemo(() => people.filter((p) => p.cargo_nome === "Vendedor"), [people]);
+  const { data: clients = [] } = useQuery({ queryKey: ["clients"], queryFn: () => api.clients.list() });
 
   const handlePeriodChange = (type) => {
     setPeriodType(type);
@@ -218,7 +201,8 @@ const Recibos = () => {
 
       if (result.success) {
         showAlert("Venda cancelada com sucesso!", "Sucesso", "success");
-        loadData();
+        queryClient.invalidateQueries({ queryKey: ["sales"] });
+        queryClient.invalidateQueries({ queryKey: ["products"] }); // estoque volta
         setShowCancelModal(false);
         setSaleToCancel(null);
       } else {
@@ -395,7 +379,7 @@ const Recibos = () => {
           columns={columns}
           data={filteredSales}
           loading={loading}
-          onRefresh={loadData}
+          onRefresh={() => salesQuery.refetch()}
           emptyIcon="fa-receipt"
           emptyMessage="Nenhuma venda encontrada para o filtro selecionado."
         />
