@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../services/api";
+import Button from "../ui/Button";
 
 const AccessLinkCard = () => {
   const [invites, setInvites] = useState([]);
@@ -67,14 +68,9 @@ const AccessLinkCard = () => {
         preenchida — só digita usuário e senha (sem precisar do ID da loja).
       </p>
 
-      <button
-        onClick={generate}
-        disabled={creating}
-        className="w-full mb-4 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition shadow-md active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
-      >
-        <i className={`fas ${creating ? "fa-circle-notch fa-spin" : "fa-plus"}`}></i>
+      <Button variant="primary" fullWidth icon="fa-plus" loading={creating} onClick={generate} className="mb-4">
         {creating ? "Gerando..." : "Gerar novo link"}
-      </button>
+      </Button>
 
       <div className="space-y-2">
         {loading && <p className="text-xs text-surface-400">Carregando...</p>}
@@ -149,14 +145,9 @@ const MigrateLocalCard = () => {
           {result.msg}
         </div>
       )}
-      <button
-        onClick={run}
-        disabled={running}
-        className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition shadow-md active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <i className={`fas ${running ? "fa-circle-notch fa-spin" : "fa-cloud-arrow-up"}`}></i>
+      <Button variant="primary" fullWidth icon="fa-cloud-arrow-up" loading={running} onClick={run}>
         {running ? "Migrando..." : "Migrar para a loja online"}
-      </button>
+      </Button>
     </div>
   );
 };
@@ -196,13 +187,9 @@ const SystemToolsPanel = ({
               ))}
             </select>
           </div>
-          <button
-            onClick={onSavePrinter}
-            disabled={isSavingPrinter}
-            className="bg-primary px-5 py-2.5 rounded-xl font-bold text-xs hover:bg-primary-700 text-white transition shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button variant="primary" loading={isSavingPrinter} onClick={onSavePrinter}>
             OK
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import React from "react";
 import FormField from "../ui/FormField";
+import Button from "../ui/Button";
 
 const CommissionSettings = ({
   defaultCommission = "",
@@ -34,13 +35,9 @@ const CommissionSettings = ({
         />
       </div>
 
-      <button
-        onClick={onSave}
-        disabled={isSaving}
-        className="w-full bg-primary text-white py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition mt-6 shadow-md active:scale-95 disabled:opacity-50"
-      >
-        {isSaving ? "SALVANDO..." : "ATUALIZAR TAXAS"}
-      </button>
+      <Button variant="primary" size="lg" fullWidth loading={isSaving} onClick={onSave} className="mt-6">
+        {isSaving ? "Salvando..." : "Atualizar taxas"}
+      </Button>
     </div>
   );
 };

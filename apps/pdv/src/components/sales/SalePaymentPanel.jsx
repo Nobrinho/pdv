@@ -1,6 +1,7 @@
 import React from "react";
 import { applyCpfCnpjMask, applyNameMask } from "../../utils/validators";
 import { formatCurrency } from "../../utils/format";
+import Button from "../ui/Button";
 
 const SalePaymentPanel = ({
   laborInput,
@@ -208,12 +209,7 @@ const SalePaymentPanel = ({
               onChange={(e) => onCurrentPaymentValueChange(e.target.value)}
               onFocus={onPaymentValueFocus}
             />
-            <button
-              onClick={onAddPayment}
-              className="bg-primary-600 text-white px-4 py-2 rounded font-bold hover:bg-primary-700"
-            >
-              +
-            </button>
+            <Button variant="primary" icon="fa-plus" onClick={onAddPayment} aria-label="Adicionar pagamento" />
           </div>
         </div>
 
@@ -298,13 +294,17 @@ const SalePaymentPanel = ({
               </div>
             )}
           </div>
-          <button
+          <Button
+            variant="success"
+            size="lg"
+            fullWidth
+            loading={isFinishingSale}
+            disabled={totals.remaining > 0.01}
             onClick={onFinishSale}
-            disabled={totals.remaining > 0.01 || isFinishingSale}
-            className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition shadow-lg flex items-center justify-center gap-2 ${totals.remaining > 0.01 || isFinishingSale ? "bg-surface-500 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 transform active:scale-95"}`}
+            className="mt-4"
           >
-            {isFinishingSale ? (<><i className="fas fa-circle-notch fa-spin"></i> SALVANDO...</>) : "CONCLUIR VENDA"}
-          </button>
+            {isFinishingSale ? "Salvando..." : "Concluir venda"}
+          </Button>
         </div>
       </div>
     </div>

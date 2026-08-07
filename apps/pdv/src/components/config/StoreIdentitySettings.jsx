@@ -1,5 +1,6 @@
 import React from "react";
 import FormField from "../ui/FormField";
+import Button from "../ui/Button";
 
 const StoreIdentitySettings = ({
   identity,
@@ -129,21 +130,9 @@ const StoreIdentitySettings = ({
       </div>
 
       <div className="mt-8 pt-6 border-t border-surface-200 flex justify-end">
-        <button
-          onClick={onSave}
-          disabled={isSaving}
-          className="bg-primary text-white px-8 py-3.5 rounded-xl font-black text-sm hover:bg-primary-700 transition shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
-        >
-          {isSaving ? (
-            <>
-              <i className="fas fa-circle-notch fa-spin"></i> SALVANDO...
-            </>
-          ) : (
-            <>
-              <i className="fas fa-save"></i> SALVAR IDENTIDADE
-            </>
-          )}
-        </button>
+        <Button variant="primary" size="lg" icon="fa-save" loading={isSaving} onClick={onSave}>
+          {isSaving ? "Salvando..." : "Salvar identidade"}
+        </Button>
       </div>
     </div>
   );

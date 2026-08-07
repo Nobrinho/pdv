@@ -4,6 +4,7 @@ import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
 import StatusBadge from "../components/ui/StatusBadge";
+import Button from "../components/ui/Button";
 import FormField from "../components/ui/FormField";
 import Modal from "../components/ui/Modal";
 
@@ -187,12 +188,13 @@ const Pessoas = () => {
           <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Gestão da Equipe</h1>
           <p className="text-xs text-surface-500 mt-1 uppercase tracking-widest font-bold opacity-70">Controle de comissões e cargos</p>
         </div>
-        <button
+        <Button
+          variant="primary"
+          icon="fa-plus"
           onClick={() => { setEditingId(null); setFormData({ nome: "", cargo_id: "", comissao_fixa: "" }); setShowModal(true); }}
-          className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-primary-700 transition shadow-lg active:scale-95 flex items-center gap-2"
         >
-          <i className="fas fa-plus"></i> Novo Colaborador
-        </button>
+          Novo Colaborador
+        </Button>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-8 pr-1 custom-scrollbar pb-10">
@@ -261,19 +263,12 @@ const Pessoas = () => {
           )}
 
           <div className="flex gap-3 pt-4 border-t border-surface-50 mt-6">
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="flex-1 bg-surface-200 text-surface-500 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-surface-300 transition"
-            >
+            <Button variant="secondary" type="button" onClick={() => setShowModal(false)} className="flex-1">
               Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 bg-primary-600 text-white py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-primary-700 transition shadow-lg shadow-blue-50 active:scale-95 flex items-center justify-center gap-2"
-            >
-              <i className="fas fa-save"></i> {editingId ? "Atualizar" : "Salvar"}
-            </button>
+            </Button>
+            <Button variant="primary" type="submit" icon="fa-save" className="flex-1">
+              {editingId ? "Atualizar" : "Salvar"}
+            </Button>
           </div>
         </form>
       </Modal>

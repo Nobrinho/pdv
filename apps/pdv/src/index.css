@@ -1,47 +1,77 @@
+@import "./styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ====== WHITE LABEL — CSS Custom Properties ====== */
+/* ====== Camada de compatibilidade Tailwind → Design System ======
+   Marca fixa SysControl (sem white-label). Os scales `primary`/`surface`
+   usados pelas classes atuais apontam para as cores do DS (teal / zinc),
+   em RGB (triplet) para o Tailwind aplicar opacidade. */
 @layer base {
-  /* Variáveis raiz agora são geradas nativamente e on-the-fly pelo TenantContext.jsx 
-     baseado na cor selecionada pelo lojista, suportando infinitas combinações. */
-     
   :root {
-    /* Surface (Light Mode Padrão) */
-    --color-surface-50: 249 250 251; /* bg-gray-50 */
-    --color-surface-100: 255 255 255; /* bg-white */
-    --color-surface-200: 229 231 235; /* border-gray-200 */
-    --color-surface-300: 209 213 219; /* border-gray-300 / cinza desativado */
-    --color-surface-400: 156 163 175; /* gray-400 - placeholders/ícones desativados */
-    --color-surface-500: 107 114 128; /* gray-500 - textos secundários / labels */
-    --color-surface-600: 75 85 99; /* gray-600 - textos primários leves */
-    --color-surface-700: 55 65 81; /* gray-700 - textos fortes */
-    --color-surface-800: 31 41 55; /* text-gray-800 */
-    --color-surface-900: 17 24 39; /* text-gray-900 */
+    /* Primary = teal petróleo (DS) */
+    --color-primary-50: 232 244 248;
+    --color-primary-100: 207 232 241;
+    --color-primary-200: 161 209 227;
+    --color-primary-300: 107 181 209;
+    --color-primary-400: 56 151 186;
+    --color-primary-500: 15 115 145;
+    --color-primary-600: 11 92 118;
+    --color-primary-700: 8 70 91;
+    --color-primary-800: 6 48 64;
+    --color-primary-900: 4 28 38;
+    --color-primary-950: 2 20 27;
+
+    /* Surface = zinc (DS neutral) */
+    --color-surface-50: 250 250 250;  /* zinc-50 (app-canvas) */
+    --color-surface-100: 255 255 255; /* card / branco */
+    --color-surface-200: 228 228 231; /* zinc-200 (border) */
+    --color-surface-300: 212 212 216; /* zinc-300 */
+    --color-surface-400: 161 161 170; /* zinc-400 */
+    --color-surface-500: 113 113 122; /* zinc-500 (labels) */
+    --color-surface-600: 82 82 91;    /* zinc-600 */
+    --color-surface-700: 63 63 70;    /* zinc-700 */
+    --color-surface-800: 39 39 42;    /* zinc-800 (texto forte) */
+    --color-surface-900: 24 24 27;    /* zinc-900 (títulos) */
   }
 
   [data-theme='dark'] {
-    /* Surface (Dark Mode) */
-    --color-surface-50: 3 7 18; /* gray-950 (Fundo base super escuro) */
-    --color-surface-100: 17 24 39; /* bg-gray-900 (Cards / Painéis principais) */
-    --color-surface-200: 31 41 55; /* bg-gray-800 (Hover tab, borders fortes) */
-    --color-surface-300: 55 65 81; /* bg-gray-700 (Borders leves, disabled) */
-    --color-surface-400: 75 85 99; /* gray-600 - placeholders/ícones desativados inversos */
-    --color-surface-500: 107 114 128; /* gray-500 - textos secundários inversos */
-    --color-surface-600: 156 163 175; /* gray-400 - textos primários leves inversos */
-    --color-surface-700: 209 213 219; /* gray-300 - textos fortes inversos */
-    --color-surface-800: 243 244 246; /* text-gray-100 (Textos de leitura parágrafo brancos) */
-    --color-surface-900: 255 255 255; /* text-white (Títulos puros) */
+    /* Primary mantém o ramp teal no escuro */
+    --color-primary-50: 232 244 248;
+    --color-primary-100: 207 232 241;
+    --color-primary-200: 161 209 227;
+    --color-primary-300: 107 181 209;
+    --color-primary-400: 56 151 186;
+    --color-primary-500: 15 115 145;
+    --color-primary-600: 11 92 118;
+    --color-primary-700: 8 70 91;
+    --color-primary-800: 6 48 64;
+    --color-primary-900: 4 28 38;
+    --color-primary-950: 2 20 27;
+
+    /* Surface invertido (zinc) para modo escuro */
+    --color-surface-50: 9 9 11;       /* zinc-950 */
+    --color-surface-100: 24 24 27;    /* zinc-900 (cards) */
+    --color-surface-200: 39 39 42;    /* zinc-800 */
+    --color-surface-300: 63 63 70;    /* zinc-700 */
+    --color-surface-400: 82 82 91;    /* zinc-600 */
+    --color-surface-500: 113 113 122; /* zinc-500 */
+    --color-surface-600: 161 161 170; /* zinc-400 */
+    --color-surface-700: 212 212 216; /* zinc-300 */
+    --color-surface-800: 236 237 238; /* texto claro */
+    --color-surface-900: 255 255 255; /* branco */
   }
 }
 
 /* Estilos globais customizados */
 
 body {
-    background-color: #F3F4F6;
-    font-family: 'Inter', sans-serif;
+    background-color: var(--app-canvas);
+    font-family: var(--font-sans);
+    color: var(--foreground);
     overflow: hidden; /* Electron lida com scroll */
+    font-feature-settings: var(--numeric-feature);
 }
 
 /* Scrollbar personalizada */

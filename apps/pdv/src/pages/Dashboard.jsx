@@ -6,6 +6,7 @@ import { api } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import StatCard from "../components/ui/StatCard";
 import PageSkeleton from "../components/ui/PageSkeleton";
+import Button from "../components/ui/Button";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -165,13 +166,9 @@ const Dashboard = () => {
           <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Painel de Controle</h1>
           <p className="text-xs text-surface-500 mt-1">Resumo operacional e saúde financeira do seu negócio.</p>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="flex items-center gap-2 text-primary-600 hover:text-primary-800 transition font-bold text-sm bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-100"
-        >
-          <i className={`fas fa-sync-alt ${loading ? "animate-spin" : ""}`}></i> 
+        <Button variant="flat" size="sm" icon={`fa-rotate ${loading ? "fa-spin" : ""}`} onClick={() => refetch()}>
           Atualizar
-        </button>
+        </Button>
       </div>
 
       {/* --- MOVIMENTO DO DIA --- */}

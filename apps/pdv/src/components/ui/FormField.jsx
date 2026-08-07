@@ -32,16 +32,17 @@ const FormField = ({
     }
   };
 
+  // Estilo alinhado ao Design System (mesmos tokens do Button/Input).
   return (
-    <div className={`flex flex-col gap-1 ${className}`}>
+    <div className={`flex flex-col gap-1.5 ${className}`}>
       {label && (
-        <label className="block text-xs font-bold text-surface-500 uppercase tracking-tight ml-1">
-          {label} {required && <span className="text-red-500">*</span>}
+        <label className="block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] ml-0.5">
+          {label} {required && <span className="text-[var(--danger)]">*</span>}
         </label>
       )}
       <div className="relative group">
         {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 group-focus-within:text-primary-500 transition-colors">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] group-focus-within:text-[var(--primary)] transition-colors">
             <i className={`fas ${icon}`}></i>
           </div>
         )}
@@ -53,19 +54,21 @@ const FormField = ({
           disabled={disabled}
           required={required}
           className={`
-            w-full border rounded-lg p-2.5 outline-none transition-all duration-200 text-sm
-            ${icon ? "pl-10" : "pl-3"}
-            ${disabled 
-              ? "bg-surface-50 text-surface-400 cursor-not-allowed border-surface-200" 
-              : "bg-surface-100 border-surface-300 text-surface-800 hover:border-surface-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 placeholder:text-surface-400"
+            w-full rounded-lg border bg-[var(--card)] text-[var(--foreground)] h-9 text-sm outline-none transition
+            placeholder:text-[var(--muted-foreground)]
+            focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20
+            disabled:cursor-not-allowed disabled:opacity-60
+            ${icon ? "pl-9 pr-3" : "px-3"}
+            ${error
+              ? "border-[var(--danger)] focus:border-[var(--danger)] focus:ring-[var(--danger)]/20"
+              : "border-[var(--input)] hover:border-[var(--ring)]/60"
             }
-            ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}
           `}
           {...props}
         />
       </div>
       {error && (
-        <span className="text-[10px] text-red-500 font-medium ml-1">
+        <span className="text-[11px] text-[var(--danger)] font-medium ml-0.5">
           {error}
         </span>
       )}

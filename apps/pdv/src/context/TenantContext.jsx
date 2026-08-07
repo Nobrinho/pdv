@@ -70,26 +70,16 @@ function generatePalette(hex) {
 }
 
 /** Injeta CSS custom properties no :root */
-function injectCSSVars(primary, secondary) {
-  const root = document.documentElement;
-  const primaryPalette = generatePalette(primary);
-  const secondaryPalette = generatePalette(secondary);
+// Sem white-label: as cores são fixas do design system (styles/tokens.css +
+// camada de compatibilidade no index.css). Não injetamos mais cores por loja.
+// Mantido como no-op para não quebrar os call sites existentes.
+function injectCSSVars() {}
 
-  if (primaryPalette) {
-    Object.entries(primaryPalette).forEach(([shade, value]) => {
-      root.style.setProperty(`--color-primary-${shade}`, value);
-    });
-    // Fallback/Legacy
-    root.style.setProperty("--color-primary", primary);
-  }
-
-  if (secondaryPalette) {
-    Object.entries(secondaryPalette).forEach(([shade, value]) => {
-      root.style.setProperty(`--color-secondary-${shade}`, value);
-    });
-    root.style.setProperty("--color-secondary", secondary);
-  }
-}
+// Marca fixa do design system (teal). Sem white-label: qualquer cor vinda do
+// backend é ignorada e substituída por estes valores para manter a identidade
+// única do SysControl.
+const BRAND_PRIMARY = "#0f7391"; // --teal-500
+const BRAND_SECONDARY = "#08465b"; // --teal-700
 
 // --- Defaults ---
 const DEFAULT_TENANT = {
@@ -101,8 +91,8 @@ const DEFAULT_TENANT = {
   documento: "",
   logoBase64: "",
   bgBase64: "",
-  corPrimaria: "#2563EB",
-  corSecundaria: "#4F46E5",
+  corPrimaria: BRAND_PRIMARY,
+  corSecundaria: BRAND_SECONDARY,
   devNome: "",
   devLink: "",
 };
@@ -118,7 +108,8 @@ function readBrandCache() {
   try {
     const raw = localStorage.getItem(BRAND_CACHE_KEY);
     if (!raw) return null;
-    return { ...DEFAULT_TENANT, ...JSON.parse(raw) };
+    // Marca fixa: caches antigos podem trazer cores por loja; sobrescreve.
+    return { ...DEFAULT_TENANT, ...JSON.parse(raw), corPrimaria: BRAND_PRIMARY, corSecundaria: BRAND_SECONDARY };
   } catch {
     return null;
   }
@@ -324,6 +315,9 @@ export const TenantProvider = ({ children }) => {
         // Contrato único (packages/shared): converte a resposta snake_case
         // para o tenant camelCase usado pela UI.
         const mapped = parseTenantResponse(raw);
+        // Marca fixa: ignora cores por loja vindas do backend.
+        mapped.corPrimaria = BRAND_PRIMARY;
+        mapped.corSecundaria = BRAND_SECONDARY;
         setTenant(mapped);
         writeBrandCache(mapped);
         injectCSSVars(mapped.corPrimaria, mapped.corSecundaria);

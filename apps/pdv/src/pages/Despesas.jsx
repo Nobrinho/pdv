@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
 import { formatCurrency } from "../utils/format";
+import Button from "../components/ui/Button";
 
 const PAYMENT_METHODS = [
   "Dinheiro",
@@ -130,8 +131,9 @@ const Despesas = () => {
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [expenses]);
 
+  // Alinhado ao Design System (mesmos tokens do Input/FormField).
   const inputClass =
-    "w-full bg-surface-50 border border-surface-200 rounded-xl p-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-primary-100 transition";
+    "w-full rounded-lg border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] p-2.5 text-sm outline-none transition placeholder:text-[var(--muted-foreground)] hover:border-[var(--ring)]/60 focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20";
 
   return (
     <div className="h-full overflow-y-auto p-6 bg-surface-50">
@@ -214,14 +216,11 @@ const Despesas = () => {
                 <textarea className={inputClass} rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
               </div>
               <div className="flex gap-2 pt-2">
-                <button onClick={save} disabled={saving} className="flex-1 bg-primary-600 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-700 transition disabled:opacity-60">
-                  <i className={`fas ${saving ? "fa-circle-notch fa-spin" : form.id ? "fa-save" : "fa-plus"} mr-2`}></i>
+                <Button variant="primary" icon={form.id ? "fa-save" : "fa-plus"} loading={saving} onClick={save} className="flex-1">
                   {form.id ? "Salvar" : "Adicionar"}
-                </button>
+                </Button>
                 {form.id && (
-                  <button onClick={resetForm} className="px-4 bg-surface-200 text-surface-700 rounded-xl font-black text-xs uppercase hover:bg-surface-300 transition">
-                    Cancelar
-                  </button>
+                  <Button variant="secondary" onClick={resetForm}>Cancelar</Button>
                 )}
               </div>
             </div>

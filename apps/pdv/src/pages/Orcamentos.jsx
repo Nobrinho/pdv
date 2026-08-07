@@ -11,6 +11,7 @@ import SaleCartPanel from "../components/sales/SaleCartPanel";
 import BudgetSummaryPanel from "../components/budgets/BudgetSummaryPanel";
 import BudgetDocument from "../components/budgets/BudgetDocument";
 import QuickClientModal from "../components/sales/QuickClientModal";
+import Button from "../components/ui/Button";
 import { formatCurrency } from "../utils/format";
 import { validarDocumento } from "../utils/validators";
 import useClientSearch from "../hooks/useClientSearch";
@@ -739,14 +740,9 @@ const Orcamentos = () => {
             comissoes.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openNewBudgetEditor}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary-700"
-        >
-          <i className="fas fa-plus"></i>
-          Novo Orcamento
-        </button>
+        <Button variant="primary" size="lg" icon="fa-plus" onClick={openNewBudgetEditor}>
+          Novo Orçamento
+        </Button>
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -861,41 +857,19 @@ const Orcamentos = () => {
         size="full"
         footer={
           <div className="flex flex-col gap-2 md:flex-row md:justify-between">
-            <button
-              type="button"
-              onClick={() => setShowPreview(false)}
-              className="rounded-lg bg-surface-200 px-4 py-2.5 text-sm font-bold text-surface-800 transition hover:bg-surface-300"
-            >
+            <Button variant="secondary" onClick={() => setShowPreview(false)}>
               Fechar
-            </button>
+            </Button>
             <div className="flex flex-col gap-2 md:flex-row">
-              <button
-                type="button"
-                onClick={handleExportPreviewAsImage}
-                disabled={isExporting || isPrinting || !previewBudget}
-                className="rounded-lg border border-surface-200 px-4 py-2.5 text-sm font-bold text-surface-700 transition hover:bg-surface-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i className="fas fa-image mr-2"></i>
+              <Button variant="outline" icon="fa-image" onClick={handleExportPreviewAsImage} disabled={isExporting || isPrinting || !previewBudget}>
                 Exportar Imagem
-              </button>
-              <button
-                type="button"
-                onClick={handleExportPreviewAsPdf}
-                disabled={isExporting || isPrinting || !previewBudget}
-                className="rounded-lg border border-surface-200 px-4 py-2.5 text-sm font-bold text-surface-700 transition hover:bg-surface-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i className="fas fa-file-pdf mr-2"></i>
+              </Button>
+              <Button variant="outline" icon="fa-file-pdf" onClick={handleExportPreviewAsPdf} disabled={isExporting || isPrinting || !previewBudget}>
                 {isExporting ? "Exportando..." : "Exportar PDF"}
-              </button>
-              <button
-                type="button"
-                onClick={handlePrintPreview}
-                disabled={isExporting || isPrinting || !previewBudget}
-                className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i className={`fas mr-2 ${isPrinting ? "fa-spinner fa-spin" : "fa-print"}`}></i>
+              </Button>
+              <Button variant="primary" icon="fa-print" loading={isPrinting} onClick={handlePrintPreview} disabled={isExporting || !previewBudget}>
                 {isPrinting ? "Imprimindo..." : "Imprimir"}
-              </button>
+              </Button>
             </div>
           </div>
         }
@@ -921,22 +895,12 @@ const Orcamentos = () => {
         size="md"
         footer={
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={closeConvertModal}
-              className="flex-1 rounded-lg bg-surface-200 px-4 py-2.5 text-sm font-bold text-surface-800 transition hover:bg-surface-300"
-            >
+            <Button variant="secondary" onClick={closeConvertModal} className="flex-1">
               Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleConvertBudget}
-              disabled={isConverting}
-              className="flex-[2] rounded-lg bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <i className={`fas mr-2 ${isConverting ? "fa-spinner fa-spin" : "fa-check"}`}></i>
+            </Button>
+            <Button variant="success" icon="fa-check" loading={isConverting} onClick={handleConvertBudget} className="flex-[2]">
               {isConverting ? "Convertendo..." : "Confirmar Conversao"}
-            </button>
+            </Button>
           </div>
         }
       >

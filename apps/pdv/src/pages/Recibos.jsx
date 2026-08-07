@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
+import Button from "../components/ui/Button";
 import CupomFiscal from "../components/CupomFiscal";
 import MobileReceipt from "../components/MobileReceipt";
 import { useTenant, thermalizeReceiptHtml } from "../context/TenantContext";
@@ -417,28 +418,16 @@ const Recibos = () => {
         size="sm"
         footer={
           <div className="flex gap-2 w-full">
-            <button
-              onClick={() => setShowReceiptModal(false)}
-              className="flex-1 px-4 py-2.5 bg-surface-200 text-surface-800 rounded-xl font-bold text-sm hover:bg-surface-300"
-            >
+            <Button variant="secondary" onClick={() => setShowReceiptModal(false)} className="flex-1">
               Fechar
-            </button>
-            <button
-              onClick={handleShareReceipt}
-              disabled={isSharing}
-              className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl font-black text-sm hover:bg-green-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <i className={`mr-2 ${isSharing ? "fas fa-circle-notch fa-spin" : "fab fa-whatsapp"}`}></i>
+            </Button>
+            <Button variant="success" loading={isSharing} onClick={handleShareReceipt} className="flex-1">
+              {!isSharing && <i className="fab fa-whatsapp mr-1"></i>}
               {isSharing ? "Gerando..." : "Compartilhar"}
-            </button>
-            <button
-              onClick={handleSilentPrint}
-              disabled={isPrintingReceipt}
-              className="flex-[2] px-4 py-2.5 bg-primary-600 text-white rounded-xl font-black text-sm hover:bg-primary-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <i className={`fas mr-2 ${isPrintingReceipt ? "fa-circle-notch fa-spin" : "fa-print"}`}></i>
+            </Button>
+            <Button variant="primary" icon="fa-print" loading={isPrintingReceipt} onClick={handleSilentPrint} className="flex-[2]">
               {isPrintingReceipt ? "Imprimindo..." : "Reimprimir"}
-            </button>
+            </Button>
           </div>
         }
       >
@@ -465,19 +454,12 @@ const Recibos = () => {
         size="md"
         footer={
           <div className="flex gap-2 w-full">
-            <button
-              onClick={() => setShowCancelModal(false)}
-              className="flex-1 px-4 py-2.5 bg-surface-200 text-surface-800 rounded-xl font-bold text-sm"
-            >
+            <Button variant="secondary" onClick={() => setShowCancelModal(false)} className="flex-1">
               Voltar
-            </button>
-            <button
-              onClick={handleSubmitCancel}
-              disabled={isCancellingSale}
-              className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isCancellingSale ? "CANCELANDO..." : "CONFIRMAR CANCELAMENTO"}
-            </button>
+            </Button>
+            <Button variant="destructive" loading={isCancellingSale} onClick={handleSubmitCancel} className="flex-[2]">
+              {isCancellingSale ? "Cancelando..." : "Confirmar cancelamento"}
+            </Button>
           </div>
         }
       >

@@ -1,6 +1,7 @@
 import React from "react";
 import DataTable from "../ui/DataTable";
 import FormField from "../ui/FormField";
+import Button from "../ui/Button";
 import StatusBadge from "../ui/StatusBadge";
 
 const userColumns = ({ onDeleteUser, deletingUserId }) => [
@@ -122,12 +123,9 @@ const UserManager = ({
             </select>
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-black text-sm hover:bg-indigo-700 transition mt-4 shadow-md active:scale-95 flex items-center justify-center gap-2"
-          >
-            <i className="fas fa-user-plus"></i> CRIAR USUARIO
-          </button>
+          <Button type="submit" variant="primary" size="lg" fullWidth icon="fa-user-plus" className="mt-4">
+            Criar usuário
+          </Button>
         </form>
 
         <div className="flex-1 overflow-hidden flex flex-col">

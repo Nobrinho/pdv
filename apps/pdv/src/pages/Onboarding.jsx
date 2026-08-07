@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
 import FormField from "../components/ui/FormField";
+import Button from "../components/ui/Button";
 import { api } from "../services/api";
 
 const parseCommissionPercent = (value) => {
@@ -455,29 +456,13 @@ const Onboarding = () => {
             )}
 
             {step < 3 ? (
-              <button
-                onClick={nextStep}
-                className="flex-[2] py-4 bg-primary-600 text-surface-100 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-700 transition shadow-lg shadow-primary-600/20 active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer group"
-              >
+              <Button variant="primary" size="lg" iconEnd="fa-arrow-right" onClick={nextStep} className="flex-[2]">
                 Prosseguir
-                <i className="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={handleFinalize}
-                disabled={isLoading}
-                className="flex-[2] py-4 bg-primary-600 text-surface-100 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-700 transition shadow-lg shadow-primary-600/20 active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <i className="fas fa-circle-notch fa-spin"></i> SALVANDO CONFIGURACAO...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-check"></i> FINALIZAR SETUP
-                  </>
-                )}
-              </button>
+              <Button variant="primary" size="lg" icon="fa-check" loading={isLoading} onClick={handleFinalize} className="flex-[2]">
+                {isLoading ? "Salvando configuração..." : "Finalizar setup"}
+              </Button>
             )}
           </div>
         </div>

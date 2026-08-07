@@ -8,6 +8,7 @@ import { formatCurrency } from "../utils/format";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import StatCard from "../components/ui/StatCard";
+import Button from "../components/ui/Button";
 import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Servicos = () => {
@@ -201,14 +202,9 @@ const Servicos = () => {
               required
             />
 
-            <button
-              type="submit"
-              disabled={isSavingService}
-              className={`w-full py-3.5 rounded-xl font-black text-sm transition mt-4 shadow-md active:scale-95 flex justify-center items-center gap-2 ${isSavingService ? "bg-surface-400 text-white cursor-not-allowed" : "bg-primary-600 text-white hover:bg-primary-700"}`}
-            >
-              <i className={`fas ${isSavingService ? "fa-circle-notch fa-spin" : "fa-check"}`}></i>
-              {isSavingService ? "SALVANDO..." : "REGISTRAR SERVIÇO"}
-            </button>
+            <Button type="submit" variant="primary" size="lg" fullWidth icon="fa-check" loading={isSavingService} className="mt-4">
+              {isSavingService ? "Salvando..." : "Registrar serviço"}
+            </Button>
           </form>
         </div>
 

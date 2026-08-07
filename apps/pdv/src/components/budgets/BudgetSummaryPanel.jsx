@@ -1,5 +1,6 @@
 import React from "react";
 import { formatCurrency } from "../../utils/format";
+import Button from "../ui/Button";
 
 const BudgetSummaryPanel = ({
   showSellerField = true,
@@ -165,15 +166,9 @@ const BudgetSummaryPanel = ({
           </div>
         </div>
 
-        <button
-          onClick={onSave}
-          disabled={isSaving}
-          className={`w-full py-3 rounded-lg font-bold text-white transition shadow-lg ${
-            isSaving ? "bg-surface-500 cursor-not-allowed" : "bg-primary-600 hover:bg-primary-700"
-          }`}
-        >
-          {isSaving ? "SALVANDO..." : editingCode ? "ATUALIZAR ORCAMENTO" : "SALVAR ORCAMENTO"}
-        </button>
+        <Button variant="primary" size="lg" fullWidth loading={isSaving} onClick={onSave}>
+          {isSaving ? "Salvando..." : editingCode ? "Atualizar orçamento" : "Salvar orçamento"}
+        </Button>
       </div>
     </div>
   );

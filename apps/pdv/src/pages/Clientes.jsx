@@ -13,6 +13,7 @@ import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
+import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
 
@@ -284,15 +285,17 @@ const Clientes = () => {
             financeiras.
           </p>
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
+          icon="fa-user-plus"
           onClick={() => {
             resetForm();
             setShowModal(true);
           }}
-          className="bg-primary-600 text-white px-4 py-2.5 rounded-xl hover:bg-primary-700 shadow-md transition-all active:scale-95 flex items-center gap-2 font-bold text-sm"
         >
-          <i className="fas fa-user-plus"></i> Novo Cliente
-        </button>
+          Novo Cliente
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4 flex-1 overflow-hidden">
@@ -350,30 +353,20 @@ const Clientes = () => {
         size="md"
         footer={
           <div className="flex justify-end gap-3 w-full">
-            <button
-              onClick={() => setShowModal(false)}
-              className="px-5 py-2.5 bg-surface-200 text-surface-800 rounded-xl hover:bg-surface-300 transition font-medium text-sm"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSubmit}
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button
+              variant="primary"
+              icon="fa-save"
+              loading={isSavingClient}
               disabled={
                 !formData.nome.trim() ||
                 (formData.documento && !validarDocumento(formData.documento)) ||
                 (formData.endereco && formData.endereco.trim().length < 4)
               }
-              className={`px-6 py-2.5 rounded-xl transition font-bold text-sm shadow-md ${
-                !formData.nome.trim() ||
-                (formData.documento && !validarDocumento(formData.documento)) ||
-                (formData.endereco && formData.endereco.trim().length < 4)
-                  ? "bg-surface-300 text-surface-400 cursor-not-allowed"
-                  : "bg-primary-600 text-white hover:bg-primary-700 active:scale-95"
-              }`}
+              onClick={handleSubmit}
             >
-              <i className="fas fa-save mr-2"></i>
-              {isSavingClient ? "SALVANDO..." : (editingId ? "Atualizar" : "Salvar Cliente")}
-            </button>
+              {isSavingClient ? "Salvando..." : editingId ? "Atualizar" : "Salvar cliente"}
+            </Button>
           </div>
         }
       >

@@ -485,7 +485,7 @@ const Vendas = () => {
                 type="button"
                 onClick={() => cart.length > 0 && setPaymentSheetOpen(true)}
                 disabled={cart.length === 0}
-                className="w-full flex items-center justify-between gap-3 rounded-xl bg-green-600 px-5 py-3.5 font-black text-white shadow-lg active:scale-[0.99] transition disabled:bg-surface-400 disabled:opacity-70"
+                className="w-full flex items-center justify-between gap-3 rounded-xl bg-[var(--success)] hover:bg-[var(--success-hover)] px-5 py-3.5 font-black text-white shadow-lg active:scale-[0.99] transition disabled:bg-surface-400 disabled:opacity-70"
               >
                 <span className="text-sm uppercase tracking-widest">Cobrar</span>
                 <span className="text-lg">{formatCurrency(totals.total)}</span>

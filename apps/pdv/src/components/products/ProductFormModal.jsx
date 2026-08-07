@@ -1,6 +1,7 @@
 import React from "react";
 import FormField from "../ui/FormField";
 import Modal from "../ui/Modal";
+import Button from "../ui/Button";
 
 const ProductFormModal = ({
   isOpen,
@@ -20,20 +21,10 @@ const ProductFormModal = ({
       size="md"
       footer={
         <div className="flex justify-end gap-3 w-full">
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 bg-surface-200 text-surface-800 rounded-xl hover:bg-surface-300 transition font-medium text-sm"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onSubmit}
-            disabled={isSaving}
-            className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-bold text-sm shadow-md active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <i className={`fas mr-2 ${isSaving ? "fa-circle-notch fa-spin" : "fa-save"}`}></i>
-            {isSaving ? "SALVANDO..." : editingId ? "Atualizar" : "Salvar"}
-          </button>
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" icon="fa-save" loading={isSaving} onClick={onSubmit}>
+            {isSaving ? "Salvando..." : editingId ? "Atualizar" : "Salvar"}
+          </Button>
         </div>
       }
     >

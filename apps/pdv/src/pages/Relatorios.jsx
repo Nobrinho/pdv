@@ -9,6 +9,8 @@ import { formatCurrency } from "../utils/format";
 import useReportData, { standardizeMethod } from "../hooks/useReportData";
 import StatCard from "../components/ui/StatCard";
 import PageSkeleton from "../components/ui/PageSkeleton";
+import Button from "../components/ui/Button";
+import { Input, Select } from "../components/ui/Input";
 
 dayjs.locale("pt-br");
 
@@ -192,14 +194,16 @@ const Relatorios = () => {
         <h1 className="text-xl md:text-2xl font-bold text-surface-800">
           Relatórios Financeiros
         </h1>
-        <button
+        <Button
+          variant="outline"
+          icon="fa-file-pdf"
+          loading={isExportingPdf}
+          disabled={hasInvalidDateRange}
           onClick={exportPDF}
-          disabled={isExportingPdf || hasInvalidDateRange}
-          className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 shadow-md flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto"
         >
-          <i className={`fas ${isExportingPdf ? "fa-circle-notch fa-spin" : "fa-file-pdf"}`}></i>
           {isExportingPdf ? "Exportando..." : "Exportar PDF"}
-        </button>
+        </Button>
       </div>
 
       {/* --- BARRA DE FILTROS APRIMORADA --- */}
@@ -248,9 +252,8 @@ const Relatorios = () => {
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
               Início
             </label>
-            <input
+            <Input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
@@ -262,9 +265,8 @@ const Relatorios = () => {
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
               Fim
             </label>
-            <input
+            <Input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
@@ -276,8 +278,7 @@ const Relatorios = () => {
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
               Vendedor
             </label>
-            <select
-              className="w-full border rounded p-2 text-sm bg-surface-100 focus:ring-2 focus:ring-primary-500 outline-none"
+            <Select
               value={selectedSeller}
               onChange={(e) => setSelectedSeller(e.target.value)}
             >
@@ -289,14 +290,13 @@ const Relatorios = () => {
                     {p.nome}
                   </option>
                 ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
               Pagamento
             </label>
-            <select
-              className="w-full border rounded p-2 text-sm bg-surface-100 focus:ring-2 focus:ring-primary-500 outline-none"
+            <Select
               value={selectedPayment}
               onChange={(e) => setSelectedPayment(e.target.value)}
             >
@@ -306,7 +306,7 @@ const Relatorios = () => {
                   {method}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
       </div>

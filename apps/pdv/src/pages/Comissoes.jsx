@@ -5,6 +5,8 @@ import { useAlert } from "../context/AlertSystem";
 import { formatCurrency } from "../utils/format";
 import useReportData from "../hooks/useReportData";
 import PageSkeleton from "../components/ui/PageSkeleton";
+import Button from "../components/ui/Button";
+import { Input, Select } from "../components/ui/Input";
 import { api } from "../services/api";
 
 dayjs.locale("pt-br");
@@ -144,14 +146,16 @@ const Comissoes = () => {
           Gestor de Comissões
         </h1>
         {selectedIds.length > 0 && (
-          <button
+          <Button
+            variant="primary"
+            icon="fa-check-double"
+            loading={processing}
+            disabled={hasInvalidDateRange}
             onClick={handlePaySelected}
-            disabled={processing || hasInvalidDateRange}
-            className="w-full sm:w-auto bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 shadow-md flex items-center justify-center gap-2 font-bold transition active:scale-95 disabled:opacity-50"
+            className="w-full sm:w-auto"
           >
-            <i className={`fas ${processing ? "fa-spinner fa-spin" : "fa-check-double"}`}></i>
-            Baixar {selectedIds.length} Selecionada(s)
-          </button>
+            Baixar {selectedIds.length} selecionada(s)
+          </Button>
         )}
       </div>
 
@@ -191,9 +195,8 @@ const Comissoes = () => {
         <div className={`${showFilters ? "grid" : "hidden"} lg:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end`}>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Início</label>
-            <input
+            <Input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
@@ -203,9 +206,8 @@ const Comissoes = () => {
           </div>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Fim</label>
-            <input
+            <Input
               type="date"
-              className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
               value={endDate}
               onChange={(e) => {
                 setEndDate(e.target.value);
@@ -215,8 +217,7 @@ const Comissoes = () => {
           </div>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Vendedor</label>
-            <select
-              className="w-full border rounded p-2 text-sm bg-surface-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+            <Select
               value={selectedSeller}
               onChange={(e) => setSelectedSeller(e.target.value)}
             >
@@ -228,19 +229,18 @@ const Comissoes = () => {
                     {p.nome}
                   </option>
                 ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Status de Repasse</label>
-            <select
-              className="w-full border           rounded p-2 text-sm bg-surface-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+            <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="all">Exibir TUDO</option>
               <option value="pending">Apenas PENDENTES</option>
               <option value="paid">Apenas PAGAS</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Visualização do Extrato</label>

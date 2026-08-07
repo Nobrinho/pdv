@@ -1,5 +1,6 @@
 import React from "react";
 import FormField from "../ui/FormField";
+import Button from "../ui/Button";
 
 const ProductsToolbar = ({
   searchTerm = "",
@@ -17,18 +18,12 @@ const ProductsToolbar = ({
           <p className="text-xs text-surface-500 mt-1">Controle de peças, preços e níveis de estoque.</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={onImportClick}
-            className="w-full sm:w-auto bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 transition-all active:scale-95 flex items-center justify-center shadow-md font-bold text-sm gap-2"
-          >
-            <i className="fas fa-file-import"></i> Importar Lote
-          </button>
-          <button
-            onClick={onNewProductClick}
-            className="w-full sm:w-auto bg-primary-600 text-white px-5 py-2.5 rounded-xl hover:bg-primary-700 transition-all active:scale-95 flex items-center justify-center shadow-md font-bold text-sm gap-2"
-          >
-            <i className="fas fa-box-open"></i> Novo Produto
-          </button>
+          <Button variant="outline" size="lg" icon="fa-file-import" onClick={onImportClick} className="w-full sm:w-auto">
+            Importar Lote
+          </Button>
+          <Button variant="primary" size="lg" icon="fa-box-open" onClick={onNewProductClick} className="w-full sm:w-auto">
+            Novo Produto
+          </Button>
         </div>
       </div>
 

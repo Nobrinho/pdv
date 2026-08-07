@@ -1,6 +1,7 @@
 import React from "react";
 import FormField from "../ui/FormField";
 import Modal from "../ui/Modal";
+import Button from "../ui/Button";
 
 const StockEntryModal = ({
   isOpen,
@@ -23,20 +24,10 @@ const StockEntryModal = ({
       size="md"
       footer={
         <div className="flex gap-2 w-full">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-surface-200 text-surface-800 rounded-xl font-medium text-sm hover:bg-surface-300 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onSubmit}
-            disabled={isUpdating}
-            className="flex-[2] px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-black text-sm shadow-md active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isUpdating ? "ATUALIZANDO..." : "Confirmar Entrada"}
-          </button>
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
+          <Button variant="primary" loading={isUpdating} onClick={onSubmit} className="flex-[2]">
+            {isUpdating ? "Atualizando..." : "Confirmar entrada"}
+          </Button>
         </div>
       }
     >

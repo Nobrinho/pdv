@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import CupomFiscal from "../CupomFiscal";
 import MobileReceipt from "../MobileReceipt";
+import Button from "../ui/Button";
 import { useTenant } from "../../context/TenantContext";
 import { shareReceiptImage } from "../../utils/whatsapp";
 
@@ -38,29 +39,15 @@ const SaleReceiptModal = ({
           </div>
         </div>
         <div className="mt-4 flex flex-col gap-2 pt-2 border-t border-surface-300">
-          <button
-            onClick={handleShare}
-            disabled={sharing}
-            className="w-full py-3 rounded-lg font-bold shadow bg-green-600 text-white hover:bg-green-700 active:scale-95 transition-transform flex items-center justify-center disabled:opacity-70"
-          >
-            <i className={`mr-2 text-lg ${sharing ? "fas fa-circle-notch fa-spin" : "fab fa-whatsapp"}`}></i>
+          <Button variant="success" size="lg" fullWidth loading={sharing} onClick={handleShare}>
+            {!sharing && <i className="fab fa-whatsapp mr-1 text-lg" />}
             {sharing ? "Gerando recibo..." : "Compartilhar recibo"}
-          </button>
+          </Button>
           <div className="flex gap-2">
-            <button
-              onClick={onPrint}
-              disabled={isPrintingReceipt}
-              className={`flex-1 py-3 rounded-lg font-bold shadow transition-transform flex items-center justify-center ${isPrintingReceipt ? "bg-surface-400 text-white cursor-not-allowed" : "bg-primary-600 text-white hover:bg-primary-700 active:scale-95"}`}
-            >
-              <i className={`fas mr-2 ${isPrintingReceipt ? "fa-circle-notch fa-spin" : "fa-print"}`}></i>
+            <Button variant="primary" size="lg" icon="fa-print" loading={isPrintingReceipt} onClick={onPrint} className="flex-1">
               {isPrintingReceipt ? "Imprimindo..." : "Imprimir"}
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 bg-surface-500 text-white py-3 rounded-lg font-bold hover:bg-surface-600 active:scale-95 transition-transform"
-            >
-              Fechar
-            </button>
+            </Button>
+            <Button variant="secondary" size="lg" onClick={onClose} className="flex-1">Fechar</Button>
           </div>
         </div>
       </div>
