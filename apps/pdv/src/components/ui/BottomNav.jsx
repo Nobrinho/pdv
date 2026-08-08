@@ -11,7 +11,7 @@ import React from "react";
  *  - onMore()  -> abre o menu completo (drawer)
  *  - accent    -> cor de destaque (tenant)
  */
-const BottomNav = ({ items = [], currentPath, onNavigate, onMore, accent = "#4f46e5" }) => {
+const BottomNav = ({ items = [], currentPath, onNavigate, onMore, accent = "#0f7391" }) => {
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-[65] bg-surface-100 border-t border-surface-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-safe">
       <div className="flex items-stretch justify-around">

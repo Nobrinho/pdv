@@ -24,17 +24,17 @@ Tom de **conteúdo/design** (não técnico), focado no **online**:
 | # | Tela | Rota | Doc | Status |
 |---|------|------|-----|--------|
 | 01 | Login / Criar loja | (pré-auth) | [v2/01-login.md](./v2/01-login.md) | ✅ |
-| 02 | Onboarding | (pós-setup) | v2/02-onboarding.md | ⏳ |
-| 03 | Dashboard (Painel) | `/` | v2/03-dashboard.md | ⏳ |
-| 04 | Vendas | `/vendas` | v2/04-vendas.md | ⏳ |
-| 05 | Produtos (Estoque) | `/produtos` | v2/05-produtos.md | ⏳ |
-| 06 | Serviços | `/servicos` | v2/06-servicos.md | ⏳ |
-| 07 | Recibos (Histórico) | `/recibos` | v2/07-recibos.md | ⏳ |
-| 08 | Orçamentos | `/orcamentos` | v2/08-orcamentos.md | ⏳ |
-| 09 | Clientes & Fiado | `/clientes` | v2/09-clientes.md | ⏳ |
-| 10 | Comissões | `/comissoes` | v2/10-comissoes.md | ⏳ |
-| 11 | Relatórios | `/relatorios` | v2/11-relatorios.md | ⏳ |
-| 12 | Despesas | `/despesas` | v2/12-despesas.md | ⏳ |
-| 13 | Configurações | `/config` | v2/13-config.md | ⏳ |
+| 02 | Onboarding | (pós-setup) | [v2/02-onboarding.md](./v2/02-onboarding.md) | ✅ |
+| 03 | Dashboard (Painel) | `/` | [v2/03-dashboard.md](./v2/03-dashboard.md) | ✅ |
+| 04 | Vendas | `/vendas` | [v2/04-vendas.md](./v2/04-vendas.md) | ✅ |
+| 05 | Produtos (Estoque) | `/produtos` | [v2/05-produtos.md](./v2/05-produtos.md) | ✅ |
+| 06 | Serviços | `/servicos` | [v2/06-servicos.md](./v2/06-servicos.md) | ✅ |
+| 07 | Recibos (Histórico) | `/recibos` | [v2/07-recibos.md](./v2/07-recibos.md) | ✅ |
+| 08 | Orçamentos | `/orcamentos` | [v2/08-orcamentos.md](./v2/08-orcamentos.md) | ✅ |
+| 09 | Clientes & Fiado | `/clientes` | [v2/09-clientes.md](./v2/09-clientes.md) | ✅ |
+| 10 | Comissões | `/comissoes` | [v2/10-comissoes.md](./v2/10-comissoes.md) | ✅ |
+| 11 | Relatórios | `/relatorios` | [v2/11-relatorios.md](./v2/11-relatorios.md) | ✅ |
+| 12 | Despesas | `/despesas` | [v2/12-despesas.md](./v2/12-despesas.md) | ✅ |
+| 13 | Configurações | `/config` | [v2/13-config.md](./v2/13-config.md) | ✅ |
 
 Legenda: ✅ pronto · ⏳ pendente.
