@@ -1,6 +1,7 @@
 import React from "react";
 import FormField from "../ui/FormField";
 import Button from "../ui/Button";
+import { Card } from "../ui/Card";
 
 const StoreIdentitySettings = ({
   identity,
@@ -13,7 +14,7 @@ const StoreIdentitySettings = ({
   isSaving = false,
 }) => {
   return (
-    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 mb-6">
+    <Card padding="lg" className="mb-6">
       <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
         <i className="fas fa-palette text-primary"></i> Identidade da Loja
       </h2>
@@ -134,7 +135,7 @@ const StoreIdentitySettings = ({
           {isSaving ? "Salvando..." : "Salvar identidade"}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 };
 

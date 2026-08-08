@@ -3,6 +3,7 @@ import DataTable from "../ui/DataTable";
 import FormField from "../ui/FormField";
 import Button from "../ui/Button";
 import StatusBadge from "../ui/StatusBadge";
+import { Card } from "../ui/Card";
 
 const userColumns = ({ onDeleteUser, deletingUserId }) => [
   { key: "nome", label: "Nome completo", bold: true },
@@ -62,7 +63,7 @@ const UserManager = ({
   deletingUserId = null,
 }) => {
   return (
-    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
+    <Card padding="lg">
       <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
         <i className="fas fa-users-cog text-indigo-600"></i> Usuarios de Acesso
       </h2>
@@ -140,7 +141,7 @@ const UserManager = ({
           />
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 

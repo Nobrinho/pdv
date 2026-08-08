@@ -1,4 +1,5 @@
 import React from "react";
+import { Card } from "../ui/Card";
 
 const RoleManager = ({
   roles = [],
@@ -9,7 +10,7 @@ const RoleManager = ({
   deletingRoleId = null,
 }) => {
   return (
-    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col max-h-[400px]">
+    <Card padding="lg" className="flex flex-col max-h-[400px]">
       <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
         <i className="fas fa-id-badge text-purple-600"></i> Gerenciar Cargos
       </h2>
@@ -56,7 +57,7 @@ const RoleManager = ({
           </p>
         )}
       </div>
-    </div>
+    </Card>
   );
 };
 

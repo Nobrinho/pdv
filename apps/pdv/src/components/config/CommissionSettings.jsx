@@ -1,6 +1,7 @@
 import React from "react";
 import FormField from "../ui/FormField";
 import Button from "../ui/Button";
+import { Card } from "../ui/Card";
 
 const CommissionSettings = ({
   defaultCommission = "",
@@ -11,7 +12,7 @@ const CommissionSettings = ({
   isSaving = false,
 }) => {
   return (
-    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
+    <Card padding="lg" className="flex flex-col">
       <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
         <i className="fas fa-percent text-primary"></i> Taxas de Comissao
       </h2>
@@ -38,7 +39,7 @@ const CommissionSettings = ({
       <Button variant="primary" size="lg" fullWidth loading={isSaving} onClick={onSave} className="mt-6">
         {isSaving ? "Salvando..." : "Atualizar taxas"}
       </Button>
-    </div>
+    </Card>
   );
 };
 

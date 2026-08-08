@@ -2,6 +2,9 @@ import React from "react";
 import { applyCpfCnpjMask, applyNameMask } from "../../utils/validators";
 import { formatCurrency } from "../../utils/format";
 import Button from "../ui/Button";
+import { Input, Select } from "../ui/Input";
+import { Checkbox } from "../ui/Checkbox";
+import { Card } from "../ui/Card";
 
 const SalePaymentPanel = ({
   laborInput,
@@ -45,7 +48,7 @@ const SalePaymentPanel = ({
 }) => {
   return (
     <div className="w-full lg:w-96 flex flex-col gap-4 shrink-0">
-      <div className="bg-surface-100 p-5 rounded-xl shadow-sm border border-surface-200 space-y-4">
+      <Card radius="md" className="space-y-4">
         <h2 className="text-sm font-bold text-surface-500 uppercase tracking-wide border-b pb-2">
           Ajustes
         </h2>
@@ -55,18 +58,20 @@ const SalePaymentPanel = ({
             Mão de Obra (R$)
           </label>
           <div className="flex gap-2">
-            <input
+            <Input
               id="labor-input"
               type="number"
-              className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm font-medium focus:ring-1 focus:ring-primary-500 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+              size="sm"
+              className="flex-1 text-right text-sm font-medium"
               value={laborInput}
               onChange={(e) => onLaborInputChange(e.target.value)}
               placeholder="0.00"
               min="0"
             />
-            <select
+            <Select
               id="mechanic-select"
-              className="w-1/2 border border-surface-300 rounded p-1.5 text-xs bg-surface-100"
+              size="sm"
+              className="w-1/2"
               value={selectedMechanic}
               onChange={(e) => onMechanicChange(e.target.value)}
             >
@@ -76,7 +81,7 @@ const SalePaymentPanel = ({
                   {mechanic.nome}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
@@ -95,9 +100,10 @@ const SalePaymentPanel = ({
               %
             </button>
           </div>
-          <input
+          <Input
             type="number"
-            className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm text-green-600 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+            size="sm"
+            className="flex-1 text-right text-sm text-[var(--success)]"
             placeholder="Acréscimo"
             value={surchargeValue}
             onChange={(e) => onSurchargeValueChange(e.target.value)}
@@ -119,9 +125,10 @@ const SalePaymentPanel = ({
               %
             </button>
           </div>
-          <input
+          <Input
             type="number"
-            className="flex-1 border border-surface-300 rounded p-1.5 text-right text-sm text-red-600 outline-none bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+            size="sm"
+            className="flex-1 text-right text-sm text-[var(--danger)]"
             placeholder="Desconto"
             value={discountValue}
             onChange={(e) => onDiscountValueChange(e.target.value)}
@@ -134,7 +141,7 @@ const SalePaymentPanel = ({
             {formatCurrency(totals.total)}
           </span>
         </div>
-      </div>
+      </Card>
 
       <div className="bg-surface-100 p-5 rounded-xl shadow-md border-l-4 border-primary-600 flex-1 flex flex-col">
         <h2 className="text-sm font-bold text-surface-500 uppercase tracking-wide mb-4">
@@ -174,8 +181,7 @@ const SalePaymentPanel = ({
 
         <div className={`space-y-3 ${totals.remaining <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
           <div className="grid grid-cols-2 gap-2">
-            <select
-              className="border border-surface-300 rounded p-2 text-sm bg-surface-100"
+            <Select
               value={currentPaymentMethod}
               onChange={(e) => onCurrentPaymentMethodChange(e.target.value)}
             >
@@ -184,10 +190,9 @@ const SalePaymentPanel = ({
               <option>Crédito</option>
               <option>Débito</option>
               <option>Fiado</option>
-            </select>
+            </Select>
             {currentPaymentMethod === "Crédito" && (
-              <select
-                className="border border-surface-300 rounded p-2 text-sm bg-surface-100"
+              <Select
                 value={installments}
                 onChange={(e) => onInstallmentsChange(e.target.value)}
               >
@@ -196,14 +201,14 @@ const SalePaymentPanel = ({
                     {installment}x
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
           </div>
           <div className="flex gap-2">
-            <input
+            <Input
               ref={paymentInputRef}
               type="number"
-              className="flex-1 border border-surface-300 rounded p-2 text-right font-bold text-surface-800 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+              className="flex-1 text-right font-bold"
               placeholder="0.00"
               value={currentPaymentValue}
               onChange={(e) => onCurrentPaymentValueChange(e.target.value)}
@@ -230,15 +235,12 @@ const SalePaymentPanel = ({
             </div>
           )}
           <div className="mt-4 border-t border-surface-200 pt-3">
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-surface-800">
-              <input
-                type="checkbox"
-                className="w-4 h-4 text-primary-600 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
-                checked={optsCpfReceipt}
-                onChange={(e) => onOptsCpfReceiptChange(e.target.checked)}
-              />
-              Deseja CPF no Recibo?
-            </label>
+            <Checkbox
+              label="Deseja CPF no Recibo?"
+              labelClassName="text-sm font-bold text-surface-800"
+              checked={optsCpfReceipt}
+              onChange={(e) => onOptsCpfReceiptChange(e.target.checked)}
+            />
             {optsCpfReceipt && (
               <div className="mt-2 space-y-2 p-3 bg-primary-500/10 rounded-lg border border-primary-500/20">
                 {selectedClient && selectedClientHasValidDocument ? (
@@ -247,8 +249,9 @@ const SalePaymentPanel = ({
                   </p>
                 ) : selectedClient ? (
                   <div>
-                    <input
-                      className="w-full border border-surface-300 rounded p-1.5 text-sm bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none"
+                    <Input
+                      size="sm"
+                      className="text-sm"
                       placeholder="Digite o CPF/CNPJ"
                       value={receiptCpf}
                       onChange={(e) => onReceiptCpfChange(applyCpfCnpjMask(e.target.value))}
@@ -261,8 +264,9 @@ const SalePaymentPanel = ({
                 ) : (
                   <>
                     <div className="relative">
-                      <input
-                        className="w-full border border-surface-300 rounded p-1.5 pl-8 text-sm font-medium bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none placeholder:text-surface-400"
+                      <Input
+                        size="sm"
+                        className="pl-8 text-sm font-medium"
                         placeholder="CPF/CNPJ *"
                         value={receiptCpf}
                         onChange={(e) => onHandleReceiptCpfChange(e.target.value)}
@@ -281,8 +285,9 @@ const SalePaymentPanel = ({
                         </span>
                       </div>
                     ) : (
-                      <input
-                        className="w-full border border-surface-300 rounded p-1.5 text-sm bg-surface-100 text-surface-800 focus:ring-primary-500/20 outline-none placeholder:text-surface-400"
+                      <Input
+                        size="sm"
+                        className="text-sm"
                         placeholder="Nome Completo *"
                         value={receiptName}
                         onChange={(e) => onReceiptNameChange(applyNameMask(e.target.value))}

@@ -7,6 +7,7 @@ import useReportData from "../hooks/useReportData";
 import PageSkeleton from "../components/ui/PageSkeleton";
 import Button from "../components/ui/Button";
 import { Input, Select } from "../components/ui/Input";
+import { Checkbox } from "../components/ui/Checkbox";
 import { api } from "../services/api";
 
 dayjs.locale("pt-br");
@@ -304,9 +305,7 @@ const Comissoes = () => {
             <thead className="bg-surface-50 sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-3 text-left w-10">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-indigo-600 rounded border-surface-300 focus:ring-indigo-500 cursor-pointer bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+                  <Checkbox
                     onChange={handleSelectAll}
                     disabled={hasInvalidDateRange}
                     checked={
@@ -328,9 +327,7 @@ const Comissoes = () => {
                   {/* Linha Principal (Condensada) */}
                   <tr className={`hover:bg-surface-50 transition-colors ${selectedIds.includes(venda.id) ? "bg-primary-500/10 text-primary-600" : ""}`}>
                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 text-indigo-600 rounded border-surface-300 focus:ring-indigo-500 cursor-pointer disabled:opacity-30 bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+                        <Checkbox
                           disabled={venda.comissao_paga}
                           checked={selectedIds.includes(venda.id)}
                           onChange={() => handleToggleSelectMenu(venda.id)}

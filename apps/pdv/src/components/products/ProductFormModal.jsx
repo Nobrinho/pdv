@@ -2,6 +2,7 @@ import React from "react";
 import FormField from "../ui/FormField";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
+import { Radio } from "../ui/Checkbox";
 
 const ProductFormModal = ({
   isOpen,
@@ -35,26 +36,24 @@ const ProductFormModal = ({
           </label>
           <div className="flex gap-6">
             <label className="flex items-center cursor-pointer group">
-              <input
-                type="radio"
+              <Radio
                 name="tipo"
                 value="novo"
                 checked={formData.tipo === "novo"}
                 onChange={(e) => onFormChange("tipo", e.target.value)}
-                className="mr-3 w-5 h-5 text-primary-600 border-surface-300 focus:ring-primary-500"
+                className="mr-3 h-5 w-5"
               />
               <span className={`text-sm font-bold ${formData.tipo === "novo" ? "text-primary-700" : "text-surface-500 group-hover:text-surface-800"}`}>
                 Novo (Peça)
               </span>
             </label>
             <label className="flex items-center cursor-pointer group">
-              <input
-                type="radio"
+              <Radio
                 name="tipo"
                 value="usado"
                 checked={formData.tipo === "usado"}
                 onChange={(e) => onFormChange("tipo", e.target.value)}
-                className="mr-3 w-5 h-5 text-orange-600 border-surface-300 focus:ring-orange-500"
+                className="mr-3 h-5 w-5"
               />
               <span className={`text-sm font-bold ${formData.tipo === "usado" ? "text-orange-700" : "text-surface-500 group-hover:text-surface-800"}`}>
                 Usado (Desmonte)

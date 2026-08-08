@@ -1,5 +1,6 @@
 import React from "react";
 import Modal from "../ui/Modal";
+import { Radio } from "../ui/Checkbox";
 
 const ProductImportModal = ({
   isOpen,
@@ -182,28 +183,24 @@ const ProductImportModal = ({
             <span className="text-xs font-bold text-yellow-600">
               <i className="fas fa-exclamation-triangle mr-1"></i> Duplicados encontrados:
             </span>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="conflict"
-                value="skip"
-                checked={conflictMode === "skip"}
-                onChange={() => onConflictModeChange("skip")}
-                className="w-3.5 h-3.5 text-yellow-600"
-              />
-              <span className="text-xs font-bold text-surface-800">Pular</span>
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="conflict"
-                value="update"
-                checked={conflictMode === "update"}
-                onChange={() => onConflictModeChange("update")}
-                className="w-3.5 h-3.5 text-primary-600"
-              />
-              <span className="text-xs font-bold text-surface-800">Atualizar</span>
-            </label>
+            <Radio
+              name="conflict"
+              value="skip"
+              checked={conflictMode === "skip"}
+              onChange={() => onConflictModeChange("skip")}
+              className="h-3.5 w-3.5"
+              label="Pular"
+              labelClassName="gap-1.5 text-xs font-bold text-surface-800"
+            />
+            <Radio
+              name="conflict"
+              value="update"
+              checked={conflictMode === "update"}
+              onChange={() => onConflictModeChange("update")}
+              className="h-3.5 w-3.5"
+              label="Atualizar"
+              labelClassName="gap-1.5 text-xs font-bold text-surface-800"
+            />
           </div>
         )}
 

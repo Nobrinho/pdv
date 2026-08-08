@@ -4,6 +4,7 @@ import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
 import { formatCurrency } from "../utils/format";
 import Button from "../components/ui/Button";
+import { Checkbox } from "../components/ui/Checkbox";
 
 const PAYMENT_METHODS = [
   "Dinheiro",
@@ -207,10 +208,12 @@ const Despesas = () => {
                   </select>
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-xs font-bold text-surface-600 cursor-pointer">
-                <input type="checkbox" checked={form.recorrente} onChange={(e) => setForm({ ...form, recorrente: e.target.checked })} />
-                Despesa recorrente (mensal)
-              </label>
+              <Checkbox
+                label="Despesa recorrente (mensal)"
+                labelClassName="text-xs font-bold text-surface-600"
+                checked={form.recorrente}
+                onChange={(e) => setForm({ ...form, recorrente: e.target.checked })}
+              />
               <div>
                 <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest">Observações</label>
                 <textarea className={inputClass} rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
