@@ -104,6 +104,15 @@
   --neutral-soft:var(--zinc-100); --neutral-soft-foreground:var(--zinc-700); --neutral-soft-border:var(--zinc-200);
   --icon-muted:var(--zinc-400); --tooltip:var(--zinc-900); --tooltip-foreground:var(--white);
   --money-positive:var(--green-700); --money-negative:var(--red-600);
+  /* Redesenho (novastelas): sidebar, skeleton, switch, avatares, ring, warning-icon */
+  --sidebar:var(--teal-800); --sidebar-foreground:#cfe0e7; --sidebar-muted:#7fa3b1;
+  --skeleton-from:var(--content2); --skeleton-to:var(--content3);
+  --switch-track:var(--zinc-300); --switch-thumb:var(--white);
+  --avatar-neutral:var(--zinc-200); --avatar-neutral-foreground:var(--zinc-700);
+  --avatar-primary:var(--teal-100); --avatar-primary-foreground:var(--teal-700);
+  --avatar-success:var(--green-100); --avatar-success-foreground:var(--green-700);
+  --ring-shadow:rgb(15 115 145 / 0.25); --ring-shadow-danger:rgb(220 38 38 / 0.2);
+  --warning-icon:var(--yellow-600);
 }
 
 [data-theme='dark'] {
@@ -126,4 +135,13 @@
   --danger-hover:var(--red-400); --success-hover:var(--green-400);
   --neutral-soft:var(--zinc-800); --neutral-soft-foreground:var(--zinc-300); --neutral-soft-border:rgba(255,255,255,0.10);
   --icon-muted:var(--zinc-500); --tooltip:var(--zinc-100); --tooltip-foreground:var(--zinc-900);
+  /* Redesenho (novastelas) — variantes escuras */
+  --sidebar:var(--zinc-900); --sidebar-foreground:var(--zinc-400); --sidebar-muted:var(--zinc-500);
+  --skeleton-from:var(--content2); --skeleton-to:var(--content3);
+  --switch-track:var(--zinc-600); --switch-thumb:var(--zinc-100);
+  --avatar-neutral:var(--zinc-700); --avatar-neutral-foreground:var(--zinc-200);
+  --avatar-primary:rgba(56,151,186,0.22); --avatar-primary-foreground:var(--teal-200);
+  --avatar-success:rgba(23,201,100,0.20); --avatar-success-foreground:var(--green-300);
+  --ring-shadow:rgb(56 151 186 / 0.35); --ring-shadow-danger:rgb(248 113 113 / 0.3);
+  --warning-icon:var(--yellow-400);
 }
