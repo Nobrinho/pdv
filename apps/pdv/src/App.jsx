@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import Updater from "./components/Updater";
 import BottomNav from "./components/ui/BottomNav";
+import { Icon } from "./components/ui/Icon";
 
 import { useAuth } from "./context/AuthContext";
 import { useTenant } from "./context/TenantContext";
@@ -32,12 +33,12 @@ const Despesas = lazy(() => import("./pages/Despesas"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 
-// Itens da barra inferior (mobile) — os mais usados e acessiveis a todos os cargos.
+// Barra inferior (mobile) — 5 itens fixos do design (o 5º "Mais" abre o menu).
 const BOTTOM_NAV = [
-  { path: "/vendas", label: "Venda", icon: "fa-cash-register" },
-  { path: "/produtos", label: "Produtos", icon: "fa-box-open" },
-  { path: "/recibos", label: "Recibos", icon: "fa-receipt" },
-  { path: "/servicos", label: "Serviços", icon: "fa-wrench" },
+  { path: "/", label: "Painel", lucide: "layout-dashboard" },
+  { path: "/vendas", label: "Vendas", lucide: "shopping-cart" },
+  { path: "/produtos", label: "Produtos", lucide: "package" },
+  { path: "/clientes", label: "Clientes", lucide: "users" },
 ];
 
 const PageFallback = () => (
@@ -49,88 +50,23 @@ const PageFallback = () => (
   </div>
 );
 
-// Configuração do Menu (Estática)
+// Menu (ordem do handoff do redesign; ícones Lucide). "Caixa" não é item de
+// navegação — é perfil de acesso (aparece como cargo do usuário, não aqui).
 const MENU_ITEMS = [
-  {
-    path: "/",
-    label: "Painel",
-    icon: "fa-tachometer-alt",
-    restricted: true,
-  },
-  {
-    path: "/vendas",
-    label: "Registrar Venda",
-    icon: "fa-cash-register",
-    restricted: false,
-  },
-  {
-    path: "/servicos",
-    label: "Serviços",
-    icon: "fa-wrench",
-    restricted: false,
-  },
-  {
-    path: "/recibos",
-    label: "Recibos",
-    icon: "fa-receipt",
-    restricted: false,
-  },
-  {
-    path: "/produtos",
-    label: "Produtos",
-    icon: "fa-box-open",
-    restricted: false,
-  },
-  {
-    path: "/historico",
-    label: "Auditoria de Preços",
-    icon: "fa-history",
-    restricted: false,
-  },
-  {
-    path: "/pessoas",
-    label: "Equipe",
-    icon: "fa-user-friends",
-    restricted: true,
-  },
-  {
-    path: "/relatorios",
-    label: "Relatórios",
-    icon: "fa-chart-line",
-    restricted: true,
-  },
-  {
-    path: "/comissoes",
-    label: "Comissões",
-    icon: "fa-hand-holding-usd",
-    restricted: true,
-  },
-  {
-    path: "/despesas",
-    label: "Despesas",
-    icon: "fa-file-invoice-dollar",
-    restricted: true,
-  },
-  {
-    path: "/clientes",
-    label: "Clientes",
-    icon: "fa-users",
-    restricted: true,
-  },
-  {
-    path: "/orcamentos",
-    label: "Orcamentos",
-    icon: "fa-file-invoice-dollar",
-    restricted: false,
-  },
-  {
-    path: "/config",
-    label: "Configurações",
-    icon: "fa-cog",
-    restricted: true,
-  },
-  // Logs de Eventos ocultado do menu (funcionalidade instável). Rota mantida
-  // acessível por URL direta, mas sem link na navegação.
+  { path: "/", label: "Painel", lucide: "layout-dashboard", restricted: true },
+  { path: "/vendas", label: "Venda", lucide: "shopping-cart", restricted: false },
+  { path: "/produtos", label: "Produtos", lucide: "package", restricted: false },
+  { path: "/servicos", label: "Serviços", lucide: "wrench", restricted: false },
+  { path: "/recibos", label: "Recibos", lucide: "receipt", restricted: false },
+  { path: "/orcamentos", label: "Orçamentos", lucide: "file-text", restricted: false },
+  { path: "/clientes", label: "Clientes", lucide: "users", restricted: true },
+  { path: "/comissoes", label: "Comissões", lucide: "hand-coins", restricted: true },
+  { path: "/relatorios", label: "Relatórios", lucide: "line-chart", restricted: true },
+  { path: "/despesas", label: "Despesas", lucide: "wallet", restricted: true },
+  { path: "/pessoas", label: "Equipe", lucide: "users-round", restricted: true },
+  { path: "/historico", label: "Auditoria de preços", lucide: "history", restricted: false },
+  { path: "/config", label: "Configurações", lucide: "settings", restricted: true },
+  // Logs de Eventos: rota acessível por URL direta, sem link na navegação.
 ];
 
 function App() {
@@ -275,29 +211,27 @@ function App() {
           className="fixed inset-0 bg-black/50 z-[55] lg:hidden"
         ></div>
       )}
-      <aside className={`${sidebarCollapsed ? "lg:w-20" : "lg:w-64"} w-64 bg-surface-100 text-surface-800 flex flex-col flex-shrink-0 transition-transform duration-300 shadow-2xl z-[60] border-r border-surface-200 fixed lg:relative inset-y-0 left-0 ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside className={`${sidebarCollapsed ? "lg:w-20" : "lg:w-64"} w-64 bg-[var(--sidebar)] text-[var(--sidebar-foreground)] flex flex-col flex-shrink-0 transition-transform duration-300 shadow-2xl z-[60] fixed lg:relative inset-y-0 left-0 ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         {/* Toggle Button (desktop) */}
         <button
           onClick={toggleSidebar}
-          className="hidden lg:flex absolute -right-3 top-20 bg-primary-600 text-white w-6 h-6 rounded-full items-center justify-center shadow-lg transition-transform hover:scale-110 z-[70] active:scale-95"
+          className="hidden lg:flex absolute -right-3 top-20 bg-[var(--primary)] text-white w-6 h-6 rounded-full items-center justify-center shadow-lg transition-transform hover:scale-110 z-[70] active:scale-95"
           style={{ transform: sidebarCollapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
         >
-          <i className="fas fa-chevron-left text-[10px]"></i>
+          <Icon name="chevron-left" size={12} />
         </button>
 
-        <div className={`h-16 flex items-center justify-center border-b border-surface-200 bg-surface-100 shadow-sm overflow-hidden transition-all ${sidebarCollapsed ? "px-0" : "px-4"}`}>
-          <i className="fas fa-store text-primary-500 text-xl"></i>
-          {!sidebarCollapsed && <span className="ml-2 text-lg font-black tracking-tighter truncate animate-fade-in">{tenant.nome}</span>}
+        <div className={`h-16 flex items-center border-b border-white/10 overflow-hidden transition-all ${sidebarCollapsed ? "px-0 justify-center" : "px-4"}`}>
+          <span className="w-8 h-8 rounded-lg bg-[var(--primary)] text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Icon name="store" size={18} />
+          </span>
+          {!sidebarCollapsed && <span className="ml-2.5 text-lg font-black tracking-tight truncate animate-fade-in text-white">SysControl</span>}
         </div>
 
-        <div className={`py-4 bg-surface-100 border-b border-surface-200 flex items-center transition-all ${sidebarCollapsed ? "px-2 justify-center" : "px-4 justify-between"}`}>
-          <div className="flex items-center">
+        <div className={`py-4 border-b border-white/10 flex items-center transition-all ${sidebarCollapsed ? "px-2 justify-center" : "px-4 justify-between"}`}>
+          <div className="flex items-center min-w-0">
             <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black shadow-sm transition-all ${
-                user.cargo === "admin"
-                  ? "bg-purple-600 text-white"
-                  : "bg-green-600 text-white"
-              }`}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black shadow-sm transition-all bg-[var(--avatar-primary)] text-[var(--avatar-primary-foreground)]"
               title={user.nome}
             >
               {user.nome.charAt(0).toUpperCase()}
@@ -305,12 +239,12 @@ function App() {
             {!sidebarCollapsed && (
               <div className="ml-3 overflow-hidden animate-fade-in">
                 <p
-                  className="text-sm font-bold leading-none truncate w-32 text-surface-800"
+                  className="text-sm font-bold leading-none truncate w-32 text-white"
                   title={user.nome}
                 >
                   {user.nome.split(" ")[0]}
                 </p>
-                <p className="text-[10px] text-surface-500 mt-1 capitalize flex items-center font-black">
+                <p className="text-[10px] text-[var(--sidebar-muted)] mt-1 capitalize flex items-center font-black">
                   {user.cargo === "admin" ? "Admin" : "Caixa"}
                 </p>
               </div>
@@ -319,10 +253,10 @@ function App() {
           {!sidebarCollapsed && (
             <button
               onClick={logout}
-              className="text-surface-400 hover:text-red-500 transition px-2 animate-fade-in"
+              className="text-[var(--sidebar-muted)] hover:text-white transition px-2 animate-fade-in"
               title="Sair do Sistema"
             >
-              <i className="fas fa-power-off text-sm"></i>
+              <Icon name="power" size={16} />
             </button>
           )}
         </div>
@@ -338,52 +272,50 @@ function App() {
                 onClick={() => handleMenuClick(item.path)}
                 title={sidebarCollapsed ? item.label : ""}
                 className={`w-full flex items-center rounded-xl transition-all duration-200 group text-left relative overflow-hidden ${
-                  sidebarCollapsed ? "justify-center h-12" : "px-4 py-3"
+                  sidebarCollapsed ? "justify-center h-12" : "px-4 py-2.5"
                 } ${
                   isActive
-                    ? "bg-primary-600 text-white shadow-lg font-bold"
-                    : "text-surface-600 hover:bg-surface-200"
+                    ? "bg-[var(--primary)] text-white font-semibold shadow-sm"
+                    : "text-[var(--sidebar-foreground)] hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <i
-                  className={`fas ${item.icon} text-lg w-6 text-center transition-transform group-hover:scale-110 ${
-                    isActive
-                      ? "text-white"
-                      : "text-surface-500 group-hover:text-primary-600"
-                  }`}
-                ></i>
+                <Icon
+                  name={item.lucide}
+                  size={19}
+                  className="shrink-0 transition-transform group-hover:scale-110"
+                />
                 {!sidebarCollapsed && (
-                  <span className="ml-3 text-sm font-bold tracking-tight animate-fade-in">{item.label}</span>
+                  <span className="ml-3 text-sm font-medium tracking-tight animate-fade-in">{item.label}</span>
                 )}
-                
+
                 {!sidebarCollapsed && isLocked && (
-                  <i className="fas fa-lock absolute right-3 text-[10px] text-surface-400"></i>
+                  <Icon name="lock" size={11} className="absolute right-3 text-[var(--sidebar-muted)]" />
                 )}
-                
+
                 {sidebarCollapsed && isLocked && (
-                   <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-surface-100"></div>
+                   <div className="absolute top-1 right-1 w-2 h-2 bg-[var(--danger)] rounded-full border-2 border-[var(--sidebar)]"></div>
                 )}
               </button>
             );
           })}
         </nav>
 
-        <div className={`border-t border-surface-200 bg-surface-100 transition-all ${sidebarCollapsed ? "p-4" : "px-4 py-3"}`}>
+        <div className={`border-t border-white/10 transition-all ${sidebarCollapsed ? "p-4" : "px-4 py-3"}`}>
           <button
             onClick={toggleDarkMode}
             title={sidebarCollapsed ? (isDarkMode ? 'Modo Claro' : 'Modo Escuro') : ""}
-            className={`w-full flex items-center rounded-xl bg-surface-50 border border-surface-200 hover:bg-surface-200 transition-all shadow-sm ${sidebarCollapsed ? "justify-center h-10" : "px-3 py-2.5 justify-between"}`}
+            className={`w-full flex items-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all ${sidebarCollapsed ? "justify-center h-10" : "px-3 py-2.5 justify-between"}`}
           >
-            <div className={`flex items-center ${sidebarCollapsed ? "" : "gap-3"}`}>
-              <i className={`fas ${isDarkMode ? 'fa-moon text-indigo-400' : 'fa-sun text-yellow-500'} w-4 text-center`}></i>
+            <div className={`flex items-center text-[var(--sidebar-foreground)] ${sidebarCollapsed ? "" : "gap-3"}`}>
+              <Icon name={isDarkMode ? "moon" : "sun"} size={16} />
               {!sidebarCollapsed && (
-                <span className="text-[11px] font-black uppercase tracking-widest text-surface-800">
+                <span className="text-[11px] font-black uppercase tracking-widest text-white">
                   {isDarkMode ? 'Noite' : 'Dia'}
                 </span>
               )}
             </div>
             {!sidebarCollapsed && (
-              <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${isDarkMode ? 'bg-indigo-500' : 'bg-surface-300'}`}>
+              <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${isDarkMode ? 'bg-[var(--primary)]' : 'bg-white/20'}`}>
                 <div className={`w-3 h-3 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${isDarkMode ? 'translate-x-4' : 'translate-x-0'}`}></div>
               </div>
             )}
@@ -392,16 +324,11 @@ function App() {
         </div>
 
         {!sidebarCollapsed && (
-          <div className="p-4 border-t border-surface-200 bg-surface-50 flex justify-between items-center animate-fade-in">
-            <p className="text-[9px] text-surface-500 font-black uppercase tracking-widest leading-none">
+          <div className="p-4 border-t border-white/10 flex justify-between items-center animate-fade-in">
+            <p className="text-[9px] text-[var(--sidebar-muted)] font-black uppercase tracking-widest leading-none">
               v{appVersion || "..."}
-              {tenant.devNome && (
-                <span className="block mt-1 opacity-60">
-                  — {tenant.devNome}
-                </span>
-              )}
             </p>
-            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+            <div className="w-2 h-2 rounded-full bg-[var(--success)] shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
           </div>
         )}
       </aside>
@@ -409,8 +336,8 @@ function App() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar mobile */}
         <header className="lg:hidden flex items-center gap-3 h-14 px-4 border-b border-surface-200 bg-surface-100 shadow-sm z-40 flex-shrink-0">
-          <button onClick={() => setMobileMenuOpen(true)} className="text-surface-700 text-xl w-8" aria-label="Abrir menu">
-            <i className="fas fa-bars"></i>
+          <button onClick={() => setMobileMenuOpen(true)} className="text-surface-700 w-8 flex items-center" aria-label="Abrir menu">
+            <Icon name="menu" size={22} />
           </button>
           <span className="font-black text-surface-800 truncate">{tenant.nome}</span>
         </header>
@@ -445,7 +372,6 @@ function App() {
         currentPath={location.pathname}
         onNavigate={handleMenuClick}
         onMore={() => setMobileMenuOpen(true)}
-        accent={tenant.corPrimaria}
       />
 
       {/* Auto Updater Component */}

@@ -17,7 +17,8 @@ import ProductFormModal from "../components/products/ProductFormModal";
 import ProductImportModal from "../components/products/ProductImportModal";
 import ProductsToolbar from "../components/products/ProductsToolbar";
 import StockEntryModal from "../components/products/StockEntryModal";
-import StatusBadge from "../components/ui/StatusBadge";
+import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
 
 const INITIAL_PRODUCT_FORM = {
   codigo: "",
@@ -394,65 +395,92 @@ const Produtos = () => {
     [importData],
   );
 
+  const margin = (row) =>
+    row.preco_venda > 0 ? ((row.preco_venda - (row.custo || 0)) / row.preco_venda) * 100 : 0;
+
   const columns = [
-    { key: "codigo", label: "Cód.", bold: true },
+    {
+      key: "codigo",
+      label: "Cód.",
+      format: (val) => (
+        <span className="text-[var(--muted-foreground)]" style={{ fontFamily: "var(--font-mono)" }}>{val}</span>
+      ),
+    },
     { key: "descricao", label: "Descrição", bold: true },
-    { 
-      key: "tipo", 
-      label: "Tipo", 
+    {
+      key: "tipo",
+      label: "Tipo",
       align: "center",
       format: (val) => (
-        <StatusBadge 
-          type={val === "usado" ? "usado" : "novo"} 
-          label={val === "usado" ? "USADO" : "NOVO"} 
-        />
-      )
+        <Badge variant={val === "usado" ? "warning" : "info"}>{val === "usado" ? "Usado" : "Novo"}</Badge>
+      ),
     },
     { key: "custo", label: "Custo", align: "right", format: formatCurrency },
     { key: "preco_venda", label: "Venda", align: "right", format: formatCurrency },
     {
+      key: "margem",
+      label: "Margem",
+      align: "right",
+      format: (_, row) => (
+        <span className="text-[var(--money-positive)] font-medium">
+          {margin(row).toFixed(1).replace(".", ",")}%
+        </span>
+      ),
+    },
+    {
       key: "estoque_atual",
       label: "Saldo",
-      align: "center",
+      align: "right",
       format: (val) => (
-        <span className={`px-2.5 py-1 text-xs font-black rounded-full shadow-sm ${
-          val > 5 ? "bg-green-100 text-green-700" : val > 0 ? "bg-yellow-100 text-yellow-700 font-bold" : "bg-red-100 text-red-600"
-        }`}>
+        <span
+          className={
+            val > 5 ? "text-[var(--foreground)]" : val > 0 ? "text-[var(--warning-icon)] font-semibold" : "text-[var(--danger)] font-semibold"
+          }
+        >
           {val}
         </span>
-      )
+      ),
+    },
+    {
+      key: "situacao",
+      label: "Situação",
+      align: "center",
+      format: (_, row) => {
+        const s = row.estoque_atual > 5 ? "emestoque" : row.estoque_atual > 0 ? "estoquebaixo" : "esgotado";
+        return <Badge.Status status={s} />;
+      },
     },
     {
       key: "id",
       label: "Ações",
       align: "center",
       format: (_, row) => (
-        <div className="flex justify-center items-center gap-2">
+        <div className="flex justify-center items-center gap-1">
           <button
             onClick={() => withPermission(() => openStockModal(row))}
-            className="text-white bg-green-600 hover:bg-green-700 p-2 rounded-lg transition shadow-sm active:scale-90"
-            title="Entrada de Estoque"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--success)] hover:bg-[var(--hover-surface)] transition"
+            title="Entrada de estoque"
           >
-            <i className="fas fa-plus text-xs"></i>
+            <Icon name="plus" size={16} />
           </button>
           <button
             onClick={() => withPermission(() => handleEdit(row))}
-            className="text-white bg-primary-600 hover:bg-primary-700 p-2 rounded-lg transition shadow-sm active:scale-90"
-            title="Editar Produto"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
+            title="Editar produto"
           >
-            <i className="fas fa-edit text-xs"></i>
+            <Icon name="pencil" size={16} />
           </button>
           <button
             onClick={() => withPermission(() => handleDelete(row.id))}
             disabled={deletingProductId === row.id}
-            className="text-white bg-red-500 hover:bg-red-600 p-2 rounded-lg transition shadow-sm active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50"
             title="Excluir"
           >
-            <i className={`fas text-xs ${deletingProductId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i>
+            <Icon name={deletingProductId === row.id ? "refresh-cw" : "trash-2"} size={16} className={deletingProductId === row.id ? "animate-spin" : ""} />
           </button>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (

@@ -4,7 +4,13 @@ Descrição tela por tela do app (`apps/pdv`) — **conteúdo, ações e fluxo**
 base para o refactor visual componente por componente, seguindo o
 [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) (marca fixa **SysControl**, sem white-label).
 
-As specs ficam em [`v2/`](./v2/). Um arquivo por tela.
+As specs ficam em [`v2/`](./v2/) (mobile-first). Um arquivo por tela.
+
+Para o **desktop** (web e Electron), há um conjunto paralelo em
+[`desktop/`](./desktop/) — mesmo formato, descrevendo o layout de tela grande
+(sidebar, painéis lado a lado, tabelas) e, em cada doc, uma seção **Modo
+Electron** com o que só existe no app instalado (modo local/offline, impressão
+térmica, leitor de código de barras, migração para online).
 
 ## Formato de cada doc (v2)
 

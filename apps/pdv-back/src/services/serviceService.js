@@ -39,9 +39,15 @@ async function listServices(knex, lojaId, filters = {}) {
   const data = await query;
   if (!hasPagination) return data;
 
-  const countResult = await countQuery.count("id as total").first();
-  const total = Number(countResult?.total || 0);
-  return { data, total, page, totalPages: Math.ceil(total / limit) };
+  // Agrega count + soma do valor sobre TODO o filtro (não só a página),
+  // para a tela de Serviços exibir o total real e não o parcial da página.
+  const aggResult = await countQuery
+    .count("id as total")
+    .sum("valor as totalValor")
+    .first();
+  const total = Number(aggResult?.total || 0);
+  const totalValor = Number(aggResult?.totalValor || 0);
+  return { data, total, totalValor, page, totalPages: Math.ceil(total / limit) };
 }
 
 async function createService(knex, lojaId, userId, data = {}) {

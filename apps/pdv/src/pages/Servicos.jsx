@@ -115,13 +115,17 @@ const Servicos = () => {
     return services;
   }, [services]);
 
+  // Resumo (Qtd. e Total Pago) deve refletir TODOS os registros do filtro,
+  // não só a página atual. O backend devolve os agregados (total, totalValor);
+  // usamos eles quando disponíveis e caímos para a soma da página como fallback.
   const reportSummary = useMemo(() => {
-    const totalValue = filteredServices.reduce((acc, curr) => acc + curr.valor, 0);
+    const pageValue = filteredServices.reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
+    const hasServerAgg = rawServices && !Array.isArray(rawServices);
     return {
-      totalCount: filteredServices.length,
-      totalValue: totalValue,
+      totalCount: hasServerAgg && rawServices.total != null ? rawServices.total : filteredServices.length,
+      totalValue: hasServerAgg && rawServices.totalValor != null ? rawServices.totalValor : pageValue,
     };
-  }, [filteredServices]);
+  }, [filteredServices, rawServices]);
 
   const columns = [
     { 
