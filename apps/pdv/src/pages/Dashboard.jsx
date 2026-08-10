@@ -1,12 +1,38 @@
 // @ts-nocheck
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
-import StatCard from "../components/ui/StatCard";
 import PageSkeleton from "../components/ui/PageSkeleton";
-import Button from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { Icon } from "../components/ui/Icon";
+
+// Estilo de valor numérico do design: mono, tabular, tracking apertado.
+const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" };
+
+/** Cartão de indicador (anatomia do handoff: caption caps + valor mono + sub). */
+function Metric({ caption, value, sub, subTone = "muted" }) {
+  return (
+    <Card padding="none" className="p-5 flex flex-col gap-2">
+      <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]">
+        {caption}
+      </span>
+      <span className="text-[26px] leading-[1.1] font-semibold text-[var(--foreground)]" style={MONO}>
+        {value}
+      </span>
+      {sub != null && (
+        <span
+          className="text-xs font-semibold"
+          style={{ ...MONO, letterSpacing: "normal", color: subTone === "pos" ? "var(--money-positive)" : "var(--muted-foreground)" }}
+        >
+          {sub}
+        </span>
+      )}
+    </Card>
+  );
+}
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -115,6 +141,11 @@ const Dashboard = () => {
   const chartData = data?.chartData || { labels: [], datasets: [] };
   const lowStock = data?.lowStock || [];
   const loading = isFetching;
+  const navigate = useNavigate();
+
+  // Subtextos derivados (design mostra margem e ticket).
+  const margem = stats.faturamento > 0 ? (stats.lucro / stats.faturamento) * 100 : 0;
+  const ticket = stats.vendasCount > 0 ? stats.faturamento / stats.vendasCount : 0;
 
   const chartOptions = {
     responsive: true,
@@ -161,121 +192,95 @@ const Dashboard = () => {
 
   return (
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50 custom-scrollbar">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Painel de Controle</h1>
-          <p className="text-xs text-surface-500 mt-1">Resumo operacional e saúde financeira do seu negócio.</p>
+      <div className="flex justify-between items-center gap-3 mb-6">
+        <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+          Painel de controle
+        </h1>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 h-[34px] px-3 rounded-[var(--radius-md)] border border-[var(--border)] text-[13px] font-medium text-[var(--foreground)]">
+            Hoje
+          </div>
+          <button
+            onClick={() => refetch()}
+            title="Atualizar"
+            className="w-[34px] h-[34px] flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--hover-surface)] transition"
+          >
+            <Icon name="refresh-cw" size={16} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
-        <Button variant="flat" size="sm" icon={`fa-rotate ${loading ? "fa-spin" : ""}`} onClick={() => refetch()}>
-          Atualizar
-        </Button>
       </div>
 
-      {/* --- MOVIMENTO DO DIA --- */}
-      <h2 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4 ml-1">
-        Movimento de Hoje
-      </h2>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
-        <StatCard
-          title="Faturamento"
-          value={stats.faturamento}
-          color="blue"
-          icon="fa-dollar-sign"
-          tooltip="Total bruto vendido hoje."
-        />
-        <StatCard
-          title="Lucro Líquido"
-          value={stats.lucro}
-          color="green"
-          icon="fa-chart-line"
-          tooltip="Resultando após descontar custos, comissões e mão de obra."
-        />
-        <StatCard
-          title="Vendas"
-          value={stats.vendasCount}
-          color="indigo"
-          icon="fa-shopping-cart"
-          tooltip="Quantidade de cupons emitidos hoje."
-          format={(v) => `${v} unid`}
-        />
-        <StatCard
-          title="Mão de Obra"
-          value={stats.maoDeObra}
-          color="orange"
-          icon="fa-wrench"
-          tooltip="Total gerado em serviços de mecânica."
-        />
-        <StatCard
-          title="Comissões"
-          value={stats.comissoes}
-          color="purple"
-          icon="fa-user-tag"
-          tooltip="Total a pagar em comissões para vendedores."
-        />
+      {/* --- 5 indicadores do dia --- */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-6">
+        <Metric caption="Faturamento" value={formatCurrency(stats.faturamento)} />
+        <Metric caption="Lucro líquido" value={formatCurrency(stats.lucro)} sub={`${margem.toFixed(1).replace(".", ",")}% margem`} />
+        <Metric caption="Vendas" value={stats.vendasCount} sub={`ticket ${formatCurrency(ticket)}`} />
+        <Metric caption="Mão de obra" value={formatCurrency(stats.maoDeObra)} />
+        <Metric caption="Comissões" value={formatCurrency(stats.comissoes)} />
       </div>
 
-      {/* --- PATRIMÔNIO --- */}
-      <h2 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4 ml-1">
-        Valorização de Estoque (Patrimônio)
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-gray-900 to-gray-700 p-5 rounded-2xl shadow-lg border border-surface-900 text-white relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-             <i className="fas fa-vault text-6xl"></i>
-          </div>
-          <p className="text-[10px] text-surface-400 font-black uppercase tracking-widest mb-1">Custo Total (Investido)</p>
-          <p className="text-3xl font-black tracking-tighter">{formatCurrency(inventoryStats.custoTotal)}</p>
-          <p className="text-[10px] text-surface-400 mt-2 font-medium italic">Capital imobilizado em mercadoria</p>
-        </div>
+      {/* --- Venda potencial + Situação do estoque --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4 mb-6">
+        <Card
+          padding="none"
+          className="p-5 flex flex-col justify-between gap-2 bg-[var(--primary-soft)] border-[var(--primary-soft-border)] cursor-pointer"
+          onClick={() => navigate("/produtos")}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--primary-soft-foreground)]">
+            Venda potencial
+          </span>
+          <span className="text-[26px] leading-[1.1] font-semibold text-[var(--primary-soft-foreground)]" style={MONO}>
+            {formatCurrency(inventoryStats.vendaPotencial)}
+          </span>
+          <span className="text-xs font-medium text-[var(--primary-soft-foreground)] opacity-80">
+            Ticket total em prateleira · {inventoryStats.totalItensFisicos} itens
+          </span>
+        </Card>
 
-        <div className="bg-surface-100 p-5 rounded-2xl shadow-sm border border-surface-200 flex flex-col justify-between">
-          <div>
-            <p className="text-[10px] text-surface-400 font-black uppercase tracking-widest mb-1 text-primary-500">Venda Potencial</p>
-            <p className="text-2xl font-black text-surface-800 tracking-tight">{formatCurrency(inventoryStats.vendaPotencial)}</p>
-          </div>
-          <p className="text-[10px] text-surface-400 mt-3 border-t pt-2 font-medium">Ticket total em prateleira</p>
-        </div>
-
-        <div className="bg-surface-100 p-5 rounded-2xl shadow-sm border border-surface-200 flex flex-col justify-between">
-          <div>
-            <p className="text-[10px] text-surface-400 font-black uppercase tracking-widest mb-1 text-green-600">Lucro Projetado</p>
-            <p className="text-2xl font-black text-surface-800 tracking-tight">{formatCurrency(inventoryStats.lucroProjetado)}</p>
-          </div>
-          <p className="text-[10px] text-surface-400 mt-3 border-t pt-2 font-medium">Margem bruta acumulada</p>
-        </div>
-
-        <div className="bg-surface-100 p-5 rounded-2xl shadow-sm border-l-4 border-red-500 flex flex-col justify-between">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-bold text-surface-500 uppercase tracking-tighter">Produtos Zerados</span>
-            <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black">{inventoryStats.qtdZerados}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-surface-500 uppercase tracking-tighter">Baixo Estoque</span>
-            <span className="bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-[10px] font-black">{inventoryStats.qtdBaixoEstoque}</span>
-          </div>
-          <p className="text-[10px] text-surface-400 mt-3 border-t pt-2 text-right">Total Itens: <span className="font-bold text-surface-800">{inventoryStats.totalItensFisicos}</span></p>
-        </div>
+        <Card padding="none" className="p-5 flex flex-col gap-3">
+          <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]">
+            Situação do estoque
+          </span>
+          <button
+            onClick={() => navigate("/produtos")}
+            className="flex items-center justify-between rounded-[var(--radius-md)] px-3 py-2 hover:bg-[var(--hover-surface)] transition text-left"
+          >
+            <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">
+              <Icon name="package-x" size={16} className="text-[var(--danger)]" /> Produtos zerados
+            </span>
+            <span className="text-sm font-semibold text-[var(--danger)]" style={MONO}>{inventoryStats.qtdZerados}</span>
+          </button>
+          <button
+            onClick={() => navigate("/produtos")}
+            className="flex items-center justify-between rounded-[var(--radius-md)] px-3 py-2 hover:bg-[var(--hover-surface)] transition text-left"
+          >
+            <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">
+              <Icon name="alert-triangle" size={16} className="text-[var(--warning-icon)]" /> Baixo estoque
+            </span>
+            <span className="text-sm font-semibold text-[var(--warning-icon)]" style={MONO}>{inventoryStats.qtdBaixoEstoque}</span>
+          </button>
+        </Card>
       </div>
 
       {/* --- GRÁFICOS E LISTAS --- */}
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[400px]">
         {/* Gráfico */}
-        <div className="flex-[2] bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
+        <Card padding="none" className="flex-[2] p-6 flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-black text-surface-800 tracking-tight">Desempenho Semanal</h2>
-            <span className="text-[10px] font-bold bg-primary-50 text-primary-600 px-2 py-1 rounded-md uppercase border border-primary-100">Faturamento Real</span>
+            <h2 className="text-base font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Desempenho semanal</h2>
+            <span className="text-[10px] font-semibold bg-[var(--primary-soft)] text-[var(--primary-soft-foreground)] px-2 py-1 rounded-md uppercase border border-[var(--primary-soft-border)] tracking-[var(--tracking-caps)]">Faturamento real</span>
           </div>
           <div className="flex-1 relative w-full h-full min-h-[300px]">
             {chartData.datasets.length > 0 && (
               <Bar options={chartOptions} data={chartData} />
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Alerta Estoque */}
-        <div className="flex-1 bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
-          <h2 className="text-lg font-black text-surface-800 mb-6 flex items-center gap-2">
-            <i className="fas fa-shipping-fast text-red-500"></i> Reposição Urgente
+        <Card padding="none" className="flex-1 p-6 flex flex-col">
+          <h2 className="text-base font-semibold text-[var(--foreground)] mb-6 flex items-center gap-2" style={{ fontFamily: "var(--font-display)" }}>
+            <Icon name="truck" size={18} className="text-[var(--danger)]" /> Reposição urgente
           </h2>
           <div className="overflow-y-auto flex-1 custom-scrollbar pr-2">
             <ul className="space-y-4">
@@ -304,16 +309,16 @@ const Dashboard = () => {
               ))}
               {lowStock.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center text-surface-300 py-10">
-                  <div className="w-16 h-16 bg-green-500/10 text-green-600 rounded-full flex items-center justify-center mb-3">
-                    <i className="fas fa-check text-2xl text-green-400"></i>
+                  <div className="w-16 h-16 bg-[var(--success-soft)] text-[var(--success)] rounded-full flex items-center justify-center mb-3">
+                    <Icon name="circle-check" size={26} />
                   </div>
-                  <p className="text-sm font-bold">Estoque saudável</p>
-                  <p className="text-[10px] text-surface-400 uppercase font-medium">Tudo sob controle</p>
+                  <p className="text-sm font-bold text-[var(--foreground)]">Estoque saudável</p>
+                  <p className="text-[10px] text-[var(--muted-foreground)] uppercase font-medium">Tudo sob controle</p>
                 </div>
               )}
             </ul>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

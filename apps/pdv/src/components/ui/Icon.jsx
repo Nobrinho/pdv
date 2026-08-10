@@ -1,39 +1,114 @@
 import React from "react";
-import { icons } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Wrench,
+  Receipt,
+  FileText,
+  Users,
+  UsersRound,
+  HandCoins,
+  LineChart,
+  Wallet,
+  History,
+  Settings,
+  Store,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronsUpDown,
+  Power,
+  Lock,
+  Menu,
+  Moon,
+  Sun,
+  Plus,
+  Minus,
+  Trash2,
+  Search,
+  Check,
+  X,
+  MoreHorizontal,
+  Printer,
+  Share2,
+  Camera,
+  Pencil,
+  Save,
+  FileDown,
+  Image,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  PackageX,
+  ArrowRight,
+  Truck,
+  CircleCheck,
+  CircleHelp,
+} from "lucide-react";
 
 /**
  * Icon — wrapper do design system sobre o Lucide.
  *
- * Aceita o nome no formato **kebab-case** exatamente como o handoff do design
- * (`layout-dashboard`, `shopping-cart`, `chevrons-up-down`, `trash-2`...), então
- * a tradução do protótipo é literal.
+ * Usa **imports explícitos** (tree-shaking) num registro kebab-case, exatamente
+ * como o handoff nomeia os ícones (`layout-dashboard`, `shopping-cart`,
+ * `chevrons-up-down`, `trash-2`…). Para adicionar um ícone novo: importe-o acima
+ * e registre no mapa abaixo.
  *
- * A cor sai do `currentColor` — basta aplicar `text-[var(--primary)]` (ou
- * qualquer classe de cor) no próprio Icon ou num ancestral.
- *
- * Props:
- * - name: nome do ícone Lucide em kebab-case (obrigatório)
- * - size: tamanho em px (default 20)
- * - strokeWidth: espessura do traço (default 2)
- * - className: classes extras (cor, margem, etc.)
- * Demais props nativas do SVG são repassadas.
+ * A cor sai do `currentColor` — aplique `text-[var(--primary)]` (ou classe de
+ * cor) no próprio Icon ou num ancestral.
  */
-
-const cache = new Map();
-function resolve(name) {
-  if (cache.has(name)) return cache.get(name);
-  const pascal = String(name || "")
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join("");
-  const Cmp = icons[pascal] || icons.HelpCircle;
-  cache.set(name, Cmp);
-  return Cmp;
-}
+const REGISTRY = {
+  "layout-dashboard": LayoutDashboard,
+  "shopping-cart": ShoppingCart,
+  package: Package,
+  wrench: Wrench,
+  receipt: Receipt,
+  "file-text": FileText,
+  users: Users,
+  "users-round": UsersRound,
+  "hand-coins": HandCoins,
+  "line-chart": LineChart,
+  wallet: Wallet,
+  history: History,
+  settings: Settings,
+  store: Store,
+  "chevron-left": ChevronLeft,
+  "chevron-right": ChevronRight,
+  "chevron-down": ChevronDown,
+  "chevrons-up-down": ChevronsUpDown,
+  power: Power,
+  lock: Lock,
+  menu: Menu,
+  moon: Moon,
+  sun: Sun,
+  plus: Plus,
+  minus: Minus,
+  "trash-2": Trash2,
+  search: Search,
+  check: Check,
+  x: X,
+  "more-horizontal": MoreHorizontal,
+  printer: Printer,
+  "share-2": Share2,
+  camera: Camera,
+  pencil: Pencil,
+  save: Save,
+  "file-down": FileDown,
+  image: Image,
+  "refresh-cw": RefreshCw,
+  "trending-up": TrendingUp,
+  "trending-down": TrendingDown,
+  "alert-triangle": AlertTriangle,
+  "package-x": PackageX,
+  "arrow-right": ArrowRight,
+  truck: Truck,
+  "circle-check": CircleCheck,
+};
 
 export function Icon({ name, size = 20, strokeWidth = 2, className = "", ...props }) {
-  const Cmp = resolve(name);
+  const Cmp = REGISTRY[name] || CircleHelp;
   return (
     <Cmp
       size={size}
