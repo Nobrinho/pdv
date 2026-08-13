@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Icon } from "../ui/Icon";
 
 /**
  * Leitor de código de barras por câmera.
@@ -107,7 +108,7 @@ const BarcodeScannerModal = ({ isOpen, onClose, onDetected }) => {
       <div className="flex items-center justify-between p-4 pt-safe text-white">
         <span className="font-bold">Escanear código</span>
         <button onClick={handleClose} className="p-2 -mr-2" aria-label="Fechar">
-          <i className="fas fa-xmark text-xl"></i>
+          <Icon name="x" size={20} />
         </button>
       </div>
 
@@ -130,7 +131,7 @@ const BarcodeScannerModal = ({ isOpen, onClose, onDetected }) => {
           </>
         ) : (
           <div className="px-8 text-center text-white/80">
-            <i className="fas fa-camera-slash mb-3 text-3xl"></i>
+            <Icon name="camera-off" size={30} className="mb-3" />
             <p className="text-sm">
               {error ||
                 "Leitor por câmera não é suportado neste dispositivo. Digite o código manualmente."}

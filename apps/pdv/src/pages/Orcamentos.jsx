@@ -4,7 +4,8 @@ import dayjs from "dayjs";
 import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
 import DataTable from "../components/ui/DataTable";
-import StatusBadge from "../components/ui/StatusBadge";
+import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
 import Modal from "../components/ui/Modal";
 import SaleEntryBar from "../components/sales/SaleEntryBar";
 import SaleCartPanel from "../components/sales/SaleCartPanel";
@@ -629,7 +630,8 @@ const Orcamentos = () => {
         align: "center",
         format: (value) => {
           const meta = statusMeta[value] || { preset: "pendente", label: value || "N/A" };
-          return <StatusBadge preset={meta.preset} label={meta.label} />;
+          const V = { success: "success", danger: "danger", pendente: "warning", info: "info", quitado: "success", devedor: "danger" };
+          return <Badge variant={V[meta.preset] || "neutral"}>{meta.label}</Badge>;
         },
       },
       {
@@ -651,14 +653,14 @@ const Orcamentos = () => {
                 openConvertModal(row);
               }}
               disabled={row.status !== "ABERTO"}
-              className={`h-8 w-8 rounded-lg border transition ${
+              className={`h-8 w-8 rounded-[var(--radius-md)] border flex items-center justify-center transition ${
                 row.status === "ABERTO"
-                  ? "border-green-200 text-green-600 hover:bg-green-50"
-                  : "border-surface-200 text-surface-300 cursor-not-allowed"
+                  ? "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--success)] hover:bg-[var(--hover-surface)]"
+                  : "border-[var(--border)] text-[var(--icon-muted)] opacity-50 cursor-not-allowed"
               }`}
               title="Converter em venda"
             >
-              <i className="fas fa-right-left text-xs"></i>
+              <Icon name="arrow-right-left" size={15} />
             </button>
             <button
               type="button"
@@ -666,10 +668,10 @@ const Orcamentos = () => {
                 event.stopPropagation();
                 handlePreviewBudget(row.id);
               }}
-              className="h-8 w-8 rounded-lg border border-surface-200 text-surface-500 hover:bg-surface-50 transition"
+              className="h-8 w-8 rounded-[var(--radius-md)] border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
               title="Visualizar"
             >
-              <i className={`fas ${previewLoading ? "fa-spinner fa-spin" : "fa-eye"} text-xs`}></i>
+              <Icon name={previewLoading ? "refresh-cw" : "eye"} size={15} className={previewLoading ? "animate-spin" : ""} />
             </button>
             <button
               type="button"
@@ -678,14 +680,14 @@ const Orcamentos = () => {
                 handleEditBudget(row.id);
               }}
               disabled={row.status !== "ABERTO"}
-              className={`h-8 w-8 rounded-lg border transition ${
+              className={`h-8 w-8 rounded-[var(--radius-md)] border flex items-center justify-center transition ${
                 row.status === "ABERTO"
-                  ? "border-primary-200 text-primary-600 hover:bg-primary-50"
-                  : "border-surface-200 text-surface-300 cursor-not-allowed"
+                  ? "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)]"
+                  : "border-[var(--border)] text-[var(--icon-muted)] opacity-50 cursor-not-allowed"
               }`}
               title="Editar"
             >
-              <i className="fas fa-pen text-xs"></i>
+              <Icon name="pencil" size={15} />
             </button>
             <button
               type="button"
@@ -693,10 +695,10 @@ const Orcamentos = () => {
                 event.stopPropagation();
                 handleDuplicateBudget(row.id);
               }}
-              className="h-8 w-8 rounded-lg border border-surface-200 text-surface-500 hover:bg-surface-50 transition"
+              className="h-8 w-8 rounded-[var(--radius-md)] border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
               title="Duplicar"
             >
-              <i className="fas fa-copy text-xs"></i>
+              <Icon name="copy" size={15} />
             </button>
             <button
               type="button"
@@ -705,14 +707,14 @@ const Orcamentos = () => {
                 handleCancelBudget(row.id);
               }}
               disabled={row.status !== "ABERTO"}
-              className={`h-8 w-8 rounded-lg border transition ${
+              className={`h-8 w-8 rounded-[var(--radius-md)] border flex items-center justify-center transition ${
                 row.status === "ABERTO"
-                  ? "border-red-200 text-red-500 hover:bg-red-50"
-                  : "border-surface-200 text-surface-300 cursor-not-allowed"
+                  ? "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)]"
+                  : "border-[var(--border)] text-[var(--icon-muted)] opacity-50 cursor-not-allowed"
               }`}
               title="Cancelar"
             >
-              <i className="fas fa-ban text-xs"></i>
+              <Icon name="ban" size={15} />
             </button>
           </div>
         ),

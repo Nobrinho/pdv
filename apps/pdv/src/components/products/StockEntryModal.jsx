@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 import FormField from "../ui/FormField";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
@@ -44,7 +45,7 @@ const StockEntryModal = ({
             <div className="text-[10px] font-black text-primary-400 uppercase mb-1">Atual</div>
             <div className="text-3xl font-black text-surface-400">{stockData.quantidade_atual}</div>
           </div>
-          <i className="fas fa-arrow-right text-primary-200"></i>
+          <Icon name="arrow-right" size={16} className="text-[var(--primary)]" />
           <div className="text-center">
             <div className="text-[10px] font-black text-green-500 uppercase mb-1">Novo</div>
             <div className="text-3xl font-black text-green-600">{nextQuantity}</div>

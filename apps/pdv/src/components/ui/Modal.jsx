@@ -4,6 +4,7 @@
 // largura total, cantos arredondados no topo, com grabber).
 // =============================================================
 import React from "react";
+import { Icon } from "./Icon";
 
 const Modal = ({ isOpen, onClose, title, children, footer, size = "md", icon }) => {
   if (!isOpen) return null;
@@ -38,7 +39,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = "md", icon }) 
                 className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition p-1"
                 aria-label="Fechar"
               >
-                <i className="fas fa-times"></i>
+                <Icon name="x" size={16} />
               </button>
             )}
           </h2>

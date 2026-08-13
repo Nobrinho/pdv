@@ -12,8 +12,10 @@ import { useTenant, thermalizeReceiptHtml } from "../context/TenantContext";
 import { shareReceiptImage } from "../utils/whatsapp";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
+import { Select } from "../components/ui/Input";
 import Modal from "../components/ui/Modal";
-import StatusBadge from "../components/ui/StatusBadge";
+import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
 import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Recibos = () => {
@@ -249,11 +251,9 @@ const Recibos = () => {
       label: "Status", 
       align: "center",
       format: (val, row) => (
-        <StatusBadge 
-          type={val ? "danger" : "success"} 
-          label={val ? "CANCELADA" : "CONCLUÍDA"}
-          tooltip={val ? row.motivo_cancelamento : null}
-        />
+        <span title={val ? row.motivo_cancelamento || "" : ""}>
+          <Badge variant={val ? "danger" : "success"}>{val ? "Cancelada" : "Concluída"}</Badge>
+        </span>
       )
     },
     {
@@ -261,23 +261,23 @@ const Recibos = () => {
       label: "Ações",
       align: "center",
       format: (_, row) => (
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center gap-1">
           <button
             onClick={() => handleViewReceipt(row)}
             disabled={isLoadingReceipt}
-            className="text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Ver Recibo"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50"
+            title="Ver recibo"
           >
-            <i className={`fas ${isLoadingReceipt ? "fa-spinner fa-spin" : "fa-eye"}`}></i>
+            <Icon name={isLoadingReceipt ? "refresh-cw" : "eye"} size={16} className={isLoadingReceipt ? "animate-spin" : ""} />
           </button>
           {!row.cancelada && (
             <button
               onClick={() => initiateCancel(row)}
               disabled={isCancellingSale}
-              className="text-red-500 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Cancelar Venda"
+              className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50"
+              title="Cancelar venda"
             >
-              <i className="fas fa-ban"></i>
+              <Icon name="ban" size={16} />
             </button>
           )}
         </div>
@@ -288,34 +288,34 @@ const Recibos = () => {
   return (
     <div className="p-4 md:p-6 h-full flex flex-col bg-surface-50 overflow-hidden">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Histórico de Vendas</h1>
-        <p className="text-xs text-surface-500 mt-1">Consulte notas antigas, imprima segundas vias ou realize cancelamentos.</p>
+        <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Histórico de vendas</h1>
+        <p className="text-xs text-[var(--muted-foreground)] mt-1">Consulte notas antigas, imprima segundas vias ou realize cancelamentos.</p>
       </div>
 
-      <div className="bg-surface-100 p-3 md:p-4 rounded-2xl shadow-sm border border-surface-200 mb-4 flex flex-col gap-3 md:gap-4">
+      <div className="bg-[var(--card)] p-3 md:p-4 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] mb-4 flex flex-col gap-3 md:gap-4">
         <div className="flex items-center gap-2">
           <div className="flex gap-2 overflow-x-auto custom-scrollbar flex-1">
             {['weekly', 'monthly', 'yearly'].map(period => (
               <button
                 key={period}
                 onClick={() => handlePeriodChange(period)}
-                className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider whitespace-nowrap ${
+                className={`px-4 py-1.5 text-[10px] font-semibold uppercase rounded-[var(--radius-md)] transition-all tracking-wider whitespace-nowrap ${
                   periodType === period
-                    ? "bg-primary-600 text-white shadow-[0_8px_20px_-12px_rgba(37,99,235,0.85)]"
-                    : "bg-surface-200 text-surface-400 hover:bg-surface-300"
+                    ? "bg-[var(--primary)] text-white"
+                    : "bg-[var(--content2)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"
                 }`}
               >
-                {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
+                {period === 'weekly' ? 'Esta semana' : period === 'monthly' ? 'Este mês' : 'Este ano'}
               </button>
             ))}
           </div>
           <button
             onClick={() => setShowFilters((v) => !v)}
-            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
-              filters.sellerId || filters.clientId ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-500"
+            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] text-[10px] font-bold uppercase tracking-wider transition ${
+              filters.sellerId || filters.clientId ? "bg-[var(--primary)] text-white" : "bg-[var(--content2)] text-[var(--muted-foreground)]"
             }`}
           >
-            <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+            <Icon name="settings" size={13} className={showFilters ? "rotate-180 transition-transform" : "transition-transform"} />
             Filtros
           </button>
         </div>
@@ -325,22 +325,21 @@ const Recibos = () => {
           <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); setPage(1); }} />
           
           <div>
-            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Vendedor</label>
-            <select
-              className="w-full border border-surface-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-100 outline-none bg-surface-100 transition-all"
+            <label className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] mb-1 ml-0.5 block">Vendedor</label>
+            <Select
               value={filters.sellerId}
               onChange={(e) => { setFilters({ ...filters, sellerId: e.target.value }); setPage(1); }}
             >
-              <option value="all">Todos os Vendedores</option>
+              <option value="all">Todos os vendedores</option>
               {sellers.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            </select>
+            </Select>
           </div>
 
           <div className="relative">
-            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">Cliente</label>
+            <label className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] mb-1 ml-0.5 block">Cliente</label>
             <div className="relative">
               <input
-                className={`w-full border rounded-xl p-2.5 pl-9 text-sm outline-none focus:ring-2 focus:ring-primary-100 transition-all ${filters.clientId ? "border-green-500 bg-green-500/10 text-green-600 text-green-800 font-bold" : "border-surface-300 bg-surface-100"}`}
+                className={`w-full h-9 rounded-[var(--radius-md)] border pl-9 pr-8 text-sm outline-none transition-colors ${filters.clientId ? "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success-soft-foreground)] font-semibold" : "border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] focus:border-[var(--ring)]"}`}
                 placeholder={filters.clientId ? "" : "Buscar por nome..."}
                 value={clientSearchTerm}
                 onChange={(e) => {
@@ -352,20 +351,20 @@ const Recibos = () => {
                 onFocus={() => setShowClientResults(true)}
                 onBlur={() => setTimeout(() => setShowClientResults(false), 200)}
               />
-              <i className={`fas ${filters.clientId ? "fa-user-check text-green-600" : "fa-search text-surface-400"} absolute left-3.5 top-3.5 text-xs`}></i>
+              <Icon name={filters.clientId ? "circle-check" : "search"} size={15} className={`absolute left-3 top-1/2 -translate-y-1/2 ${filters.clientId ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}`} />
               {filters.clientId && (
-                <button onClick={() => handleSelectClient(null)} className="absolute right-3 top-3.5 text-surface-400 hover:text-red-500">
-                  <i className="fas fa-times text-xs"></i>
+                <button onClick={() => handleSelectClient(null)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--danger)]">
+                  <Icon name="x" size={15} />
                 </button>
               )}
             </div>
             {showClientResults && (clientSearchTerm.length > 0 || clients.length > 0) && (
-              <div className="absolute top-full left-0 w-full bg-surface-100 border border-surface-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto z-[60] p-1">
-                <div className="p-2 hover:bg-surface-200 cursor-pointer text-[10px] font-black uppercase text-surface-400 border-b tracking-widest" onClick={() => handleSelectClient(null)}>
-                  TODOS / LIMPAR FILTRO
+              <div className="absolute top-full left-0 w-full bg-[var(--popover)] border border-[var(--border)] rounded-[var(--radius-md)] shadow-lg mt-1 max-h-48 overflow-y-auto z-[60] p-1">
+                <div className="p-2 hover:bg-[var(--hover-surface)] cursor-pointer text-[10px] font-semibold uppercase text-[var(--muted-foreground)] tracking-[var(--tracking-caps)] rounded" onClick={() => handleSelectClient(null)}>
+                  Todos / limpar filtro
                 </div>
                 {filteredClientsList.map((c) => (
-                  <div key={c.id} onClick={() => handleSelectClient(c)} className="p-3 hover:bg-primary-50 cursor-pointer border-b border-surface-50 text-sm font-bold text-surface-800 rounded-lg">
+                  <div key={c.id} onClick={() => handleSelectClient(c)} className="p-2.5 hover:bg-[var(--hover-surface)] cursor-pointer text-sm font-medium text-[var(--foreground)] rounded">
                     {c.nome}
                   </div>
                 ))}
@@ -422,7 +421,7 @@ const Recibos = () => {
               Fechar
             </Button>
             <Button variant="success" loading={isSharing} onClick={handleShareReceipt} className="flex-1">
-              {!isSharing && <i className="fab fa-whatsapp mr-1"></i>}
+              {!isSharing && <Icon name="whatsapp" size={14} className="mr-1 inline" />}
               {isSharing ? "Gerando..." : "Compartilhar"}
             </Button>
             <Button variant="primary" icon="fa-print" loading={isPrintingReceipt} onClick={handleSilentPrint} className="flex-[2]">

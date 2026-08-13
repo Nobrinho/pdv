@@ -14,8 +14,10 @@ import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import Button from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 import Modal from "../components/ui/Modal";
-import StatusBadge from "../components/ui/StatusBadge";
+import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
 
 const Clientes = () => {
   const { showAlert, showConfirm } = useAlert();
@@ -222,7 +224,7 @@ const Clientes = () => {
       format: (val) =>
         val ? (
           <span className="flex items-center gap-1.5">
-            <i className="fas fa-phone-alt text-[10px] text-surface-400"></i>
+            <Icon name="phone" size={12} className="text-[var(--muted-foreground)]" />
             {val}
           </span>
         ) : (
@@ -231,42 +233,44 @@ const Clientes = () => {
     },
     {
       key: "saldo_devedor",
-      label: "Saldo Devedor",
-      align: "center",
-      format: (val) => (
-        <StatusBadge
-          type={val > 0.01 ? "cancelada" : "usado"}
-          label={val > 0.01 ? formatCurrency(val) : "EM DIA"}
-        />
-      ),
+      label: "Saldo devedor",
+      align: "right",
+      format: (val) =>
+        val > 0.01 ? (
+          <span className="font-semibold text-[var(--money-negative)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
+            {formatCurrency(val)}
+          </span>
+        ) : (
+          <Badge variant="success">Em dia</Badge>
+        ),
     },
     {
       key: "id",
       label: "Ações",
       align: "center",
       format: (_, row) => (
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center gap-1">
           <button
             onClick={() => handleOpenDebt(row)}
-            className="bg-primary-500/10 text-primary-600 text-indigo-700 p-2 rounded-lg hover:bg-indigo-100 transition shadow-sm border border-indigo-100"
-            title="Ver Conta / Pagar"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
+            title="Ver conta / pagar"
           >
-            <i className="fas fa-file-invoice-dollar text-xs"></i>
+            <Icon name="wallet" size={16} />
           </button>
           <button
             onClick={() => handleEdit(row)}
-            className="bg-primary-50 text-primary-600 p-2 rounded-lg hover:bg-primary-100 transition shadow-sm border border-primary-100"
-            title="Editar Dados"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
+            title="Editar dados"
           >
-            <i className="fas fa-edit text-xs"></i>
+            <Icon name="pencil" size={16} />
           </button>
           <button
             onClick={() => handleDelete(row.id)}
             disabled={deletingClientId === row.id}
-            className="bg-red-500/10 text-red-500 text-red-500 p-2 rounded-lg hover:bg-red-100 transition shadow-sm border border-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50"
             title="Excluir"
           >
-            <i className={`fas text-xs ${deletingClientId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i>
+            <Icon name={deletingClientId === row.id ? "refresh-cw" : "trash-2"} size={16} className={deletingClientId === row.id ? "animate-spin" : ""} />
           </button>
         </div>
       ),
@@ -275,12 +279,12 @@ const Clientes = () => {
 
   return (
     <div className="p-4 md:p-6 h-full flex flex-col bg-surface-50">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-surface-800">
-            Clientes & Fiado
+          <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+            Clientes & fiado
           </h1>
-          <p className="text-xs text-surface-500 mt-1">
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">
             Gerencie seu cadastro de clientes e controle de pendências
             financeiras.
           </p>
@@ -288,26 +292,28 @@ const Clientes = () => {
         <Button
           variant="primary"
           size="lg"
-          icon="fa-user-plus"
+          className="gap-2"
           onClick={() => {
             resetForm();
             setShowModal(true);
           }}
         >
-          Novo Cliente
+          <Icon name="plus" size={16} /> Novo cliente
         </Button>
       </div>
 
       <div className="flex flex-col gap-4 flex-1 overflow-hidden">
         {/* Busca */}
-        <div className="bg-surface-100 p-3 rounded-xl shadow-sm border border-surface-200">
-          <FormField
-            icon="fa-search"
-            placeholder="Buscar por nome, telefone ou documento..."
-            value={searchTerm}
-            onChange={setSearchTerm}
-            className="max-w-xl"
-          />
+        <div className="bg-[var(--card)] p-3 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)]">
+          <div className="relative max-w-xl">
+            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
+            <Input
+              className="pl-9"
+              placeholder="Buscar por nome, telefone ou documento..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Lista */}
@@ -494,7 +500,7 @@ const Clientes = () => {
                     const restante = row.valor_total - row.valor_pago;
                     if (restante <= 0.01)
                       return (
-                        <i className="fas fa-check-circle text-green-500 text-lg"></i>
+                        <Icon name="circle-check" size={18} className="text-[var(--success)]" />
                       );
                     return (
                       <div className="flex items-center gap-2 justify-end">

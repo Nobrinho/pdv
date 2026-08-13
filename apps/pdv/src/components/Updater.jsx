@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
+import { Icon } from "./ui/Icon";
 import { useAlert } from '../context/AlertSystem';
 import { api } from "../services/api";
 
@@ -68,7 +69,7 @@ const Updater = () => {
         <div>
           <div className="flex items-center gap-3 mb-3">
             <div className="bg-primary-100 p-2 rounded-full text-primary-600">
-              <i className="fas fa-gift"></i>
+              <Icon name="gift" size={15} />
             </div>
             <div>
               <h4 className="font-bold text-surface-800 text-sm">
@@ -126,7 +127,7 @@ const Updater = () => {
       {status === "ready" && (
         <div className="text-center">
           <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3 text-xl">
-            <i className="fas fa-check"></i>
+            <Icon name="check" size={15} />
           </div>
           <h4 className="font-bold text-surface-800 mb-1">Atualização Pronta!</h4>
           <p className="text-xs text-surface-500 mb-4">

@@ -8,6 +8,11 @@ import PageSkeleton from "../components/ui/PageSkeleton";
 import Button from "../components/ui/Button";
 import { Input, Select } from "../components/ui/Input";
 import { Checkbox } from "../components/ui/Checkbox";
+import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
+
+const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" };
+const CAPS = "text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]";
 import { api } from "../services/api";
 
 dayjs.locale("pt-br");
@@ -142,53 +147,52 @@ const Comissoes = () => {
   return (
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-surface-800 flex items-center">
-          <i className="fas fa-hand-holding-usd mr-3 text-indigo-600"></i>
-          Gestor de Comissões
+        <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight flex items-center gap-2" style={{ fontFamily: "var(--font-display)" }}>
+          <Icon name="hand-coins" size={20} className="text-[var(--primary)]" />
+          Comissões
         </h1>
         {selectedIds.length > 0 && (
           <Button
             variant="primary"
-            icon="fa-check-double"
             loading={processing}
             disabled={hasInvalidDateRange}
             onClick={handlePaySelected}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto gap-2"
           >
-            Baixar {selectedIds.length} selecionada(s)
+            <Icon name="check" size={16} /> Baixar {selectedIds.length} selecionada(s)
           </Button>
         )}
       </div>
 
       {/* FILTROS */}
-      <div className="bg-surface-100 p-4 rounded-xl shadow-sm mb-6 border border-surface-200 flex flex-col gap-4">
+      <div className="bg-[var(--card)] p-4 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] mb-6 border border-[var(--border)] flex flex-col gap-4">
         {hasInvalidDateRange && (
-          <div className="bg-yellow-500/10 text-yellow-700 border border-yellow-500/20 rounded-lg p-2.5 text-xs font-semibold">
+          <div className="bg-[var(--warning-soft)] text-[var(--warning-soft-foreground)] border border-[var(--warning-soft-border)] rounded-[var(--radius-md)] p-2.5 text-xs font-semibold">
             Data inicial nao pode ser maior que a data final.
           </div>
         )}
-        <div className="flex items-center gap-2 border-b pb-4">
+        <div className="flex items-center gap-2 border-b border-[var(--border)] pb-4">
           <div className="flex gap-2 overflow-x-auto flex-1">
             <button
               onClick={() => handlePeriodChange("weekly")}
-              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-[var(--primary)] text-white font-semibold" : "bg-[var(--content2)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"}`}
             >
-              Esta Semana
+              Esta semana
             </button>
             <button
               onClick={() => handlePeriodChange("monthly")}
-              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-indigo-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-[var(--primary)] text-white font-semibold" : "bg-[var(--content2)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"}`}
             >
-              Este Mês
+              Este mês
             </button>
           </div>
           <button
             onClick={() => setShowFilters((v) => !v)}
-            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
-              selectedSeller !== "all" || statusFilter !== "all" ? "bg-indigo-600 text-white" : "bg-surface-200 text-surface-500"
+            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] text-[11px] font-bold uppercase tracking-wider transition ${
+              selectedSeller !== "all" || statusFilter !== "all" ? "bg-[var(--primary)] text-white" : "bg-[var(--content2)] text-[var(--muted-foreground)]"
             }`}
           >
-            <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+            <Icon name="settings" size={13} className={showFilters ? "rotate-180 transition-transform" : "transition-transform"} />
             Filtros
           </button>
         </div>
@@ -265,31 +269,31 @@ const Comissoes = () => {
 
       {/* KPIs Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-surface-100 rounded-xl shadow-sm border border-l-4 border-l-orange-500 p-4 flex items-center">
-          <div className="p-3 bg-orange-100 text-orange-600 rounded-full mr-4">
-            <i className="fas fa-exclamation-circle text-xl"></i>
+        <div className="bg-[var(--card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] border-l-4 border-l-[var(--warning-icon)] p-4 flex items-center">
+          <div className="p-3 bg-[var(--warning-soft)] text-[var(--warning-icon)] rounded-full mr-4">
+            <Icon name="alert-triangle" size={20} />
           </div>
           <div>
-            <p className="text-xs font-bold text-surface-500 uppercase">Total A Pagar (Pendentes)</p>
-            <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPagar)}</p>
+            <p className={CAPS}>Total a pagar (pendentes)</p>
+            <p className="text-2xl font-semibold text-[var(--warning-icon)]" style={MONO}>{formatCurrency(totalPagar)}</p>
           </div>
         </div>
-        <div className="bg-surface-100 rounded-xl shadow-sm border border-l-4 border-l-green-500 p-4 flex items-center">
-          <div className="p-3 bg-green-100 text-green-600 rounded-full mr-4">
-            <i className="fas fa-check-circle text-xl"></i>
+        <div className="bg-[var(--card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] border-l-4 border-l-[var(--success)] p-4 flex items-center">
+          <div className="p-3 bg-[var(--success-soft)] text-[var(--success)] rounded-full mr-4">
+            <Icon name="circle-check" size={20} />
           </div>
           <div>
-             <p className="text-xs font-bold text-surface-500 uppercase">Total Já Pago</p>
-             <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPago)}</p>
+             <p className={CAPS}>Total já pago</p>
+             <p className="text-2xl font-semibold text-[var(--money-positive)]" style={MONO}>{formatCurrency(totalPago)}</p>
           </div>
         </div>
-        <div className="bg-surface-100 rounded-xl shadow-sm border p-4 flex items-center border-surface-200">
-           <div className="p-3 bg-surface-200 text-surface-600 rounded-full mr-4">
-            <i className="fas fa-wallet text-xl"></i>
+        <div className="bg-[var(--card)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] p-4 flex items-center">
+           <div className="p-3 bg-[var(--content2)] text-[var(--muted-foreground)] rounded-full mr-4">
+            <Icon name="wallet" size={20} />
           </div>
           <div>
-             <p className="text-xs font-bold text-surface-500 uppercase">Comissões do Período</p>
-             <p className="text-2xl font-bold text-surface-800">{formatCurrency(totalAcumulado)}</p>
+             <p className={CAPS}>Comissões do período</p>
+             <p className="text-2xl font-semibold text-[var(--foreground)]" style={MONO}>{formatCurrency(totalAcumulado)}</p>
           </div>
         </div>
       </div>
@@ -301,10 +305,10 @@ const Comissoes = () => {
           <span className="text-surface-500">{salesDisplay.length} vendas listadas</span>
         </div>
         <div className="overflow-y-auto flex-1 custom-scrollbar">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-surface-50 sticky top-0 z-10">
+          <table className="min-w-full">
+            <thead className="bg-[var(--content2)] sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left w-10">
+                <th className="px-4 py-[11px] text-left w-10">
                   <Checkbox
                     onChange={handleSelectAll}
                     disabled={hasInvalidDateRange}
@@ -314,18 +318,18 @@ const Comissoes = () => {
                     }
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-surface-500 uppercase">Data</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-surface-500 uppercase">Vendedor</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-surface-500 uppercase">Fat. Produto</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-surface-500 uppercase">Comissão Gerada</th>
-                <th className="px-4 py-3 text-center text-xs font-bold text-surface-500 uppercase">Status</th>
+                <th className="px-[18px] py-[11px] text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">Data</th>
+                <th className="px-[18px] py-[11px] text-left text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">Vendedor</th>
+                <th className="px-[18px] py-[11px] text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">Fat. produto</th>
+                <th className="px-[18px] py-[11px] text-right text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">Comissão gerada</th>
+                <th className="px-[18px] py-[11px] text-center text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody>
               {paginatedSalesDisplay.map((venda) => (
                 <React.Fragment key={venda.id}>
                   {/* Linha Principal (Condensada) */}
-                  <tr className={`hover:bg-surface-50 transition-colors ${selectedIds.includes(venda.id) ? "bg-primary-500/10 text-primary-600" : ""}`}>
+                  <tr className={`border-t border-[var(--border)] transition-colors ${selectedIds.includes(venda.id) ? "bg-[var(--primary-soft)]" : "hover:bg-[var(--hover-surface)]"}`}>
                      <td className="px-4 py-3">
                         <Checkbox
                           disabled={venda.comissao_paga}
@@ -333,28 +337,24 @@ const Comissoes = () => {
                           onChange={() => handleToggleSelectMenu(venda.id)}
                         />
                      </td>
-                     <td className="px-4 py-3 text-sm">{dayjs(venda.data_venda).format("DD/MM/YY HH:mm")}</td>
-                     <td className="px-4 py-3 text-sm font-medium">{venda.vendedor_nome}</td>
-                     <td className="px-4 py-3 text-sm text-right text-surface-600">
+                     <td className="px-[18px] py-3 text-[13px] text-[var(--foreground)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>{dayjs(venda.data_venda).format("DD/MM/YY HH:mm")}</td>
+                     <td className="px-[18px] py-3 text-[13px] font-medium text-[var(--foreground)]">{venda.vendedor_nome}</td>
+                     <td className="px-[18px] py-3 text-[13px] text-right text-[var(--muted-foreground)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
                         {formatCurrency(venda.subtotal - venda.desconto_valor)}
                      </td>
-                     <td className="px-4 py-3 text-sm text-right font-bold text-indigo-700">
+                     <td className="px-[18px] py-3 text-[13px] text-right font-semibold text-[var(--primary)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
                         {formatCurrency(venda.comissao_calculada)}
                      </td>
-                     <td className="px-4 py-3 text-center">
+                     <td className="px-[18px] py-3 text-center">
                         {venda.comissao_paga ? (
-                           <div className="flex flex-col items-center justify-center">
-                             <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">
-                               <i className="fas fa-check mr-1"></i> PAGO
-                             </span>
-                             <span className="text-[10px] text-green-600 mt-1 font-semibold">
+                           <div className="flex flex-col items-center justify-center gap-1">
+                             <Badge variant="success">Pago</Badge>
+                             <span className="text-[10px] text-[var(--money-positive)] font-semibold">
                                {dayjs(venda.data_pagamento_comissao).format("DD/MM/YY HH:mm")}
                              </span>
                            </div>
                         ) : (
-                           <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold">
-                             PENDENTE
-                           </span>
+                           <Badge variant="warning">Pendente</Badge>
                         )}
                      </td>
                   </tr>
@@ -403,8 +403,8 @@ const Comissoes = () => {
 
               {salesDisplay.length === 0 && (
                  <tr>
-                   <td colSpan="6" className="text-center py-8 text-surface-500">
-                     <i className="fas fa-inbox text-3xl mb-2 text-surface-300 block"></i>
+                   <td colSpan="6" className="text-center py-8 text-[var(--muted-foreground)]">
+                     <Icon name="inbox" size={30} className="mx-auto mb-2 text-[var(--icon-muted)]" />
                      Nenhuma comissão encontrada para este filtro.
                    </td>
                  </tr>

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from "react";
+import { Icon } from "../components/ui/Icon";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { jsPDF } from "jspdf";
@@ -379,7 +380,7 @@ const Relatorios = () => {
       {selectedPayment === "Múltiplos" && (
         <div className="mb-6 bg-primary-500/10 text-primary-600 rounded-xl border border-primary-500/20 p-4">
           <h3 className="font-bold mb-2 flex items-center">
-            <i className="fas fa-info-circle mr-2"></i> Detalhamento de Vendas
+            <Icon name="info" size={13} className="mr-1 inline" /> Detalhamento de Vendas
             com Múltiplos Pagamentos
           </h3>
           <p className="text-sm opacity-80 mb-0">

@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon, faToLucide } from "./Icon";
 
 /**
  * FormField Component
@@ -42,8 +43,8 @@ const FormField = ({
       )}
       <div className="relative group">
         {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] group-focus-within:text-[var(--primary)] transition-colors">
-            <i className={`fas ${icon}`}></i>
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] group-focus-within:text-[var(--primary)] transition-colors">
+            <Icon name={faToLucide(icon)} size={16} />
           </div>
         )}
         <input

@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon, faToLucide } from "./Icon";
 
 /**
  * Button — alinhado ao SysControl Design System (tokens semânticos).
@@ -36,7 +37,7 @@ const SIZES = {
   lg: "h-10 px-6 text-base gap-2 rounded-[var(--radius-md)]",
 };
 
-const ICON_SIZE = { sm: "text-xs", md: "text-sm", lg: "text-base" };
+const ICON_PX = { sm: 14, md: 16, lg: 18 };
 
 const Button = ({
   children,
@@ -52,7 +53,7 @@ const Button = ({
   ...rest
 }) => {
   const isDisabled = disabled || loading;
-  const iconCls = ICON_SIZE[size] || ICON_SIZE.md;
+  const iconPx = ICON_PX[size] || ICON_PX.md;
   return (
     <button
       type={type}
@@ -70,12 +71,12 @@ const Button = ({
       {...rest}
     >
       {loading ? (
-        <i className={`fas fa-circle-notch fa-spin ${iconCls}`} aria-hidden="true" />
+        <Icon name="refresh-cw" size={iconPx} className="animate-spin" />
       ) : icon ? (
-        <i className={`fas ${icon} ${iconCls}`} aria-hidden="true" />
+        <Icon name={faToLucide(icon)} size={iconPx} />
       ) : null}
       {children}
-      {iconEnd && !loading ? <i className={`fas ${iconEnd} ${iconCls}`} aria-hidden="true" /> : null}
+      {iconEnd && !loading ? <Icon name={faToLucide(iconEnd)} size={iconPx} /> : null}
     </button>
   );
 };

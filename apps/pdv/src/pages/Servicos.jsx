@@ -9,6 +9,7 @@ import DataTable from "../components/ui/DataTable";
 import FormField from "../components/ui/FormField";
 import StatCard from "../components/ui/StatCard";
 import Button from "../components/ui/Button";
+import { Icon } from "../components/ui/Icon";
 import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Servicos = () => {
@@ -155,16 +156,16 @@ const Servicos = () => {
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto lg:overflow-hidden custom-scrollbar bg-surface-50">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Gestão de Serviços</h1>
-          <p className="text-xs text-surface-500 mt-1">Controle de pagamentos de mão de obra e serviços extras.</p>
+          <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Serviços</h1>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">Controle de pagamentos de mão de obra e serviços extras.</p>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 lg:h-full lg:overflow-hidden">
         {/* --- COLUNA ESQUERDA: REGISTRO --- */}
-        <div className="w-full lg:w-80 xl:w-96 bg-surface-100 p-6 rounded-2xl shadow-sm h-fit border border-surface-200 shrink-0">
-          <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-            <i className="fas fa-plus-circle text-primary-600"></i> Novo Registro
+        <div className="w-full lg:w-80 xl:w-96 bg-[var(--card)] p-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] h-fit border border-[var(--border)] shrink-0">
+          <h2 className="text-[10px] font-semibold mb-6 text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] border-b border-[var(--border)] pb-4 flex items-center gap-2">
+            <Icon name="plus" size={14} className="text-[var(--primary)]" /> Novo registro
           </h2>
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <div>
@@ -237,7 +238,7 @@ const Servicos = () => {
                   selectedMechanicFilter !== "all" ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-500"
                 }`}
               >
-                <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+                <Icon name="settings" size={13} className={showFilters ? "rotate-180 transition-transform" : "transition-transform"} />
                 Filtros
               </button>
             </div>

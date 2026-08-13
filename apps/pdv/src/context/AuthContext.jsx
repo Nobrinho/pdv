@@ -5,6 +5,7 @@
 // e o modal de supervisor (eliminando duplicação no App.jsx e Produtos.jsx)
 // =============================================================
 import React, { createContext, useState, useContext, useRef, useEffect, useMemo, useCallback } from "react";
+import { Icon } from "../components/ui/Icon";
 import { useAlert } from "./AlertSystem";
 import { api } from "../services/api";
 import { queryClient } from "../lib/queryClient";
@@ -213,7 +214,7 @@ export const AuthProvider = ({ children }) => {
           <div className="bg-surface-100 rounded-xl shadow-2xl p-8 w-96 max-w-[90%] transform transition-all scale-100 border border-surface-200">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <i className="fas fa-user-shield text-3xl text-red-600"></i>
+                <Icon name="shield" size={30} className="text-red-600" />
               </div>
               <h2 className="text-xl font-bold text-surface-800">
                 {supervisorMode === "route"
@@ -264,7 +265,7 @@ export const AuthProvider = ({ children }) => {
                 }`}
               >
                 {isAuthLoading ? (
-                  <i className="fas fa-circle-notch fa-spin"></i>
+                  <Icon name="refresh-cw" size={16} className="animate-spin" />
                 ) : supervisorMode === "route" ? (
                   "LIBERAR ACESSO"
                 ) : (

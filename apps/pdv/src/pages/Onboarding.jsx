@@ -6,6 +6,7 @@ import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
 import FormField from "../components/ui/FormField";
 import Button from "../components/ui/Button";
+import { Icon } from "../components/ui/Icon";
 import { api } from "../services/api";
 
 const parseCommissionPercent = (value) => {
@@ -196,7 +197,7 @@ const Onboarding = () => {
         <div className="bg-surface-50 p-6 md:px-10 border-b border-surface-200 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-surface-800 text-surface-100 flex items-center justify-center rounded-xl shadow-md">
-              <i className="fas fa-layer-group"></i>
+              <Icon name="layers" size={16} />
             </div>
             <div>
               <h1 className="text-lg font-black text-surface-800 tracking-tight leading-none">
@@ -239,7 +240,7 @@ const Onboarding = () => {
                 <div className="flex flex-col h-full">
                   <div className="mb-6 flex gap-4">
                     <div className="w-12 h-12 bg-surface-200 border border-surface-300 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                      <i className="fas fa-store text-xl text-surface-800"></i>
+                      <Icon name="store" size={20} className="text-[var(--foreground)]" />
                     </div>
                     <div>
                       <h2 className="text-xl font-black text-surface-800 tracking-tight">
@@ -310,7 +311,7 @@ const Onboarding = () => {
                           alt="Preview"
                         />
                       ) : (
-                        <i className="fas fa-image text-surface-400 text-2xl"></i>
+                        <Icon name="image" size={24} className="text-[var(--muted-foreground)]" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -332,7 +333,7 @@ const Onboarding = () => {
                 <div className="flex flex-col h-full justify-center">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-surface-200 border border-surface-300 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm transform -rotate-3">
-                      <i className="fas fa-percentage text-2xl text-surface-800"></i>
+                      <Icon name="percent" size={24} className="text-[var(--foreground)]" />
                     </div>
                     <h2 className="text-2xl font-black text-surface-800 tracking-tight">
                       Comissoes Padrao
@@ -345,7 +346,7 @@ const Onboarding = () => {
                   <div className="grid grid-cols-2 gap-6 max-w-lg mx-auto w-full">
                     <div className="p-6 bg-surface-100 rounded-3xl border border-surface-300 shadow-sm relative">
                       <div className="absolute top-4 right-4 text-surface-400">
-                        <i className="fas fa-box-open"></i>
+                        <Icon name="package" size={16} />
                       </div>
                       <label className="block text-[10px] font-black text-surface-600 uppercase mb-4 tracking-widest">
                         Produto Novo
@@ -368,7 +369,7 @@ const Onboarding = () => {
 
                     <div className="p-6 bg-surface-100 rounded-3xl border border-surface-300 shadow-sm relative">
                       <div className="absolute top-4 right-4 text-surface-400">
-                        <i className="fas fa-recycle"></i>
+                        <Icon name="recycle" size={16} />
                       </div>
                       <label className="block text-[10px] font-black text-surface-600 uppercase mb-4 tracking-widest">
                         Produto Usado
@@ -396,7 +397,7 @@ const Onboarding = () => {
                 <div className="flex flex-col h-full">
                   <div className="mb-8 flex gap-4 items-center">
                     <div className="w-14 h-14 bg-surface-200 border border-surface-300 rounded-2xl flex items-center justify-center shadow-sm shrink-0">
-                      <i className="fas fa-user-shield text-2xl text-surface-800"></i>
+                      <Icon name="shield" size={24} className="text-[var(--foreground)]" />
                     </div>
                     <div>
                       <h2 className="text-xl font-black text-surface-800 tracking-tight">
@@ -409,7 +410,7 @@ const Onboarding = () => {
                   </div>
 
                   <div className="bg-surface-100 border border-surface-300/60 p-6 rounded-[1.5rem] space-y-5 flex-1 relative overflow-hidden">
-                    <i className="fas fa-shield-alt absolute -right-6 -bottom-6 text-[10rem] text-surface-300/30 pointer-events-none"></i>
+                    <Icon name="shield" size={160} className="absolute -right-6 -bottom-6 text-[var(--content2)] pointer-events-none" />
 
                     <div className="relative">
                       <FormField
@@ -451,7 +452,7 @@ const Onboarding = () => {
                 className="w-14 shrink-0 flex items-center justify-center bg-surface-100 border border-surface-300 text-surface-800 rounded-xl hover:bg-surface-200 transition active:scale-95"
                 title="Voltar etapa"
               >
-                <i className="fas fa-chevron-left text-sm"></i>
+                <Icon name="chevron-left" size={15} />
               </button>
             )}
 

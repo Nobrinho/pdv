@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import CupomFiscal from "../CupomFiscal";
 import MobileReceipt from "../MobileReceipt";
 import Button from "../ui/Button";
+import { Icon } from "../ui/Icon";
 import { useTenant } from "../../context/TenantContext";
 import { shareReceiptImage } from "../../utils/whatsapp";
 
@@ -40,7 +41,7 @@ const SaleReceiptModal = ({
         </div>
         <div className="mt-4 flex flex-col gap-2 pt-2 border-t border-surface-300">
           <Button variant="success" size="lg" fullWidth loading={sharing} onClick={handleShare}>
-            {!sharing && <i className="fab fa-whatsapp mr-1 text-lg" />}
+            {!sharing && <Icon name="whatsapp" size={18} className="mr-1 inline" />}
             {sharing ? "Gerando recibo..." : "Compartilhar recibo"}
           </Button>
           <div className="flex gap-2">

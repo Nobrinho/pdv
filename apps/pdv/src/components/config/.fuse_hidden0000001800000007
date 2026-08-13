@@ -1,0 +1,44 @@
+import React from "react";
+
+const LocalThemePicker = ({
+  themes = [],
+  selectedColor = "",
+  onSelectTheme,
+}) => {
+  return (
+    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
+      <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+        <i className="fas fa-paint-roller text-primary"></i> Interface Local (Temas)
+      </h2>
+      <p className="text-[11px] text-surface-500 mb-4 tracking-wide">
+        A cor será aplicada instantaneamente apenas neste navegador (via localStorage).
+      </p>
+      <div className="flex flex-wrap gap-3 flex-1">
+        {themes.map((theme) => {
+          const isSelected =
+            selectedColor.toUpperCase() === theme.color.toUpperCase();
+
+          return (
+            <button
+              key={theme.id}
+              onClick={() => onSelectTheme(theme)}
+              title={theme.name}
+              className={`w-10 h-10 rounded-full border-2 transition-transform ${
+                isSelected
+                  ? "border-gray-900 scale-110 shadow-lg"
+                  : "border-transparent shadow-sm hover:scale-105"
+              }`}
+              style={{ backgroundColor: theme.color }}
+            >
+              {isSelected && (
+                <i className="fas fa-check text-white text-xs drop-shadow-md"></i>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export default LocalThemePicker;

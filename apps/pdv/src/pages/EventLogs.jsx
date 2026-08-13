@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Icon } from "../components/ui/Icon";
 import dayjs from "dayjs";
 import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
@@ -108,7 +109,7 @@ const EventLogs = () => {
           className="text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition active:scale-90"
           title="Ver detalhes"
         >
-          <i className="fas fa-eye"></i>
+          <Icon name="eye" size={15} />
         </button>
       ),
     },

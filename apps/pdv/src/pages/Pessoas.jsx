@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
-import StatusBadge from "../components/ui/StatusBadge";
+import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
 import Button from "../components/ui/Button";
 import FormField from "../components/ui/FormField";
 import Modal from "../components/ui/Modal";
@@ -164,9 +165,9 @@ const Pessoas = () => {
       key: "comissao_fixa",
       label: "Taxa de Comissão",
       align: "center",
-      format: (v) => v 
-        ? <StatusBadge type="success" label={`${v}% (Individual)`} /> 
-        : <StatusBadge type="secondary" label={`${defaultCommission}% (Sistema)`} />
+      format: (v) => v
+        ? <Badge variant="success">{`${v}% (Individual)`}</Badge>
+        : <Badge variant="neutral">{`${defaultCommission}% (Sistema)`}</Badge>
     }] : []),
     {
       key: "actions",
@@ -174,8 +175,8 @@ const Pessoas = () => {
       align: "center",
       format: (_, row) => (
         <div className="flex justify-center gap-1">
-          <button onClick={() => handleEdit(row)} className="p-2 text-primary-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition"><i className="fas fa-edit"></i></button>
-          <button onClick={() => handleDelete(row.id)} disabled={deletingPersonId === row.id} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"><i className={`fas ${deletingPersonId === row.id ? "fa-spinner fa-spin" : "fa-trash"}`}></i></button>
+          <button onClick={() => handleEdit(row)} className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition" title="Editar"><Icon name="pencil" size={16} /></button>
+          <button onClick={() => handleDelete(row.id)} disabled={deletingPersonId === row.id} className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50" title="Excluir"><Icon name={deletingPersonId === row.id ? "refresh-cw" : "trash-2"} size={16} className={deletingPersonId === row.id ? "animate-spin" : ""} /></button>
         </div>
       )
     }
@@ -217,9 +218,9 @@ const Pessoas = () => {
         ))}
 
         {peopleByRole.length === 0 && !loading && (
-          <div className="h-full flex flex-col items-center justify-center opacity-20 py-20">
-            <i className="fas fa-users-slash text-6xl mb-4"></i>
-            <p className="font-black uppercase tracking-widest text-sm">Nenhum colaborador encontrado</p>
+          <div className="h-full flex flex-col items-center justify-center text-[var(--muted-foreground)] py-20">
+            <Icon name="users-round" size={48} className="mb-4 text-[var(--icon-muted)]" />
+            <p className="font-semibold text-sm">Nenhum colaborador encontrado</p>
           </div>
         )}
       </div>

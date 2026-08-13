@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 import Button from "../ui/Button";
 import { Input, Field } from "../ui/Input";
 
@@ -14,7 +15,7 @@ const QuickClientModal = ({
       <div className="bg-surface-100 rounded-t-2xl sm:rounded-xl shadow-2xl p-6 pt-3 w-full sm:max-w-md max-h-[92vh] overflow-y-auto pb-safe">
         <div className="sheet-grabber sm:hidden" />
         <h2 className="text-xl font-bold mb-4 text-surface-800 border-b pb-2 flex items-center">
-          <i className="fas fa-user-plus mr-2 text-primary-600"></i> Novo Cliente Rápido
+          <Icon name="user" size={18} className="mr-2 text-[var(--primary)]" /> Novo Cliente Rápido
         </h2>
         <form onSubmit={onSubmit} className="space-y-3">
           <Field label="Nome Completo" required>

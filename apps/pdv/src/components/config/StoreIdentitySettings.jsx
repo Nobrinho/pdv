@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 import FormField from "../ui/FormField";
 import Button from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -16,7 +17,7 @@ const StoreIdentitySettings = ({
   return (
     <Card padding="lg" className="mb-6">
       <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <i className="fas fa-palette text-primary"></i> Identidade da Loja
+        <Icon name="palette" size={16} className="text-[var(--primary)]" /> Identidade da Loja
       </h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -107,13 +108,13 @@ const StoreIdentitySettings = ({
                     onClick={() => logoInputRef.current?.click()}
                     className="text-xs font-bold text-primary hover:underline"
                   >
-                    <i className="fas fa-redo mr-1"></i> Trocar
+                    <Icon name="rotate-cw" size={13} className="mr-1 inline" /> Trocar
                   </button>
                   <button
                     onClick={onClearLogo}
                     className="text-xs font-bold text-red-500 hover:underline"
                   >
-                    <i className="fas fa-trash mr-1"></i> Remover
+                    <Icon name="trash-2" size={13} className="mr-1 inline" /> Remover
                   </button>
                 </div>
               </div>
@@ -122,7 +123,7 @@ const StoreIdentitySettings = ({
                 onClick={() => logoInputRef.current?.click()}
                 className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
               >
-                <i className="fas fa-cloud-upload-alt text-2xl mb-2 block"></i>
+                <Icon name="cloud-upload" size={24} className="mb-2 mx-auto" />
                 <span className="text-xs font-bold">Clique para enviar logo</span>
               </button>
             )}

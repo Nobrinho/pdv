@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 import DataTable from "../ui/DataTable";
 import FormField from "../ui/FormField";
 import Button from "../ui/Button";
@@ -65,7 +66,7 @@ const UserManager = ({
   return (
     <Card padding="lg">
       <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <i className="fas fa-users-cog text-indigo-600"></i> Usuarios de Acesso
+        <Icon name="users" size={16} className="text-[var(--primary)]" /> Usuarios de Acesso
       </h2>
 
       <div className="flex flex-col lg:flex-row gap-8">

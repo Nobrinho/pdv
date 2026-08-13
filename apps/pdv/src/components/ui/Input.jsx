@@ -1,4 +1,5 @@
 import React, { forwardRef } from "react";
+import { Icon, faToLucide } from "./Icon";
 
 /**
  * Primitivas de formulário alinhadas ao Design System (SysControl).
@@ -54,14 +55,18 @@ export const Input = forwardRef(function Input(
   return (
     <div className="relative group">
       {icon && (
-        <i
-          className={`fas ${icon} pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] group-focus-within:text-[var(--primary)] transition-colors`}
+        <Icon
+          name={faToLucide(icon)}
+          size={16}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] group-focus-within:text-[var(--primary)] transition-colors"
         />
       )}
       {field}
       {iconEnd && (
-        <i
-          className={`fas ${iconEnd} pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]`}
+        <Icon
+          name={faToLucide(iconEnd)}
+          size={16}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]"
         />
       )}
     </div>

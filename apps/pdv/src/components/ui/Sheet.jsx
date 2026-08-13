@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "./Icon";
 import { AnimatePresence, motion } from "framer-motion";
 
 /**
@@ -39,7 +40,7 @@ const Sheet = ({ isOpen, onClose, title, children, footer, size = "auto" }) => {
               <div className="flex items-center justify-between px-5 py-3 border-b border-surface-200">
                 <h2 className="font-black text-surface-800 truncate">{title}</h2>
                 <button onClick={onClose} className="text-surface-400 hover:text-surface-700 p-1" aria-label="Fechar">
-                  <i className="fas fa-xmark text-lg"></i>
+                  <Icon name="x" size={18} />
                 </button>
               </div>
             )}

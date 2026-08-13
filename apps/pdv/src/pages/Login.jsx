@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAlert } from "../context/AlertSystem";
 import { api } from "../services/api";
 import { useTenant } from "../context/TenantContext";
+import { Icon } from "../components/ui/Icon";
 
 const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
@@ -220,7 +221,7 @@ const Login = ({ onLoginSuccess }) => {
         <div className="relative">
           <div className="w-16 h-16 border-4 rounded-full animate-spin" style={{ borderColor: `${tenant.corPrimaria}33`, borderTopColor: tenant.corPrimaria }}></div>
           <div className="absolute inset-0 flex items-center justify-center">
-             <i className="fas fa-store text-xl" style={{ color: tenant.corPrimaria }}></i>
+             <Icon name="store" size={22} style={{ color: tenant.corPrimaria }} />
           </div>
         </div>
         <p className="mt-6 text-xs font-black uppercase tracking-widest text-surface-500 animate-pulse">Iniciando Terminal...</p>
@@ -266,7 +267,7 @@ const Login = ({ onLoginSuccess }) => {
           
           <div className="relative z-10">
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-surface-100/20 backdrop-blur-md rounded-3xl mb-3 sm:mb-4 shadow-xl border border-white/30 transform rotate-12">
-               <i className="fas fa-store text-white text-3xl sm:text-4xl -rotate-12"></i>
+               <Icon name="store" size={40} className="text-white -rotate-12" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter mb-1">{tenant.nome}</h1>
             <div className="flex items-center justify-center gap-2">
@@ -350,7 +351,7 @@ const Login = ({ onLoginSuccess }) => {
                 onClick={() => setShowServer((v) => !v)}
                 className="text-[10px] font-bold text-surface-400 hover:text-surface-600 flex items-center gap-1 mx-auto transition"
               >
-                <i className="fas fa-gear text-[9px]"></i> {showServer ? "Ocultar servidor" : "Avançado: servidor"}
+                <Icon name="gear" size={11} className="inline" /> {showServer ? "Ocultar servidor" : "Avançado: servidor"}
               </button>
             </div>
           )}
@@ -380,13 +381,13 @@ const Login = ({ onLoginSuccess }) => {
                 </div>
               </div>
               <button type="submit" disabled={submitting} className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl disabled:opacity-70 disabled:cursor-not-allowed" style={{ backgroundColor: tenant.corPrimaria, boxShadow: `0 12px 30px -10px ${tenant.corPrimaria}66` }}>
-                {submitting ? (<><i className="fas fa-circle-notch fa-spin"></i> CRIANDO...</>) : (<>CRIAR LOJA <i className="fas fa-plus text-xs"></i></>)}
+                {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin inline" /> CRIANDO...</>) : (<>CRIAR LOJA <Icon name="plus" size={13} className="inline" /></>)}
               </button>
             </form>
           ) : isSetupMode ? (
             <form onSubmit={handleSetup} className="space-y-5 animate-slide-up">
               <div className="p-4 rounded-2xl border mb-6 flex gap-4" style={{ backgroundColor: `${tenant.corPrimaria}08`, borderColor: `${tenant.corPrimaria}22` }}>
-                 <i className="fas fa-magic mt-1" style={{ color: tenant.corPrimaria }}></i>
+                 <Icon name="sparkles" size={16} className="mt-1" style={{ color: tenant.corPrimaria }} />
                  <p className="text-[11px] leading-relaxed font-bold" style={{ color: `${tenant.corPrimaria}cc` }}>
                    Este é o primeiro acesso. Defina as credenciais do <strong>Administrador Geral</strong> para desbloquear o sistema.
                  </p>
@@ -451,7 +452,7 @@ const Login = ({ onLoginSuccess }) => {
                 disabled={submitting}
                 className="w-full bg-surface-900 border border-surface-700 text-white h-14 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-xl mt-4 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {submitting ? (<><i className="fas fa-circle-notch fa-spin"></i> Ativando...</>) : "Ativar Sistema"}
+                {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin inline" /> Ativando...</>) : "Ativar Sistema"}
               </button>
             </form>
           ) : (
@@ -459,7 +460,7 @@ const Login = ({ onLoginSuccess }) => {
               {isOnlineMode && (
                 inviteStore ? (
                   <div className="flex items-center gap-3 bg-surface-50 border rounded-2xl p-3 pl-4" style={{ borderColor: `${tenant.corPrimaria}44` }}>
-                    <i className="fas fa-store text-lg" style={{ color: tenant.corPrimaria }}></i>
+                    <Icon name="store" size={18} style={{ color: tenant.corPrimaria }} />
                     <div>
                       <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest leading-none">Entrando na loja</p>
                       <p className="text-sm font-black text-surface-800 leading-tight mt-0.5">{inviteStore.nome}</p>
@@ -468,7 +469,7 @@ const Login = ({ onLoginSuccess }) => {
                 ) : lojaId && !changingStore ? (
                   <div className="flex items-center justify-between bg-surface-50 border border-surface-200 rounded-2xl p-3 pl-4">
                     <span className="text-sm font-black text-surface-700 flex items-center gap-2">
-                      <i className="fas fa-store text-surface-400"></i> Loja #{lojaId}
+                      <Icon name="store" size={14} className="inline text-[var(--muted-foreground)]" /> Loja #{lojaId}
                     </span>
                     <button
                       type="button"
@@ -483,7 +484,7 @@ const Login = ({ onLoginSuccess }) => {
                     <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">ID da loja</label>
                     <div className="relative">
                       <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
-                        <i className="fas fa-store text-lg"></i>
+                        <Icon name="store" size={18} />
                       </div>
                       <input
                         className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
@@ -504,7 +505,7 @@ const Login = ({ onLoginSuccess }) => {
                 <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">Usuário</label>
                 <div className="relative">
                   <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
-                    <i className="fas fa-user-circle text-lg"></i>
+                    <Icon name="user-circle" size={18} />
                   </div>
                   <input
                     className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
@@ -523,7 +524,7 @@ const Login = ({ onLoginSuccess }) => {
                 <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">Senha</label>
                 <div className="relative">
                   <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
-                    <i className="fas fa-shield-alt text-lg"></i>
+                    <Icon name="shield" size={18} />
                   </div>
                   <input
                     type="password"
@@ -549,7 +550,7 @@ const Login = ({ onLoginSuccess }) => {
                 onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.filter = 'brightness(1.1)'; }}
                 onMouseLeave={(e) => e.currentTarget.style.filter = ''}
               >
-                {submitting ? (<><i className="fas fa-circle-notch fa-spin"></i> ENTRANDO...</>) : (<>ENTRAR <i className="fas fa-arrow-right text-xs"></i></>)}
+                {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin inline" /> ENTRANDO...</>) : (<>ENTRAR <Icon name="arrow-right" size={13} className="inline" /></>)}
               </button>
             </form>
           )}

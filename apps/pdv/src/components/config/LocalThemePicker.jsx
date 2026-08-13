@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 
 const LocalThemePicker = ({
   themes = [],
@@ -8,7 +9,7 @@ const LocalThemePicker = ({
   return (
     <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 flex flex-col">
       <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <i className="fas fa-paint-roller text-primary"></i> Interface Local (Temas)
+        <Icon name="paint-roller" size={16} className="text-[var(--primary)]" /> Interface Local (Temas)
       </h2>
       <p className="text-[11px] text-surface-500 mb-4 tracking-wide">
         A cor será aplicada instantaneamente apenas neste navegador (via localStorage).
@@ -31,7 +32,7 @@ const LocalThemePicker = ({
               style={{ backgroundColor: theme.color }}
             >
               {isSelected && (
-                <i className="fas fa-check text-white text-xs drop-shadow-md"></i>
+                <Icon name="check" size={12} className="text-white drop-shadow-md" />
               )}
             </button>
           );

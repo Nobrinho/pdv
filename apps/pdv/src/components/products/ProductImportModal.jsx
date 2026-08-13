@@ -1,5 +1,6 @@
 import React from "react";
 import Modal from "../ui/Modal";
+import { Icon } from "../ui/Icon";
 import { Radio } from "../ui/Checkbox";
 
 const ProductImportModal = ({
@@ -51,11 +52,11 @@ const ProductImportModal = ({
             >
               {importing ? (
                 <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i> Importando...
+                  <Icon name="refresh-cw" size={15} className="animate-spin mr-2 inline" /> Importando...
                 </>
               ) : (
                 <>
-                  <i className="fas fa-upload mr-2"></i> Importar {validImportCount} Produtos
+                  <Icon name="upload" size={15} className="mr-2 inline" /> Importar {validImportCount} Produtos
                 </>
               )}
             </button>
@@ -73,14 +74,14 @@ const ProductImportModal = ({
                 : "bg-primary-500/10 text-primary-600 hover:bg-primary-500/20 border border-primary-500/20"
             }`}
           >
-            <i className="fas fa-question-circle mr-1"></i> Como usar
+            <Icon name="circle-help" size={13} className="mr-1 inline" /> Como usar
           </button>
         </div>
 
         {showImportHelp && (
           <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-5 space-y-3 text-sm text-surface-800 animate-fade-in">
             <h3 className="font-black text-base flex items-center gap-2">
-              <i className="fas fa-book text-primary-500"></i> Guia Completo de Importação em Massa
+              <Icon name="book-open" size={16} className="text-[var(--primary)]" /> Guia Completo de Importação em Massa
             </h3>
             <div className="space-y-3 text-xs leading-relaxed">
               <div className="flex gap-3">
@@ -149,31 +150,31 @@ const ProductImportModal = ({
             onClick={onSelectFile}
             className="bg-primary-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-700 shadow-md active:scale-95 transition flex items-center gap-2 border border-primary-500"
           >
-            <i className="fas fa-folder-open"></i> Selecionar Planilha
+            <Icon name="folder-open" size={15} className="inline" /> Selecionar Planilha
           </button>
           <button
             onClick={onDownloadTemplate}
             className="bg-surface-200 text-surface-800 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-surface-300 border border-surface-400/40 transition flex items-center gap-2"
           >
-            <i className="fas fa-download"></i> Baixar Modelo
+            <Icon name="download" size={15} className="inline" /> Baixar Modelo
           </button>
           <button
             onClick={onExportProducts}
             className="bg-green-500/10 text-green-600 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-green-500/20 border border-green-500/20 transition flex items-center gap-2"
             title="Exportar como Excel (.xlsx)"
           >
-            <i className="fas fa-file-excel"></i> Exportar Excel
+            <Icon name="file-spreadsheet" size={15} className="inline" /> Exportar Excel
           </button>
           <button
             onClick={onExportCSV}
             className="bg-surface-200 text-surface-800 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-surface-300 border border-surface-400/40 transition flex items-center gap-2"
             title="Exportar como CSV (.csv)"
           >
-            <i className="fas fa-file-csv"></i> Exportar CSV
+            <Icon name="file-text" size={15} className="inline" /> Exportar CSV
           </button>
           {importFileName && (
             <span className="flex items-center gap-2 text-sm text-surface-500 bg-surface-50 px-3 py-2 rounded-xl border border-surface-200">
-              <i className="fas fa-file-excel text-green-600"></i> {importFileName}
+              <Icon name="file-spreadsheet" size={15} className="inline text-[var(--money-positive)]" /> {importFileName}
             </span>
           )}
         </div>
@@ -181,7 +182,7 @@ const ProductImportModal = ({
         {importData.length > 0 && importStats.duplicate > 0 && !importResult && (
           <div className="flex items-center gap-4 p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
             <span className="text-xs font-bold text-yellow-600">
-              <i className="fas fa-exclamation-triangle mr-1"></i> Duplicados encontrados:
+              <Icon name="alert-triangle" size={13} className="mr-1 inline" /> Duplicados encontrados:
             </span>
             <Radio
               name="conflict"
@@ -275,7 +276,7 @@ const ProductImportModal = ({
                           onClick={() => onRemoveRow(idx)}
                           className="text-surface-300 hover:text-red-500 transition"
                         >
-                          <i className="fas fa-times"></i>
+                          <Icon name="x" size={15} />
                         </button>
                       </td>
                     </tr>
@@ -296,13 +297,13 @@ const ProductImportModal = ({
         {importResult && (
           <div className="space-y-3 animate-fade-in">
             <div className="bg-green-500/10 text-green-600 border border-green-200 rounded-xl p-5 text-center">
-              <i className="fas fa-check-circle text-green-500 text-4xl mb-3"></i>
+              <Icon name="circle-check" size={36} className="text-[var(--success)] mb-3 mx-auto" />
               <h3 className="text-lg font-black text-surface-800 mb-2">Importação Concluída!</h3>
               <div className="flex justify-center gap-4 text-sm font-bold mt-3">
-                {importResult.created > 0 && <span className="bg-green-100 text-green-700 px-3 py-1.5 rounded-lg"><i className="fas fa-plus mr-1"></i>{importResult.created} criados</span>}
-                {importResult.updated > 0 && <span className="bg-primary-100 text-primary-700 px-3 py-1.5 rounded-lg"><i className="fas fa-sync mr-1"></i>{importResult.updated} atualizados</span>}
-                {importResult.skipped > 0 && <span className="bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-lg"><i className="fas fa-forward mr-1"></i>{importResult.skipped} pulados</span>}
-                {importResult.errors.length > 0 && <span className="bg-red-100 text-red-600 px-3 py-1.5 rounded-lg"><i className="fas fa-times mr-1"></i>{importResult.errors.length} erros</span>}
+                {importResult.created > 0 && <span className="bg-green-100 text-green-700 px-3 py-1.5 rounded-lg"><Icon name="plus" size={12} className="mr-1 inline" />{importResult.created} criados</span>}
+                {importResult.updated > 0 && <span className="bg-primary-100 text-primary-700 px-3 py-1.5 rounded-lg"><Icon name="refresh-cw" size={12} className="mr-1 inline" />{importResult.updated} atualizados</span>}
+                {importResult.skipped > 0 && <span className="bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-lg"><Icon name="arrow-right" size={12} className="mr-1 inline" />{importResult.skipped} pulados</span>}
+                {importResult.errors.length > 0 && <span className="bg-red-100 text-red-600 px-3 py-1.5 rounded-lg"><Icon name="x" size={12} className="mr-1 inline" />{importResult.errors.length} erros</span>}
               </div>
             </div>
             {importResult.errors.length > 0 && (
@@ -328,7 +329,7 @@ const ProductImportModal = ({
 
         {importData.length === 0 && !importResult && (
           <div className="text-center py-10 text-surface-400">
-            <i className="fas fa-file-excel text-5xl mb-3 text-surface-200"></i>
+            <Icon name="file-spreadsheet" size={48} className="mb-3 mx-auto text-[var(--icon-muted)]" />
             <p className="text-sm font-bold">Selecione uma planilha para começar</p>
             <p className="text-xs mt-1">Formatos aceitos: .xlsx, .xls, .csv</p>
           </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Icon } from "../ui/Icon";
 import { api } from "../../services/api";
 import Button from "../ui/Button";
 
@@ -61,7 +62,7 @@ const AccessLinkCard = () => {
   return (
     <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
       <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <i className="fas fa-link text-indigo-600"></i> Links de acesso da loja
+        <Icon name="link" size={16} className="text-[var(--primary)]" /> Links de acesso da loja
       </h2>
       <p className="text-xs text-surface-500 mb-4 leading-relaxed">
         Gere um link que já embute esta loja. Quem abrir o link cai na tela de login com a loja
@@ -92,7 +93,7 @@ const AccessLinkCard = () => {
               className="text-surface-400 hover:text-red-500 px-2"
               title="Revogar"
             >
-              <i className="fas fa-trash"></i>
+              <Icon name="trash-2" size={15} />
             </button>
           </div>
         ))}
@@ -130,7 +131,7 @@ const MigrateLocalCard = () => {
   return (
     <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
       <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <i className="fas fa-cloud-arrow-up text-blue-600"></i> Migrar dados locais para a nuvem
+        <Icon name="cloud-upload" size={16} className="text-[var(--primary)]" /> Migrar dados locais para a nuvem
       </h2>
       <p className="text-xs text-surface-500 mb-4 leading-relaxed">
         Envia os dados desta instalacao local para a loja online atual. Recomendado apenas em uma loja
@@ -167,7 +168,7 @@ const SystemToolsPanel = ({
     <div className="space-y-6">
       <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
         <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <i className="fas fa-print text-surface-600"></i> Impressao
+          <Icon name="printer" size={16} className="text-[var(--muted-foreground)]" /> Impressao
         </h2>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
@@ -195,7 +196,7 @@ const SystemToolsPanel = ({
 
       <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 grow">
         <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <i className="fas fa-database text-green-600"></i> Manutencao Local
+          <Icon name="database" size={16} className="text-[var(--money-positive)]" /> Manutencao Local
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <button

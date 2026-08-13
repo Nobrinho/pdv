@@ -1,8 +1,22 @@
 // =============================================================
-// StatCard.jsx — Card de KPI/Métrica reutilizável
+// StatCard.jsx — Card de KPI/Métrica (anatomia do design: caption + valor mono).
 // =============================================================
 import React from "react";
 import { formatCurrency } from "../../utils/format";
+import { Icon, faToLucide } from "./Icon";
+
+const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" };
+
+// Cor semântica do valor/ícone por "color" legado.
+const TONE = {
+  blue: "var(--primary)",
+  green: "var(--money-positive)",
+  red: "var(--money-negative)",
+  yellow: "var(--warning-icon)",
+  orange: "var(--warning-icon)",
+  purple: "var(--primary)",
+  gray: "var(--foreground)",
+};
 
 const StatCard = ({
   title,
@@ -14,39 +28,26 @@ const StatCard = ({
   format,
   className = "",
 }) => {
-  const colorMap = {
-    blue: { border: "border-primary-500", text: "text-surface-800", icon: "text-primary-200" },
-    green: { border: "border-green-500", text: "text-green-600", icon: "text-green-200" },
-    red: { border: "border-red-500", text: "text-red-600", icon: "text-red-200" },
-    yellow: { border: "border-yellow-500", text: "text-yellow-600", icon: "text-yellow-200" },
-    orange: { border: "border-orange-500", text: "text-orange-600", icon: "text-orange-200" },
-    purple: { border: "border-purple-500", text: "text-purple-600", icon: "text-purple-200" },
-    gray: { border: "border-surface-600", text: "text-surface-800", icon: "text-surface-200" },
-  };
-
-  const colors = colorMap[color] || colorMap.blue;
+  const tone = TONE[color] || TONE.blue;
   const displayValue = format ? format(value) : isCurrency ? formatCurrency(value) : value;
 
   return (
     <div
-      className={`bg-surface-100 p-4 rounded-xl shadow-sm border-l-4 ${colors.border} relative group cursor-help transition-transform hover:scale-[1.02] flex items-center justify-between ${className}`}
+      className={`bg-[var(--card)] p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] relative group flex items-center justify-between gap-3 ${className}`}
+      title={tooltip || undefined}
     >
-      {tooltip && (
-        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-[var(--foreground)] text-[var(--card)] text-[10px] font-bold rounded-lg p-2 z-50 text-center shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none line-height-relaxed">
-          {tooltip}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-        </div>
-      )}
-      <div>
-        <p className="text-xs text-surface-500 font-bold uppercase mb-1 w-fit">
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)] mb-1">
           {title}
         </p>
-        <p className={`text-xl font-bold ${colors.text}`}>
+        <p className="text-2xl font-semibold" style={{ ...MONO, color: tone }}>
           {displayValue}
         </p>
       </div>
       {icon && (
-        <i className={`fas ${icon} text-2xl ${colors.icon} opacity-50`}></i>
+        <div className="shrink-0 opacity-80" style={{ color: tone }}>
+          <Icon name={faToLucide(icon)} size={22} />
+        </div>
       )}
     </div>
   );

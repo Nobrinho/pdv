@@ -7,7 +7,7 @@ import autoTable from "jspdf-autotable";
 import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
-import StatusBadge from "../components/ui/StatusBadge";
+import { Badge } from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import FormField from "../components/ui/FormField";
 
@@ -181,13 +181,13 @@ const HistoricoPrecos = () => {
       align: "center",
       format: (v) => {
         const map = {
-          cadastro_inicial: { type: "info", label: "NOVO" },
-          reposicao_estoque: { type: "success", label: "ESTOQUE" },
-          alteracao_preco: { type: "warning", label: "PREÇO" },
-          venda: { type: "secondary", label: "VENDA" }
+          cadastro_inicial: { variant: "info", label: "Novo" },
+          reposicao_estoque: { variant: "success", label: "Estoque" },
+          alteracao_preco: { variant: "warning", label: "Preço" },
+          venda: { variant: "neutral", label: "Venda" }
         };
-        const cfg = map[v] || { type: "secondary", label: "OUTRO" };
-        return <StatusBadge type={cfg.type} label={cfg.label} />;
+        const cfg = map[v] || { variant: "neutral", label: "Outro" };
+        return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
       }
     }
   ];

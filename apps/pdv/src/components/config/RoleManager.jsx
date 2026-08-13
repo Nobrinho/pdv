@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 import { Card } from "../ui/Card";
 
 const RoleManager = ({
@@ -12,7 +13,7 @@ const RoleManager = ({
   return (
     <Card padding="lg" className="flex flex-col max-h-[400px]">
       <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <i className="fas fa-id-badge text-purple-600"></i> Gerenciar Cargos
+        <Icon name="id-card" size={16} className="text-[var(--primary)]" /> Gerenciar Cargos
       </h2>
       <form onSubmit={onAddRole} className="flex gap-2 mb-4">
         <input
