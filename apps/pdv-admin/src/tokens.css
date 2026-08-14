@@ -1,0 +1,80 @@
+/* =============================================================
+   SysControl Design System — tokens do painel Admin.
+   Subconjunto (light) do DS do app pdv, adaptado para o admin.
+   ============================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* Fontes */
+  --font-display: "Sora", "Barlow", system-ui, sans-serif;
+  --font-sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Superfícies / texto */
+  --background: #ffffff;
+  --app-canvas: #fafafa;
+  --card: #ffffff;
+  --foreground: #11181c;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --content2: #f4f4f5;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --hover-surface: #fafafa;
+  --overlay: rgba(9, 22, 43, 0.45);
+
+  /* Marca (teal petróleo) */
+  --primary: #0f7391;
+  --primary-hover: #0b5c76;
+  --primary-active: #08465b;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e8f4f8;
+  --primary-soft-foreground: #08465b;
+  --primary-soft-border: #cfe8f1;
+  --ring: #0f7391;
+
+  /* Chrome do app */
+  --sidebar: #063040;
+  --sidebar-foreground: #cfe0e7;
+  --sidebar-muted: #7fa3b1;
+  --sidebar-active: rgba(255, 255, 255, 0.08);
+
+  /* Semânticos */
+  --success: #12a150;
+  --success-foreground: #ffffff;
+  --success-soft: #e8faf0;
+  --success-soft-foreground: #0e793c;
+  --success-soft-border: #d1f4e0;
+
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fee2e2;
+  --danger-soft-foreground: #991b1b;
+  --danger-soft-border: #fecaca;
+
+  --warning-soft: #fefce8;
+  --warning-soft-foreground: #936316;
+  --warning-icon: #c4841d;
+
+  --money-positive: #0e793c;
+  --money-negative: #b91c1c;
+
+  /* Números tabulares (dinheiro, ids, contadores) */
+  --numeric-feature: "tnum" 1, "lnum" 1;
+  --tracking-caps: 0.08em;
+
+  /* Raio */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-full: 9999px;
+
+  /* Elevação */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-medium: 0 0 15px 0 rgb(0 0 0 / 0.03), 0 2px 30px 0 rgb(0 0 0 / 0.08), 0 0 1px 0 rgb(0 0 0 / 0.3);
+  --shadow-large: 0 0 30px 0 rgb(0 0 0 / 0.04), 0 30px 60px 0 rgb(0 0 0 / 0.12), 0 0 1px 0 rgb(0 0 0 / 0.3);
+}

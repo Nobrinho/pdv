@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
 import { api, clearSession, getBaseUrl, getStoredUser, getToken, setUnauthorizedHandler } from "./api";
+import { Icon } from "./Icon";
 
 // Limpa o cache (memória + persistido) ao encerrar a sessão do admin.
 const clearAdminCache = () => {
@@ -56,7 +57,7 @@ function Login({ onLogin }) {
     <main className="login-shell">
       <form className="login-card" onSubmit={submit}>
         <div className="brand-mark">
-          <i className="fas fa-shield-halved"></i>
+          <Icon name="shield-check" size={22} />
         </div>
         <h1>SysControl Admin</h1>
         <p>{getBaseUrl()}</p>
@@ -77,7 +78,7 @@ function Login({ onLogin }) {
         {error && <div className="error">{error}</div>}
 
         <button disabled={loading}>
-          <i className={`fas ${loading ? "fa-circle-notch fa-spin" : "fa-right-to-bracket"}`}></i>
+          <Icon name={loading ? "loader" : "log-in"} className={loading ? "icon-spin" : ""} />
           {loading ? "Entrando" : "Entrar"}
         </button>
       </form>
@@ -89,31 +90,31 @@ function StoreRow({ store, onBlock, onUnblock, onDetails, busy }) {
   const blocked = blockedStatuses.includes(store.status);
   return (
     <tr>
-      <td>
+      <td className="cell-main">
         <strong>{store.nome}</strong>
-        <span>#{store.id} {store.cidade ? `- ${store.cidade}` : ""}</span>
+        <span className="mono">#{store.id} {store.cidade ? `- ${store.cidade}` : ""}</span>
       </td>
-      <td>
+      <td data-label="Status">
         <span className={`pill ${blocked ? "danger" : "ok"}`}>{statusLabel(store.status)}</span>
       </td>
-      <td>{store.plano_nome || "Padrao"}</td>
-      <td>{money.format(store.faturamento || 0)}</td>
-      <td>{store.total_vendas || 0}</td>
-      <td>{store.total_usuarios || 0}</td>
-      <td>{store.total_produtos || 0}</td>
-      <td className="actions">
+      <td data-label="Plano">{store.plano_nome || "Padrao"}</td>
+      <td className="num" data-label="Faturamento">{money.format(store.faturamento || 0)}</td>
+      <td className="num" data-label="Vendas">{store.total_vendas || 0}</td>
+      <td className="num" data-label="Usuários">{store.total_usuarios || 0}</td>
+      <td className="num" data-label="Produtos">{store.total_produtos || 0}</td>
+      <td className="actions" data-label="Ações">
         <button className="ghost" disabled={busy} onClick={() => onDetails(store)}>
-          <i className="fas fa-eye"></i>
+          <Icon name="eye" size={15} />
           Detalhes
         </button>
         {blocked ? (
           <button className="ghost ok" disabled={busy} onClick={() => onUnblock(store)}>
-            <i className="fas fa-lock-open"></i>
+            <Icon name="lock-open" size={15} />
             Liberar
           </button>
         ) : (
           <button className="ghost danger" disabled={busy} onClick={() => onBlock(store)}>
-            <i className="fas fa-ban"></i>
+            <Icon name="ban" size={15} />
             Bloquear
           </button>
         )}
@@ -200,13 +201,13 @@ function StoreDrawer({ store, onClose }) {
             <h2>{store.nome}</h2>
             <p>#{store.id} · {statusLabel(store.status)} · {store.plano_nome || "Padrao"}</p>
           </div>
-          <button className="ghost" onClick={onClose}><i className="fas fa-xmark"></i></button>
+          <button className="ghost" onClick={onClose} aria-label="Fechar"><Icon name="x" size={18} /></button>
         </header>
 
         {error && <div className="error wide">{error}</div>}
 
         <section className="drawer-block">
-          <h3><i className="fas fa-users"></i> Usuarios ({users.length})</h3>
+          <h3><Icon name="users" size={14} /> Usuarios ({users.length})</h3>
           {loading ? <p className="muted">Carregando...</p> : (
             <div className="detail-list">
               {users.map((u) => (
@@ -218,10 +219,10 @@ function StoreDrawer({ store, onClose }) {
                   <span className={`pill ${u.ativo ? "ok" : "danger"}`}>{u.ativo ? "Ativo" : "Inativo"}</span>
                   <div className="detail-actions">
                     <button className="ghost" disabled={busyUser === u.id} onClick={() => resetPassword(u)}>
-                      <i className="fas fa-key"></i> Senha
+                      <Icon name="key" size={15} /> Senha
                     </button>
                     <button className={`ghost ${u.ativo ? "danger" : "ok"}`} disabled={busyUser === u.id} onClick={() => toggleUser(u)}>
-                      <i className={`fas ${u.ativo ? "fa-user-slash" : "fa-user-check"}`}></i>
+                      <Icon name={u.ativo ? "user-x" : "user-check"} size={15} />
                       {u.ativo ? "Desativar" : "Ativar"}
                     </button>
                   </div>
@@ -233,7 +234,7 @@ function StoreDrawer({ store, onClose }) {
         </section>
 
         <section className="drawer-block">
-          <h3><i className="fas fa-desktop"></i> Dispositivos ({devices.length})</h3>
+          <h3><Icon name="monitor" size={14} /> Dispositivos ({devices.length})</h3>
           {loading ? <p className="muted">Carregando...</p> : (
             <div className="detail-list">
               {devices.map((d) => (
@@ -245,11 +246,11 @@ function StoreDrawer({ store, onClose }) {
                   <span className={`pill ${d.autorizado ? "ok" : "danger"}`}>{d.autorizado ? "Autorizado" : "Bloqueado"}</span>
                   <div className="detail-actions">
                     <button className={`ghost ${d.autorizado ? "danger" : "ok"}`} disabled={busyDevice === d.id} onClick={() => toggleDevice(d)}>
-                      <i className={`fas ${d.autorizado ? "fa-ban" : "fa-check"}`}></i>
+                      <Icon name={d.autorizado ? "ban" : "check"} size={15} />
                       {d.autorizado ? "Bloquear" : "Autorizar"}
                     </button>
                     <button className="ghost danger" disabled={busyDevice === d.id} onClick={() => removeDevice(d)} title="Excluir dispositivo">
-                      <i className="fas fa-trash"></i>
+                      <Icon name="trash-2" size={15} />
                     </button>
                   </div>
                 </div>
@@ -434,7 +435,7 @@ function Dashboard({ user, onLogout }) {
     <main className="app-shell">
       <aside>
         <div className="brand">
-          <span><i className="fas fa-shield-halved"></i></span>
+          <span><Icon name="shield-check" size={18} /></span>
           <div>
             <strong>SysControl</strong>
             <small>Admin</small>
@@ -442,21 +443,20 @@ function Dashboard({ user, onLogout }) {
         </div>
         <nav>
           <button className={view === "stores" ? "nav-active" : ""} onClick={() => setView("stores")}>
-            <i className="fas fa-store"></i> Lojas
+            <Icon name="store" size={18} /> <span className="nav-label">Lojas</span>
           </button>
           <button className={view === "billing" ? "nav-active" : ""} onClick={() => setView("billing")}>
-            <i className="fas fa-chart-line"></i> Faturamento
+            <Icon name="line-chart" size={18} /> <span className="nav-label">Faturamento</span>
           </button>
           <button className={view === "subscriptions" ? "nav-active" : ""} onClick={() => setView("subscriptions")}>
-            <i className="fas fa-file-invoice-dollar"></i> Assinaturas
+            <Icon name="receipt-text" size={18} /> <span className="nav-label">Assinaturas</span>
           </button>
           <button className={view === "access" ? "nav-active" : ""} onClick={() => setView("access")}>
-            <i className="fas fa-users-gear"></i> Acessos
+            <Icon name="users-round" size={18} /> <span className="nav-label">Acessos</span>
           </button>
         </nav>
         <button className="logout" onClick={onLogout}>
-          <i className="fas fa-arrow-right-from-bracket"></i>
-          Sair
+          <Icon name="log-out" size={18} /> <span className="nav-label">Sair</span>
         </button>
       </aside>
 
@@ -471,21 +471,21 @@ function Dashboard({ user, onLogout }) {
             </h1>
             <p>{user?.nome || user?.email}</p>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div className="header-actions">
             {view === "subscriptions" && (
               <button className="refresh" onClick={runDunning} disabled={loading}>
-                <i className="fas fa-gavel"></i>
+                <Icon name="gavel" size={15} />
                 Rodar cobrança
               </button>
             )}
             {view === "stores" && (
               <button className="refresh" onClick={restoreFromFile} disabled={loading}>
-                <i className="fas fa-cloud-arrow-up"></i>
+                <Icon name="cloud-upload" size={15} />
                 Restaurar de backup
               </button>
             )}
-            <button className="refresh" onClick={refreshAll} disabled={loading}>
-              <i className={`fas ${loading ? "fa-circle-notch fa-spin" : "fa-rotate"}`}></i>
+            <button className="refresh primary" onClick={refreshAll} disabled={loading}>
+              <Icon name={loading ? "loader" : "refresh-cw"} size={15} className={loading ? "icon-spin" : ""} />
               Atualizar
             </button>
           </div>
@@ -511,7 +511,7 @@ function Dashboard({ user, onLogout }) {
           <>
             <div className="toolbar">
               <div className="search">
-                <i className="fas fa-magnifying-glass"></i>
+                <Icon name="search" size={16} />
                 <input
                   placeholder="Buscar por loja, ID, cidade ou status"
                   value={query}
@@ -561,7 +561,6 @@ function Dashboard({ user, onLogout }) {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
                   <th>Loja</th>
                   <th>Plano</th>
                   <th>Status</th>
@@ -576,19 +575,21 @@ function Dashboard({ user, onLogout }) {
                   const net = Number(store.resultado_liquido ?? (Number(store.faturamento || 0) - Number(store.despesas || 0)));
                   return (
                     <tr key={store.id}>
-                      <td>{index + 1}</td>
-                      <td><strong>{store.nome}</strong><span>#{store.id}</span></td>
-                      <td>{store.plano_nome || "Padrao"}</td>
-                      <td><span className={`pill ${blockedStatuses.includes(store.status) ? "danger" : "ok"}`}>{statusLabel(store.status)}</span></td>
-                      <td>{store.total_vendas || 0}</td>
-                      <td>{money.format(store.faturamento || 0)}</td>
-                      <td>{money.format(store.despesas || 0)}</td>
-                      <td><strong style={{ color: net < 0 ? "#991b1b" : "#166534" }}>{money.format(net)}</strong></td>
+                      <td className="cell-main">
+                        <strong>{index + 1}. {store.nome}</strong>
+                        <span className="mono">#{store.id}</span>
+                      </td>
+                      <td data-label="Plano">{store.plano_nome || "Padrao"}</td>
+                      <td data-label="Status"><span className={`pill ${blockedStatuses.includes(store.status) ? "danger" : "ok"}`}>{statusLabel(store.status)}</span></td>
+                      <td className="num" data-label="Vendas">{store.total_vendas || 0}</td>
+                      <td className="num" data-label="Faturamento">{money.format(store.faturamento || 0)}</td>
+                      <td className="num" data-label="Despesas">{money.format(store.despesas || 0)}</td>
+                      <td className="num" data-label="Resultado"><strong style={{ color: net < 0 ? "var(--money-negative)" : "var(--money-positive)" }}>{money.format(net)}</strong></td>
                     </tr>
                   );
                 })}
                 {!loading && rankedStores.length === 0 && (
-                  <tr><td colSpan="8" className="empty">Sem dados de faturamento.</td></tr>
+                  <tr><td colSpan="7" className="empty">Sem dados de faturamento.</td></tr>
                 )}
               </tbody>
             </table>
@@ -607,11 +608,11 @@ function Dashboard({ user, onLogout }) {
                     const agg = (billing?.por_plano || []).find((x) => x.plano === p.nome);
                     return (
                       <tr key={p.id}>
-                        <td><strong>{p.nome}</strong>{!p.ativo && <span>inativo</span>}</td>
-                        <td>{money.format(p.preco_mensal || 0)}</td>
-                        <td>{p.limite_usuarios} / {p.limite_dispositivos}</td>
-                        <td>{agg?.lojas || 0}</td>
-                        <td>{money.format(agg?.receita || 0)}</td>
+                        <td className="cell-main"><strong>{p.nome}</strong>{!p.ativo && <span>inativo</span>}</td>
+                        <td className="num" data-label="Preço/mês">{money.format(p.preco_mensal || 0)}</td>
+                        <td className="num" data-label="Limites (usu./disp.)">{p.limite_usuarios} / {p.limite_dispositivos}</td>
+                        <td className="num" data-label="Lojas">{agg?.lojas || 0}</td>
+                        <td className="num" data-label="Receita">{money.format(agg?.receita || 0)}</td>
                       </tr>
                     );
                   })}
@@ -630,8 +631,8 @@ function Dashboard({ user, onLogout }) {
                     const canceled = sub.assinatura_status === "cancelled" || sub.loja_status === "cancelled";
                     return (
                       <tr key={sub.loja_id}>
-                        <td><strong>{sub.loja_nome}</strong><span>#{sub.loja_id}</span></td>
-                        <td>
+                        <td className="cell-main"><strong>{sub.loja_nome}</strong><span className="mono">#{sub.loja_id}</span></td>
+                        <td className="cell-select" data-label="Plano">
                           <select
                             defaultValue=""
                             disabled={busyId === sub.loja_id}
@@ -643,17 +644,17 @@ function Dashboard({ user, onLogout }) {
                             ))}
                           </select>
                         </td>
-                        <td><span className={`pill ${canceled ? "danger" : "ok"}`}>{statusLabel(sub.assinatura_status || sub.loja_status)}</span></td>
-                        <td>{money.format(sub.valor || sub.preco_mensal || 0)}</td>
-                        <td>{sub.vencimento ? String(sub.vencimento).slice(0, 10) : "-"}</td>
-                        <td>{sub.ultimo_pagamento_em ? String(sub.ultimo_pagamento_em).slice(0, 10) : "-"}</td>
-                        <td className="actions">
+                        <td data-label="Assinatura"><span className={`pill ${canceled ? "danger" : "ok"}`}>{statusLabel(sub.assinatura_status || sub.loja_status)}</span></td>
+                        <td className="num" data-label="Valor">{money.format(sub.valor || sub.preco_mensal || 0)}</td>
+                        <td className="num" data-label="Vencimento">{sub.vencimento ? String(sub.vencimento).slice(0, 10) : "-"}</td>
+                        <td className="num" data-label="Últ. pagamento">{sub.ultimo_pagamento_em ? String(sub.ultimo_pagamento_em).slice(0, 10) : "-"}</td>
+                        <td className="actions" data-label="Ações">
                           <button className="ghost ok" disabled={busyId === sub.loja_id} onClick={() => registerPayment(sub)}>
-                            <i className="fas fa-money-bill-wave"></i> Pagamento
+                            <Icon name="banknote" size={15} /> Pagamento
                           </button>
                           {!canceled && (
                             <button className="ghost danger" disabled={busyId === sub.loja_id} onClick={() => cancelSubscription(sub)}>
-                              <i className="fas fa-xmark"></i> Cancelar
+                              <Icon name="x" size={15} /> Cancelar
                             </button>
                           )}
                         </td>

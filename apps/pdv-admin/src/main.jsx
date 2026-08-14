@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { queryClient, persistOptions } from "./queryClient";
-import "@fortawesome/fontawesome-free/css/all.min.css";
+import "./tokens.css";
 import "./styles.css";
 import App from "./App.jsx";
 

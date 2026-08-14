@@ -50,21 +50,40 @@ async function changeStorePlan(knex, lojaId, planoId) {
     const plano = await trx("planos").where({ id: planoId }).first();
     if (!plano) return { success: false, error: "Plano nao encontrado." };
 
-    await trx("lojas").where({ id: lojaId }).update({ plano_id: plano.id, updated_at: trx.fn.now() });
+    // Plano sem cobranca recorrente (Basico gratis, Vitalicio, cortesia): preco 0.
+    // Como o dunning so age sobre assinaturas com vencimento != null, zeramos o
+    // vencimento e reativamos — assim uma loja nesses planos nunca e bloqueada
+    // por cobranca. (Vitalicio: o pagamento unico e registrado a parte.)
+    const isFree = Number(plano.preco_mensal) <= 0;
+
+    const lojaUpdate = { plano_id: plano.id, updated_at: trx.fn.now() };
+    if (isFree) {
+      lojaUpdate.status = "active";
+      lojaUpdate.bloqueada_em = null;
+      lojaUpdate.bloqueio_motivo = null;
+    }
+    await trx("lojas").where({ id: lojaId }).update(lojaUpdate);
 
     const assinatura = await trx("assinaturas").where({ loja_id: lojaId }).orderBy("id", "desc").first();
     if (assinatura) {
-      await trx("assinaturas").where({ id: assinatura.id }).update({
+      const assinaturaUpdate = {
         plano_id: plano.id,
         valor: plano.preco_mensal,
         updated_at: trx.fn.now(),
-      });
+      };
+      if (isFree) {
+        assinaturaUpdate.status = "active";
+        assinaturaUpdate.vencimento = null;
+        assinaturaUpdate.cancelada_em = null;
+      }
+      await trx("assinaturas").where({ id: assinatura.id }).update(assinaturaUpdate);
     } else {
       await trx("assinaturas").insert({
         loja_id: lojaId,
         plano_id: plano.id,
-        status: loja.status,
+        status: isFree ? "active" : loja.status,
         valor: plano.preco_mensal,
+        vencimento: isFree ? null : undefined,
       });
     }
 
