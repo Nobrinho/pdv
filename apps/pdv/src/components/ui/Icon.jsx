@@ -82,6 +82,8 @@ import {
   Gift,
   CameraOff,
   Info,
+  HardDrive,
+  Cloud,
   CircleHelp,
 } from "lucide-react";
 
@@ -179,6 +181,8 @@ const REGISTRY = {
   gift: Gift,
   "camera-off": CameraOff,
   info: Info,
+  "hard-drive": HardDrive,
+  cloud: Cloud,
   "circle-help": CircleHelp,
 };
 

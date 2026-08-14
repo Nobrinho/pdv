@@ -32,6 +32,7 @@ const Comissoes = lazy(() => import("./pages/Comissoes"));
 const Despesas = lazy(() => import("./pages/Despesas"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
+const MoreMenu = lazy(() => import("./pages/MoreMenu"));
 
 // Barra inferior (mobile) — 5 itens fixos do design (o 5º "Mais" abre o menu).
 const BOTTOM_NAV = [
@@ -335,11 +336,12 @@ function App() {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar mobile */}
-        <header className="lg:hidden flex items-center gap-3 h-14 px-4 border-b border-surface-200 bg-surface-100 shadow-sm z-40 flex-shrink-0">
-          <button onClick={() => setMobileMenuOpen(true)} className="text-surface-700 w-8 flex items-center" aria-label="Abrir menu">
-            <Icon name="menu" size={22} />
-          </button>
-          <span className="font-black text-surface-800 truncate">{tenant.nome}</span>
+        <header className="lg:hidden flex items-center gap-2.5 h-14 px-4 border-b border-[var(--border)] bg-[var(--card)] z-40 flex-shrink-0">
+          <span className="w-7 h-7 rounded-lg bg-[var(--primary)] text-white flex items-center justify-center shrink-0">
+            <Icon name="store" size={16} />
+          </span>
+          <span className="font-black text-[var(--foreground)] tracking-tight">SysControl</span>
+          {tenant.nome ? <span className="text-[var(--muted-foreground)] text-sm truncate">· {tenant.nome}</span> : null}
         </header>
         <main className="flex-1 overflow-hidden relative flex flex-col bg-surface-50 mobile-nav-space">
         <Suspense fallback={<PageFallback />}>
@@ -357,6 +359,7 @@ function App() {
             <Route path="/comissoes" element={hasAccess("/comissoes") ? <Comissoes /> : <Navigate to="/vendas" replace />} />
             <Route path="/despesas" element={hasAccess("/despesas") ? <Despesas /> : <Navigate to="/vendas" replace />} />
             <Route path="/config" element={hasAccess("/config") ? <Config /> : <Navigate to="/vendas" replace />} />
+            <Route path="/mais" element={<MoreMenu />} />
             <Route path="/logs" element={hasAccess("/logs") ? <EventLogs /> : <Navigate to="/vendas" replace />} />
 
             <Route path="*" element={<Navigate to="/" />} />
@@ -371,7 +374,7 @@ function App() {
         items={BOTTOM_NAV}
         currentPath={location.pathname}
         onNavigate={handleMenuClick}
-        onMore={() => setMobileMenuOpen(true)}
+        onMore={() => navigate("/mais")}
       />
 
       {/* Auto Updater Component */}

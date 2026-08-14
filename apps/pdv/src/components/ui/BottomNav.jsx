@@ -34,9 +34,9 @@ const BottomNav = ({ items = [], currentPath, onNavigate, onMore }) => {
             </button>
           );
         })}
-        <button onClick={onMore} className={itemCls(false)}>
-          <Icon name="menu" size={22} />
-          <span className="text-[10px] font-medium tracking-tight">Mais</span>
+        <button onClick={onMore} className={itemCls(currentPath === "/mais")}>
+          <Icon name="menu" size={22} strokeWidth={currentPath === "/mais" ? 2.4 : 2} />
+          <span className={`text-[10px] tracking-tight ${currentPath === "/mais" ? "font-semibold" : "font-medium"}`}>Mais</span>
         </button>
       </div>
     </nav>

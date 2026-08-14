@@ -4,6 +4,17 @@ import { api } from "../services/api";
 import { useTenant } from "../context/TenantContext";
 import { Icon } from "../components/ui/Icon";
 
+// Rótulo de campo (caps) e caixa de campo com ícone dentro — medidas do handoff:
+// mobile 52px de altura, desktop 44px; foco = borda --ring + halo --ring-shadow.
+const LB =
+  "block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--muted-foreground)] mb-2 ml-0.5";
+const FIELD =
+  "flex items-center gap-2.5 h-[52px] lg:h-11 px-3.5 lg:px-3 rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] shadow-[var(--shadow-xs)] focus-within:border-[var(--ring)] focus-within:shadow-[0_0_0_3px_var(--ring-shadow)] transition";
+const FIELD_INPUT =
+  "flex-1 min-w-0 bg-transparent outline-none text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]";
+const IN =
+  "w-full h-[52px] lg:h-11 rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] px-3.5 text-sm outline-none transition focus:border-[var(--ring)] focus:shadow-[0_0_0_3px_var(--ring-shadow)] placeholder:text-[var(--muted-foreground)]";
+
 const Login = ({ onLoginSuccess }) => {
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -13,16 +24,13 @@ const Login = ({ onLoginSuccess }) => {
   const [appVersion, setAppVersion] = useState("");
   const isOnlineMode = api.isRemote;
   const [dataMode, setDataMode] = useState(api.dataMode);
-  // Sub-modo online: entrar em loja existente (join) ou criar nova loja
   const [onlineSubMode, setOnlineSubMode] = useState("join");
-  // Campo de servidor fica oculto (avancado); loja e lembrada num chip.
   const [showServer, setShowServer] = useState(false);
   const [changingStore, setChangingStore] = useState(false);
-  // Login por convite/link: ?c=<codigo> na URL embute a loja.
+  const [showPass, setShowPass] = useState(false);
   const [inviteCode, setInviteCode] = useState(null);
   const [inviteStore, setInviteStore] = useState(null);
 
-  // Login State
   const [lojaId, setLojaId] = useState(() =>
     isOnlineMode ? localStorage.getItem("syscontrol_online_loja_id") || "" : "",
   );
@@ -30,7 +38,6 @@ const Login = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState("");
   const [apiUrl, setApiUrl] = useState(() => api.baseUrl);
 
-  // Create-store State (modo online)
   const [createData, setCreateData] = useState({
     lojaNome: "",
     cidade: "",
@@ -41,7 +48,6 @@ const Login = ({ onLoginSuccess }) => {
     adminPass: "",
   });
 
-  // Setup State
   const [setupData, setSetupData] = useState({
     nome: "",
     username: "",
@@ -54,7 +60,7 @@ const Login = ({ onLoginSuccess }) => {
       setLoading(true);
       const [hasUsers, ver] = await Promise.all([
         api.auth.checkExist(),
-        api.config.getVersion()
+        api.config.getVersion(),
       ]);
       setIsSetupMode(!isOnlineMode && !hasUsers);
       setAppVersion(ver || "1.0.0");
@@ -70,7 +76,6 @@ const Login = ({ onLoginSuccess }) => {
     checkStatus();
   }, [checkStatus]);
 
-  // Le o codigo do convite da URL (?c=CODIGO) e resolve a loja.
   useEffect(() => {
     if (!isOnlineMode || typeof window === "undefined") return;
     let code = new URLSearchParams(window.location.search || "").get("c");
@@ -107,7 +112,6 @@ const Login = ({ onLoginSuccess }) => {
 
     setSubmitting(true);
     try {
-      // Modo online: usa join (registra dispositivo e respeita limites do plano).
       const result = isOnlineMode
         ? await api.auth.joinStore({ lojaId, codigo: inviteCode || undefined, username, password })
         : await api.auth.login({ lojaId, username, password });
@@ -158,7 +162,6 @@ const Login = ({ onLoginSuccess }) => {
       if (!created.success)
         return showAlert(created.error || "Falha ao criar loja.", "Erro", "error");
 
-      // Login automático (join) na loja recém-criada.
       const joined = await api.auth.joinStore({
         lojaId: created.loja.id,
         username: createData.adminUser,
@@ -217,104 +220,218 @@ const Login = ({ onLoginSuccess }) => {
 
   if (loading)
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gray-950 text-white">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 rounded-full animate-spin" style={{ borderColor: `${tenant.corPrimaria}33`, borderTopColor: tenant.corPrimaria }}></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-             <Icon name="store" size={22} style={{ color: tenant.corPrimaria }} />
-          </div>
-        </div>
-        <p className="mt-6 text-xs font-black uppercase tracking-widest text-surface-500 animate-pulse">Iniciando Terminal...</p>
+      <div className="h-screen flex flex-col items-center justify-center bg-[var(--sidebar)]">
+        <span className="w-14 h-14 rounded-[var(--radius-lg)] bg-[var(--primary)] flex items-center justify-center shadow-lg animate-pulse">
+          <Icon name="wrench" size={26} className="text-white" />
+        </span>
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--sidebar-muted)]">
+          Iniciando terminal…
+        </p>
       </div>
     );
 
-  // Background: usa imagem customizada ou gradiente bonito como fallback
-  const bgStyle = tenant.bgBase64
-    ? {
-        backgroundImage: `url(${tenant.bgBase64})`,
-        backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-      }
-    : {};
+  const tabCls = (active) =>
+    `pt-5 pb-3.5 text-sm font-semibold border-b-2 -mb-px transition ${
+      active
+        ? "border-[var(--primary)] text-[var(--primary)]"
+        : "border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+    }`;
 
-  return (
-    <div
-      className={`min-h-[100dvh] w-full flex p-4 relative overflow-x-hidden overflow-y-auto font-sans select-none ${
-        !tenant.bgBase64 ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-950" : ""
-      }`}
-      style={bgStyle}
-    >
-      {/* Decoração de fundo quando não tem imagem customizada */}
-      {!tenant.bgBase64 && (
-        <>
-          <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-15 blur-3xl" style={{ backgroundColor: tenant.corPrimaria }}></div>
-          <div className="absolute bottom-[-15%] right-[-10%] w-[400px] h-[400px] rounded-full opacity-10 blur-3xl" style={{ backgroundColor: tenant.corSecundaria }}></div>
-          <div className="absolute top-[40%] left-[50%] w-[200px] h-[200px] rounded-full opacity-5 blur-2xl" style={{ backgroundColor: tenant.corPrimaria }}></div>
-        </>
+  const segCls = (active) =>
+    `flex items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide transition ${
+      active ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+    }`;
+
+  const primaryBtn =
+    "w-full h-[52px] lg:h-11 rounded-[var(--radius-md)] bg-[var(--primary)] text-white font-semibold text-sm hover:bg-[var(--primary-hover)] transition disabled:opacity-60 flex items-center justify-center gap-2";
+
+  // ---- Conteúdo da marca (reaproveitado nos dois layouts) ----
+  const Brand = () => (
+    <>
+      <span className="w-[46px] h-[46px] lg:w-14 lg:h-14 rounded-[var(--radius-lg)] bg-[var(--primary)] flex items-center justify-center shadow-lg shrink-0">
+        <Icon name="wrench" size={24} className="text-white" />
+      </span>
+      <div>
+        <h1 className="text-[22px] lg:text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+          SysControl
+        </h1>
+        <p className="text-[11px] uppercase tracking-[var(--tracking-caps)] text-[var(--sidebar-muted)] mt-1">
+          {isSetupMode ? "Configuração inicial" : "Terminal de vendas"}
+        </p>
+      </div>
+      {api.isElectron && dataMode === "local" && (
+        <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-full)] bg-white/5 border border-white/10 px-2.5 py-1 text-[11px] text-[var(--sidebar-muted)]" style={{ fontFamily: "var(--font-mono)" }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" /> Modo local · offline
+        </span>
+      )}
+    </>
+  );
+
+  const versionText = `v${appVersion}${api.isElectron ? " · app instalado" : ""} · © SysControl`;
+
+  // ---- Corpo do formulário (abas + form + avançado) ----
+  const formBody = (
+    <>
+      {isOnlineMode && (
+        <div className="flex gap-6 border-b border-[var(--border)]">
+          <button type="button" onClick={() => setOnlineSubMode("join")} className={tabCls(onlineSubMode === "join")}>
+            Entrar
+          </button>
+          <button type="button" onClick={() => setOnlineSubMode("create")} className={tabCls(onlineSubMode === "create")}>
+            Criar loja
+          </button>
+        </div>
       )}
 
-      {/* Card de Login com Glass Effect */}
-      <div className="bg-surface-100/90 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] overflow-hidden w-full max-w-[420px] m-auto flex flex-col border border-white/40 relative z-10">
-        
-        {/* Banner de Topo com cores dinâmicas */}
-        <div
-          className="py-6 sm:py-10 px-6 sm:px-8 text-center relative overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${tenant.corPrimaria}, ${tenant.corSecundaria})` }}
-        >
-          <div className="absolute top-[-20%] right-[-10%] w-40 h-40 bg-surface-100/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-20%] left-[-10%] w-32 h-32 rounded-full blur-2xl" style={{ backgroundColor: `${tenant.corSecundaria}33` }}></div>
-          
-          <div className="relative z-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-surface-100/20 backdrop-blur-md rounded-3xl mb-3 sm:mb-4 shadow-xl border border-white/30 transform rotate-12">
-               <Icon name="store" size={40} className="text-white -rotate-12" />
+      {isOnlineMode && onlineSubMode === "create" ? (
+        <form onSubmit={handleCreateStore} className="flex flex-col gap-[18px]">
+          <div>
+            <label className={LB}>Nome da loja</label>
+            <input className={IN} value={createData.lojaNome} onChange={(e) => setCreateData({ ...createData, lojaNome: e.target.value })} placeholder="Minha Loja" required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LB}>Cidade / UF</label>
+              <input className={IN} value={createData.cidade} onChange={(e) => setCreateData({ ...createData, cidade: e.target.value })} placeholder="Manaus - AM" />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter mb-1">{tenant.nome}</h1>
-            <div className="flex items-center justify-center gap-2">
-               <div className="h-px bg-surface-100/30 w-8"></div>
-               <p className="text-[10px] font-black uppercase tracking-widest text-white/70">
-                 {isSetupMode ? "Setup Inicial" : tenant.subtitulo}
-               </p>
-               <div className="h-px bg-surface-100/30 w-8"></div>
+            <div>
+              <label className={LB}>Telefone</label>
+              <input className={IN} value={createData.telefone} onChange={(e) => setCreateData({ ...createData, telefone: e.target.value })} placeholder="(00) 00000-0000" />
             </div>
           </div>
-        </div>
-
-        <div className="p-6 sm:p-10">
-          {api.isElectron && (
-            <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-surface-200/70 p-1 text-[10px] font-black uppercase tracking-widest">
-              <button
-                type="button"
-                onClick={() => handleDataModeChange("local")}
-                className={`rounded-xl px-3 py-2 transition ${
-                  dataMode === "local"
-                    ? "bg-surface-100 text-surface-900 shadow-sm"
-                    : "text-surface-500 hover:text-surface-800"
-                }`}
-              >
-                Local
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDataModeChange("online")}
-                className={`rounded-xl px-3 py-2 transition ${
-                  dataMode === "online"
-                    ? "bg-surface-100 text-surface-900 shadow-sm"
-                    : "text-surface-500 hover:text-surface-800"
-                }`}
-              >
-                Online
-              </button>
+          <div className="pt-1">
+            <p className={LB}>Administrador da loja</p>
+            <div className="flex flex-col gap-3">
+              <input className={IN} value={createData.adminNome} onChange={(e) => setCreateData({ ...createData, adminNome: e.target.value })} placeholder="Nome do administrador" required />
+              <div className="grid grid-cols-2 gap-3">
+                <input className={IN} value={createData.adminUser} onChange={(e) => setCreateData({ ...createData, adminUser: e.target.value })} placeholder="Login" required />
+                <input type="password" className={IN} value={createData.adminPass} onChange={(e) => setCreateData({ ...createData, adminPass: e.target.value })} placeholder="Senha" required />
+              </div>
             </div>
+          </div>
+          <button type="submit" disabled={submitting} className={primaryBtn}>
+            {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin" /> Criando…</>) : (<>Criar loja <Icon name="arrow-right" size={16} /></>)}
+          </button>
+        </form>
+      ) : isSetupMode ? (
+        <form onSubmit={handleSetup} className="flex flex-col gap-[18px]">
+          <div className="p-3 rounded-[var(--radius-md)] border border-[var(--primary-soft-border)] bg-[var(--primary-soft)] flex gap-3">
+            <Icon name="sparkles" size={16} className="mt-0.5 text-[var(--primary-soft-foreground)] shrink-0" />
+            <p className="text-[12px] leading-relaxed text-[var(--primary-soft-foreground)]">
+              Este é o primeiro acesso. Defina as credenciais do <strong>administrador geral</strong> para desbloquear o sistema.
+            </p>
+          </div>
+          <div>
+            <label className={LB}>Nome completo</label>
+            <input className={IN} value={setupData.nome} onChange={(e) => setSetupData({ ...setupData, nome: e.target.value })} required placeholder="Seu nome" />
+          </div>
+          <div>
+            <label className={LB}>Usuário / login</label>
+            <input className={IN} value={setupData.username} onChange={(e) => setSetupData({ ...setupData, username: e.target.value })} required placeholder="Ex: admin" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LB}>Senha</label>
+              <input type="password" className={IN} value={setupData.password} onChange={(e) => setSetupData({ ...setupData, password: e.target.value })} required />
+            </div>
+            <div>
+              <label className={LB}>Confirmação</label>
+              <input type="password" className={IN} value={setupData.confirmPassword} onChange={(e) => setSetupData({ ...setupData, confirmPassword: e.target.value })} required />
+            </div>
+          </div>
+          <button type="submit" disabled={submitting} className={primaryBtn}>
+            {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin" /> Ativando…</>) : "Ativar sistema"}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleLogin} className="flex flex-col gap-[18px]">
+          {isOnlineMode && (
+            inviteStore ? (
+              <div className="flex items-center gap-3 rounded-[var(--radius-xl)] border border-[var(--primary-soft-border)] bg-[var(--primary-soft)] p-3">
+                <Icon name="store" size={18} className="text-[var(--primary-soft-foreground)]" />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--primary-soft-foreground)] opacity-80 leading-none">Entrando na loja</p>
+                  <p className="text-sm font-semibold text-[var(--primary-soft-foreground)] leading-tight mt-0.5">{inviteStore.nome}</p>
+                </div>
+              </div>
+            ) : lojaId && !changingStore ? (
+              <div className="flex items-center justify-between rounded-[var(--radius-xl)] border border-[var(--primary-soft-border)] bg-[var(--primary-soft)] p-3 pl-3.5">
+                <span className="text-sm font-semibold text-[var(--primary-soft-foreground)] flex items-center gap-2">
+                  <Icon name="store" size={16} /> Loja #{lojaId}
+                </span>
+                <button type="button" onClick={() => { setChangingStore(true); setLojaId(""); }} className="text-[12px] font-semibold text-[var(--primary)] hover:underline">
+                  Trocar
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className={LB}>ID da loja</label>
+                <div className={FIELD}>
+                  <Icon name="store" size={16} className="text-[var(--icon-muted)] shrink-0" />
+                  <input className={FIELD_INPUT} placeholder="Ex: 1" value={lojaId} onChange={(e) => setLojaId(e.target.value)} autoFocus />
+                </div>
+              </div>
+            )
           )}
 
-          {isOnlineMode && (
-            <div className="mb-4 sm:mb-6 space-y-3">
-              {showServer && (
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Servidor da API</label>
+          <div>
+            <label className={LB}>Usuário</label>
+            <div className={FIELD}>
+              <Icon name="user" size={16} className="text-[var(--icon-muted)] shrink-0" />
+              <input className={FIELD_INPUT} placeholder="Seu usuário" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus={!isOnlineMode} />
+            </div>
+          </div>
+
+          <div>
+            <label className={LB}>Senha</label>
+            <div className={FIELD}>
+              <Icon name="lock" size={16} className="text-[var(--icon-muted)] shrink-0" />
+              <input
+                type={showPass ? "text" : "password"}
+                className={FIELD_INPUT}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button type="button" onClick={() => setShowPass((v) => !v)} className="text-[var(--icon-muted)] hover:text-[var(--foreground)] shrink-0" aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}>
+                <Icon name="eye" size={16} />
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" disabled={submitting} className={primaryBtn}>
+            {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin" /> Entrando…</>) : (<>Entrar <Icon name="arrow-right" size={16} /></>)}
+          </button>
+        </form>
+      )}
+
+      {(isOnlineMode || api.isElectron) && (
+        <div className="text-center">
+          {showServer && (
+            <div className="mb-3 text-left rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--content2)] p-3 space-y-2.5">
+              {api.isElectron && (
+                <>
+                  <div className="grid grid-cols-2 gap-1 rounded-[var(--radius-sm)] bg-[var(--background)] p-1 border border-[var(--border)]">
+                    <button type="button" onClick={() => handleDataModeChange("local")} className={segCls(dataMode === "local")}>
+                      <Icon name="hard-drive" size={13} /> Local
+                    </button>
+                    <button type="button" onClick={() => handleDataModeChange("online")} className={segCls(dataMode === "online")}>
+                      <Icon name="cloud" size={13} /> Online
+                    </button>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+                    {dataMode === "local"
+                      ? "Local: valida o usuário no banco deste computador e funciona sem internet."
+                      : "Online: conecta ao servidor da loja para sincronizar entre aparelhos."}
+                  </p>
+                </>
+              )}
+              {isOnlineMode && (
+                <div>
+                  <label className={LB}>Servidor da API</label>
                   <input
-                    className="w-full bg-surface-50 border border-surface-200 p-3 rounded-2xl text-xs font-bold outline-none transition focus:bg-surface-100 text-surface-800"
+                    className={IN}
+                    style={{ fontFamily: "var(--font-mono)" }}
                     placeholder="http://localhost:3333"
                     value={apiUrl}
                     onChange={(e) => setApiUrl(e.target.value)}
@@ -322,262 +439,38 @@ const Login = ({ onLoginSuccess }) => {
                   />
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-2 rounded-2xl bg-surface-200/70 p-1 text-[10px] font-black uppercase tracking-widest">
-                <button
-                  type="button"
-                  onClick={() => setOnlineSubMode("join")}
-                  className={`rounded-xl px-3 py-2 transition ${
-                    onlineSubMode === "join"
-                      ? "bg-surface-100 text-surface-900 shadow-sm"
-                      : "text-surface-500 hover:text-surface-800"
-                  }`}
-                >
-                  Entrar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOnlineSubMode("create")}
-                  className={`rounded-xl px-3 py-2 transition ${
-                    onlineSubMode === "create"
-                      ? "bg-surface-100 text-surface-900 shadow-sm"
-                      : "text-surface-500 hover:text-surface-800"
-                  }`}
-                >
-                  Criar loja
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowServer((v) => !v)}
-                className="text-[10px] font-bold text-surface-400 hover:text-surface-600 flex items-center gap-1 mx-auto transition"
-              >
-                <Icon name="gear" size={11} className="inline" /> {showServer ? "Ocultar servidor" : "Avançado: servidor"}
-              </button>
             </div>
           )}
-
-          {isOnlineMode && onlineSubMode === "create" ? (
-            <form onSubmit={handleCreateStore} className="space-y-4 animate-fade-in">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1 col-span-2">
-                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Nome da loja</label>
-                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.lojaNome} onChange={(e) => setCreateData({ ...createData, lojaNome: e.target.value })} placeholder="Minha Loja" required />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Cidade / UF</label>
-                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.cidade} onChange={(e) => setCreateData({ ...createData, cidade: e.target.value })} placeholder="Manaus - AM" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Telefone</label>
-                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.telefone} onChange={(e) => setCreateData({ ...createData, telefone: e.target.value })} placeholder="(00) 00000-0000" />
-                </div>
-              </div>
-              <div className="pt-2 border-t border-surface-200 space-y-4">
-                <p className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Administrador da loja</p>
-                <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.adminNome} onChange={(e) => setCreateData({ ...createData, adminNome: e.target.value })} placeholder="Nome do administrador" required />
-                <div className="grid grid-cols-2 gap-3">
-                  <input className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.adminUser} onChange={(e) => setCreateData({ ...createData, adminUser: e.target.value })} placeholder="Login" required />
-                  <input type="password" className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none focus:bg-surface-100 text-surface-800" value={createData.adminPass} onChange={(e) => setCreateData({ ...createData, adminPass: e.target.value })} placeholder="Senha" required />
-                </div>
-              </div>
-              <button type="submit" disabled={submitting} className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl disabled:opacity-70 disabled:cursor-not-allowed" style={{ backgroundColor: tenant.corPrimaria, boxShadow: `0 12px 30px -10px ${tenant.corPrimaria}66` }}>
-                {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin inline" /> CRIANDO...</>) : (<>CRIAR LOJA <Icon name="plus" size={13} className="inline" /></>)}
-              </button>
-            </form>
-          ) : isSetupMode ? (
-            <form onSubmit={handleSetup} className="space-y-5 animate-slide-up">
-              <div className="p-4 rounded-2xl border mb-6 flex gap-4" style={{ backgroundColor: `${tenant.corPrimaria}08`, borderColor: `${tenant.corPrimaria}22` }}>
-                 <Icon name="sparkles" size={16} className="mt-1" style={{ color: tenant.corPrimaria }} />
-                 <p className="text-[11px] leading-relaxed font-bold" style={{ color: `${tenant.corPrimaria}cc` }}>
-                   Este é o primeiro acesso. Defina as credenciais do <strong>Administrador Geral</strong> para desbloquear o sistema.
-                 </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Nome Completo</label>
-                <input
-                  className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-surface-100 text-surface-800"
-                  style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
-                  onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                  onBlur={(e) => e.target.style.borderColor = ''}
-                  value={setupData.nome}
-                  onChange={(e) => setSetupData({ ...setupData, nome: e.target.value })}
-                  required
-                  placeholder="Seu nome"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1">Usuário / Login</label>
-                <input
-                  className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-surface-100 text-surface-800"
-                  onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                  onBlur={(e) => e.target.style.borderColor = ''}
-                  value={setupData.username}
-                  onChange={(e) => setSetupData({ ...setupData, username: e.target.value })}
-                  required
-                  placeholder="Ex: admin"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Senha</label>
-                  <input
-                    type="password"
-                    className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-surface-100"
-                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                    onBlur={(e) => e.target.style.borderColor = ''}
-                    value={setupData.password}
-                    onChange={(e) => setSetupData({ ...setupData, password: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Confirmação</label>
-                  <input
-                    type="password"
-                    className="w-full bg-surface-50 border border-surface-200 p-3.5 rounded-2xl text-sm font-bold outline-none transition focus:ring-4 focus:bg-surface-100"
-                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                    onBlur={(e) => e.target.style.borderColor = ''}
-                    value={setupData.confirmPassword}
-                    onChange={(e) => setSetupData({ ...setupData, confirmPassword: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-surface-900 border border-surface-700 text-white h-14 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition shadow-xl mt-4 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin inline" /> Ativando...</>) : "Ativar Sistema"}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6 animate-fade-in">
-              {isOnlineMode && (
-                inviteStore ? (
-                  <div className="flex items-center gap-3 bg-surface-50 border rounded-2xl p-3 pl-4" style={{ borderColor: `${tenant.corPrimaria}44` }}>
-                    <Icon name="store" size={18} style={{ color: tenant.corPrimaria }} />
-                    <div>
-                      <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest leading-none">Entrando na loja</p>
-                      <p className="text-sm font-black text-surface-800 leading-tight mt-0.5">{inviteStore.nome}</p>
-                    </div>
-                  </div>
-                ) : lojaId && !changingStore ? (
-                  <div className="flex items-center justify-between bg-surface-50 border border-surface-200 rounded-2xl p-3 pl-4">
-                    <span className="text-sm font-black text-surface-700 flex items-center gap-2">
-                      <Icon name="store" size={14} className="inline text-[var(--muted-foreground)]" /> Loja #{lojaId}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => { setChangingStore(true); setLojaId(""); }}
-                      className="text-[11px] font-bold text-primary hover:underline"
-                    >
-                      trocar
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-1 group">
-                    <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">ID da loja</label>
-                    <div className="relative">
-                      <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
-                        <Icon name="store" size={18} />
-                      </div>
-                      <input
-                        className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
-                        style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
-                        onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                        onBlur={(e) => e.target.style.borderColor = ''}
-                        placeholder="Ex: 1"
-                        value={lojaId}
-                        onChange={(e) => setLojaId(e.target.value)}
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-                )
-              )}
-
-              <div className="space-y-1 group">
-                <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">Usuário</label>
-                <div className="relative">
-                  <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
-                    <Icon name="user-circle" size={18} />
-                  </div>
-                  <input
-                    className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
-                    style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
-                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                    onBlur={(e) => e.target.style.borderColor = ''}
-                    placeholder="ID do usuário"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    autoFocus={!isOnlineMode}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1 group">
-                <label className="text-[10px] font-black text-surface-500 uppercase tracking-widest ml-1 group-focus-within:text-primary transition">Senha</label>
-                <div className="relative">
-                  <div className="login-icon absolute inset-y-0 left-0 flex items-center pl-4 text-surface-400 group-focus-within:text-primary transition">
-                    <Icon name="shield" size={18} />
-                  </div>
-                  <input
-                    type="password"
-                    className="login-input w-full bg-surface-50 border border-surface-200 pl-12 p-4 rounded-2xl text-sm font-black focus:ring-4 focus:bg-surface-100 outline-none transition text-surface-800"
-                    style={{ "--tw-ring-color": `${tenant.corPrimaria}15` }}
-                    onFocus={(e) => e.target.style.borderColor = tenant.corPrimaria}
-                    onBlur={(e) => e.target.style.borderColor = ''}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full text-white h-14 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition transform active:scale-[0.98] flex justify-center items-center gap-3 shadow-2xl disabled:opacity-70 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: tenant.corPrimaria,
-                  boxShadow: `0 12px 30px -10px ${tenant.corPrimaria}66`,
-                }}
-                onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.filter = 'brightness(1.1)'; }}
-                onMouseLeave={(e) => e.currentTarget.style.filter = ''}
-              >
-                {submitting ? (<><Icon name="refresh-cw" size={15} className="animate-spin inline" /> ENTRANDO...</>) : (<>ENTRAR <Icon name="arrow-right" size={13} className="inline" /></>)}
-              </button>
-            </form>
-          )}
+          <button type="button" onClick={() => setShowServer((v) => !v)} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition">
+            <Icon name="settings" size={12} /> {api.isElectron ? "Avançado" : "Avançado: servidor"}
+            <Icon name="chevron-down" size={12} className={showServer ? "rotate-180 transition-transform" : "transition-transform"} />
+          </button>
         </div>
+      )}
+    </>
+  );
 
-        {/* Footer */}
-        <div className="bg-surface-200/50 p-4 sm:p-6 text-center border-t border-surface-200">
-           <div className="text-[9px] font-black text-surface-400 uppercase tracking-[0.2em] mb-2 sm:mb-3">
-             v{appVersion} • build production
-           </div>
-           <div className="text-[10px] text-surface-500 font-bold">
-             &copy; {new Date().getFullYear()} {tenant.nome}.
-             {tenant.devNome && (
-               <>
-                 {" "}
-                 {tenant.devLink ? (
-                   <a href={tenant.devLink} className="text-primary hover:text-primary-700" target="_blank" rel="noopener noreferrer">
-                     {tenant.devNome}
-                   </a>
-                 ) : (
-                   <span>{tenant.devNome}</span>
-                 )}
-               </>
-             )}
-           </div>
+  return (
+    <div className="min-h-[100dvh] relative flex flex-col lg:items-center lg:justify-center bg-[var(--sidebar)] font-sans select-none">
+      {/* MARCA — cabeçalho escuro no mobile; absoluta no topo-esquerdo no desktop */}
+      <div className="flex flex-col items-start gap-3.5 px-6 pt-8 pb-8 lg:absolute lg:top-16 lg:left-16 lg:p-0 lg:gap-4">
+        <Brand />
+      </div>
+
+      {/* CORPO — branco full-screen no mobile; cartão 440px centralizado no desktop */}
+      <div className="flex-1 lg:flex-none w-full lg:w-[440px] bg-[var(--background)] flex flex-col overflow-hidden lg:rounded-[var(--radius-xl)] lg:shadow-[var(--shadow-large)] lg:border lg:border-[var(--border)] lg:max-h-[calc(100dvh-4rem)]">
+        <div className="flex-1 flex flex-col gap-[18px] px-6 lg:px-7 pt-1 pb-6 lg:py-6 overflow-y-auto">
+          {formBody}
+          <div className="mt-auto pt-4 text-center lg:hidden">
+            <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: "var(--font-mono)" }}>{versionText}</p>
+          </div>
         </div>
       </div>
+
+      {/* VERSÃO — absoluta no rodapé-esquerdo (desktop) */}
+      <p className="hidden lg:block lg:absolute lg:left-16 lg:bottom-14 text-[12px] text-[var(--sidebar-muted)]" style={{ fontFamily: "var(--font-mono)" }}>
+        {versionText}
+      </p>
     </div>
   );
 };
