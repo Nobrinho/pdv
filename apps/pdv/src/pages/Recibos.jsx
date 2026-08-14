@@ -299,10 +299,10 @@ const Recibos = () => {
               <button
                 key={period}
                 onClick={() => handlePeriodChange(period)}
-                className={`px-4 py-1.5 text-[10px] font-semibold uppercase rounded-[var(--radius-md)] transition-all tracking-wider whitespace-nowrap ${
+                className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${
                   periodType === period
-                    ? "bg-[var(--primary)] text-white"
-                    : "bg-[var(--content2)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"
+                    ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
+                    : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"
                 }`}
               >
                 {period === 'weekly' ? 'Esta semana' : period === 'monthly' ? 'Este mês' : 'Este ano'}

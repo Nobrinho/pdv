@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import FormField from "../ui/FormField";
 import Button from "../ui/Button";
 import { Card } from "../ui/Card";
+import ConfigCardHeader from "./ConfigCardHeader";
 
 const StoreIdentitySettings = ({
   identity,
@@ -15,26 +16,29 @@ const StoreIdentitySettings = ({
   isSaving = false,
 }) => {
   return (
-    <Card padding="lg" className="mb-6">
-      <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <Icon name="palette" size={16} className="text-[var(--primary)]" /> Identidade da Loja
-      </h2>
+    <Card padding="lg" className="flex flex-col">
+      <ConfigCardHeader
+        icon="store"
+        title="Identidade da loja"
+        subtitle="Sai impresso no topo dos recibos"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
         <div className="space-y-4">
-          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
-            Dados da Empresa
-          </h3>
+          <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]">
+            Dados da empresa
+          </span>
           <FormField
-            label="Nome da Loja *"
+            label="Nome da loja"
+            required
             placeholder="Ex: Barba Pneus"
             value={identity.nome}
             onChange={(value) => onIdentityChange("nome", value)}
             icon="fa-store"
           />
           <FormField
-            label="Subtítulo do Sistema"
-            placeholder="Ex: Terminal de Vendas"
+            label="Subtítulo do sistema"
+            placeholder="Ex: Terminal de vendas"
             value={identity.subtitulo}
             onChange={(value) => onIdentityChange("subtitulo", value)}
             icon="fa-tag"
@@ -70,31 +74,27 @@ const StoreIdentitySettings = ({
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
-            Imagens
-          </h3>
+          <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]">
+            Logo do recibo
+          </span>
 
-          <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
-            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
-              Logo do Recibo
-            </label>
-            <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
-              A logo é exibida <strong>colorida</strong> na tela e no
-              compartilhamento (WhatsApp). Na <strong>impressão do recibo</strong> ela
-              é convertida automaticamente para <strong>preto e branco</strong>.
+          <div className="p-4 border border-[var(--border)] rounded-[var(--radius-lg)] bg-[var(--muted)]">
+            <p className="text-xs text-[var(--muted-foreground)] mb-3 leading-relaxed">
+              Exibida colorida na tela e no compartilhamento. Na impressão do
+              recibo ela é convertida automaticamente para preto e branco.
             </p>
             <input
               ref={logoInputRef}
               type="file"
               accept="image/*"
               onChange={onLogoUpload}
-              className="hidden bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+              className="hidden"
             />
 
             {logoPreview ? (
               <div className="flex items-center gap-3">
                 <div
-                  className="bg-surface-100 border border-surface-200 rounded-lg p-2 flex items-center justify-center"
+                  className="bg-[var(--card)] border border-[var(--border)] rounded-[var(--radius-md)] p-2 flex items-center justify-center"
                   style={{ width: 80, height: 60 }}
                 >
                   <img
@@ -103,35 +103,35 @@ const StoreIdentitySettings = ({
                     style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                   />
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-2">
                   <button
                     onClick={() => logoInputRef.current?.click()}
-                    className="text-xs font-bold text-primary hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)] hover:underline"
                   >
-                    <Icon name="rotate-cw" size={13} className="mr-1 inline" /> Trocar
+                    <Icon name="rotate-cw" size={13} /> Trocar
                   </button>
                   <button
                     onClick={onClearLogo}
-                    className="text-xs font-bold text-red-500 hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--danger)] hover:underline"
                   >
-                    <Icon name="trash-2" size={13} className="mr-1 inline" /> Remover
+                    <Icon name="trash-2" size={13} /> Remover
                   </button>
                 </div>
               </div>
             ) : (
               <button
                 onClick={() => logoInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
+                className="w-full border-2 border-dashed border-[var(--border)] rounded-[var(--radius-lg)] py-6 text-center hover:border-[var(--ring)] transition text-[var(--muted-foreground)] hover:text-[var(--foreground)] flex flex-col items-center gap-2"
               >
-                <Icon name="cloud-upload" size={24} className="mb-2 mx-auto" />
-                <span className="text-xs font-bold">Clique para enviar logo</span>
+                <Icon name="cloud-upload" size={24} />
+                <span className="text-xs font-semibold">Clique para enviar a logo</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-surface-200 flex justify-end">
+      <div className="mt-6 pt-5 border-t border-[var(--border)] flex justify-end">
         <Button variant="primary" size="lg" icon="fa-save" loading={isSaving} onClick={onSave}>
           {isSaving ? "Salvando..." : "Salvar identidade"}
         </Button>

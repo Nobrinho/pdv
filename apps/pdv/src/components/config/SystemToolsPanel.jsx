@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { api } from "../../services/api";
 import Button from "../ui/Button";
+import { Card } from "../ui/Card";
+import ConfigCardHeader from "./ConfigCardHeader";
 
 const AccessLinkCard = () => {
   const [invites, setInvites] = useState([]);
@@ -60,37 +62,44 @@ const AccessLinkCard = () => {
   };
 
   return (
-    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
-      <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <Icon name="link" size={16} className="text-[var(--primary)]" /> Links de acesso da loja
-      </h2>
-      <p className="text-xs text-surface-500 mb-4 leading-relaxed">
-        Gere um link que já embute esta loja. Quem abrir o link cai na tela de login com a loja
-        preenchida — só digita usuário e senha (sem precisar do ID da loja).
-      </p>
+    <Card padding="lg">
+      <ConfigCardHeader
+        icon="link"
+        title="Links de acesso"
+        subtitle="Abre o login já com esta loja preenchida"
+      />
 
       <Button variant="primary" fullWidth icon="fa-plus" loading={creating} onClick={generate} className="mb-4">
         {creating ? "Gerando..." : "Gerar novo link"}
       </Button>
 
       <div className="space-y-2">
-        {loading && <p className="text-xs text-surface-400">Carregando...</p>}
+        {loading && <p className="text-xs text-[var(--muted-foreground)]">Carregando...</p>}
         {!loading && invites.length === 0 && (
-          <p className="text-xs text-surface-400">Nenhum link ativo. Gere o primeiro acima.</p>
+          <p className="text-xs text-[var(--muted-foreground)]">Nenhum link ativo. Gere o primeiro acima.</p>
         )}
         {invites.map((inv) => (
-          <div key={inv.id} className="flex items-center gap-2 bg-surface-50 border border-surface-200 rounded-xl p-2 pl-3">
-            <code className="text-xs font-black text-surface-700 flex-1 truncate">{inv.codigo}</code>
+          <div
+            key={inv.id}
+            className="flex items-center gap-2 bg-[var(--muted)] border border-[var(--border)] rounded-[var(--radius-md)] p-2 pl-3"
+          >
+            <code className="text-xs font-semibold text-[var(--foreground)] flex-1 truncate" style={{ fontFamily: "var(--font-mono)" }}>
+              {inv.codigo}
+            </code>
             <button
               onClick={() => copy(inv.codigo)}
-              className="text-[10px] font-black uppercase tracking-widest bg-surface-200 text-surface-700 px-3 py-1.5 rounded-lg hover:bg-surface-300 transition"
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--hover-surface)] transition"
             >
-              <i className={`fas ${copied === inv.codigo ? "fa-check text-green-600" : "fa-copy"} mr-1`}></i>
-              {copied === inv.codigo ? "Copiado" : "Copiar link"}
+              <Icon
+                name={copied === inv.codigo ? "check" : "copy"}
+                size={13}
+                className={copied === inv.codigo ? "text-[var(--success)]" : ""}
+              />
+              {copied === inv.codigo ? "Copiado" : "Copiar"}
             </button>
             <button
               onClick={() => revoke(inv.id)}
-              className="text-surface-400 hover:text-red-500 px-2"
+              className="text-[var(--muted-foreground)] hover:text-[var(--danger)] px-2"
               title="Revogar"
             >
               <Icon name="trash-2" size={15} />
@@ -98,7 +107,7 @@ const AccessLinkCard = () => {
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -117,9 +126,9 @@ const MigrateLocalCard = () => {
       const res = await api.migrateLocalToOnline();
       if (res.success) {
         const total = Object.values(res.summary || {}).reduce((a, b) => a + Number(b || 0), 0);
-        setResult({ ok: true, msg: `Migracao concluida: ${total} registros importados.` });
+        setResult({ ok: true, msg: `Migração concluída: ${total} registros importados.` });
       } else {
-        setResult({ ok: false, msg: res.error || "Falha na migracao." });
+        setResult({ ok: false, msg: res.error || "Falha na migração." });
       }
     } catch (error) {
       setResult({ ok: false, msg: error.message });
@@ -129,27 +138,31 @@ const MigrateLocalCard = () => {
   };
 
   return (
-    <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
-      <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <Icon name="cloud-upload" size={16} className="text-[var(--primary)]" /> Migrar dados locais para a nuvem
-      </h2>
-      <p className="text-xs text-surface-500 mb-4 leading-relaxed">
-        Envia os dados desta instalacao local para a loja online atual. Recomendado apenas em uma loja
+    <Card padding="lg" className="border-[var(--danger-soft-border)]">
+      <ConfigCardHeader
+        icon="cloud-upload"
+        title="Migrar dados locais para a nuvem"
+        subtitle="Ação destrutiva — não pode ser desfeita"
+      />
+      <p className="text-xs text-[var(--muted-foreground)] mb-4 leading-relaxed">
+        Envia os dados desta instalação local para a loja online atual. Recomendado apenas em uma loja
         online nova e vazia.
       </p>
       {result && (
         <div
-          className={`text-xs font-bold mb-3 p-3 rounded-xl ${
-            result.ok ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"
+          className={`text-xs font-semibold mb-3 p-3 rounded-[var(--radius-md)] ${
+            result.ok
+              ? "bg-[var(--success-soft)] text-[var(--success-soft-foreground)]"
+              : "bg-[var(--danger-soft)] text-[var(--danger-soft-foreground)]"
           }`}
         >
           {result.msg}
         </div>
       )}
-      <Button variant="primary" fullWidth icon="fa-cloud-arrow-up" loading={running} onClick={run}>
+      <Button variant="outline" fullWidth icon="fa-cloud-arrow-up" loading={running} onClick={run} className="!text-[var(--danger)] !border-[var(--danger-soft-border)]">
         {running ? "Migrando..." : "Migrar para a loja online"}
       </Button>
-    </div>
+    </Card>
   );
 };
 
@@ -166,21 +179,19 @@ const SystemToolsPanel = ({
 }) => {
   return (
     <div className="space-y-6">
-      <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200">
-        <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <Icon name="printer" size={16} className="text-[var(--muted-foreground)]" /> Impressao
-        </h2>
+      <Card padding="lg">
+        <ConfigCardHeader icon="printer" title="Impressão" subtitle="Dispositivo padrão dos recibos" />
         <div className="flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">
-              Dispositivo Padrao
+            <label className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] mb-1.5 block ml-0.5">
+              Dispositivo padrão
             </label>
             <select
-              className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-100 outline-none focus:ring-2 focus:ring-primary-100 transition text-sm font-medium"
+              className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
               value={selectedPrinter}
               onChange={(e) => onSelectedPrinterChange(e.target.value)}
             >
-              <option value="">Configuracao do Windows</option>
+              <option value="">Configuração do Windows</option>
               {printers.map((printer) => (
                 <option key={printer.name} value={printer.name}>
                   {printer.name}
@@ -189,40 +200,22 @@ const SystemToolsPanel = ({
             </select>
           </div>
           <Button variant="primary" loading={isSavingPrinter} onClick={onSavePrinter}>
-            OK
+            Salvar
           </Button>
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-surface-100 p-6 rounded-2xl shadow-sm border border-surface-200 grow">
-        <h2 className="text-sm font-black mb-4 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-          <Icon name="database" size={16} className="text-[var(--money-positive)]" /> Manutencao Local
-        </h2>
+      <Card padding="lg">
+        <ConfigCardHeader icon="database" title="Manutenção local" subtitle="Backup e restauração dos dados" />
         <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={onBackup}
-            className="bg-green-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 transition shadow-md active:scale-95 flex flex-col items-center gap-2"
-          >
-            <i
-              className={`fas fa-lg ${
-                isBackupRunning ? "fa-circle-notch fa-spin" : "fa-download"
-              }`}
-            ></i>{" "}
+          <Button variant="success" size="lg" icon="fa-download" loading={isBackupRunning} onClick={onBackup} fullWidth>
             {isBackupRunning ? "Executando" : "Backup"}
-          </button>
-          <button
-            onClick={onRestore}
-            className="bg-orange-500/10 text-orange-600 border border-orange-500/20 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-500/20 transition active:scale-95 flex flex-col items-center gap-2"
-          >
-            <i
-              className={`fas fa-lg ${
-                isRestoreRunning ? "fa-circle-notch fa-spin" : "fa-upload"
-              }`}
-            ></i>{" "}
+          </Button>
+          <Button variant="outline" size="lg" icon="fa-upload" loading={isRestoreRunning} onClick={onRestore} fullWidth>
             {isRestoreRunning ? "Restaurando" : "Restaurar"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
       {api.isRemote && !api.isElectron && <AccessLinkCard />}
       {api.isElectron && api.isRemote && <MigrateLocalCard />}

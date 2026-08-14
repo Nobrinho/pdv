@@ -213,8 +213,10 @@ const HistoricoPrecos = () => {
             <button
               key={t}
               onClick={() => handlePeriodChange(t)}
-              className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full transition whitespace-nowrap ${
-                periodType === t ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-400 hover:bg-surface-300"
+              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${
+                periodType === t
+                  ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
+                  : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"
               }`}
             >
               {t === "weekly" ? "Semana" : t === "monthly" ? "Mês" : t === "yearly" ? "Ano" : "Manual"}

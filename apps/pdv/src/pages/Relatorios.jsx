@@ -15,6 +15,12 @@ import { Input, Select } from "../components/ui/Input";
 
 dayjs.locale("pt-br");
 
+const MONO = { fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" };
+const TH =
+  "px-[18px] py-[11px] text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]";
+const CARD =
+  "bg-[var(--card)] border border-[var(--border)] rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] overflow-hidden";
+
 const Relatorios = () => {
   const { showAlert } = useAlert();
   const [page, setPage] = useState(1);
@@ -189,11 +195,30 @@ const Relatorios = () => {
     return <PageSkeleton cards={6} />;
   }
 
+  const periodChip = (key, label) => (
+    <button
+      onClick={() => handlePeriodChange(key)}
+      className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${
+        periodType === key
+          ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
+          : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  const filterLabel =
+    "block text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)] mb-1.5";
+
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50 custom-scrollbar">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-surface-800">
-          Relatórios Financeiros
+        <h1
+          className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          Relatórios
         </h1>
         <Button
           variant="outline"
@@ -207,42 +232,29 @@ const Relatorios = () => {
         </Button>
       </div>
 
-      {/* --- BARRA DE FILTROS APRIMORADA --- */}
-      <div className="bg-surface-100 p-4 rounded-xl shadow-sm mb-6 border border-surface-200 flex flex-col gap-4">
+      {/* --- BARRA DE FILTROS --- */}
+      <div className={`${CARD} p-4 mb-6 flex flex-col gap-4`}>
         {hasInvalidDateRange && (
-          <div className="bg-yellow-500/10 text-yellow-700 border border-yellow-500/20 rounded-lg p-2.5 text-xs font-semibold">
-            Data inicial nao pode ser maior que a data final.
+          <div className="bg-[var(--warning-soft)] text-[var(--warning-soft-foreground)] border border-[var(--warning-soft-border)] rounded-[var(--radius-md)] p-2.5 text-xs font-semibold">
+            Data inicial não pode ser maior que a data final.
           </div>
         )}
         {/* Filtros Rápidos */}
-        <div className="flex items-center gap-2 border-b pb-4">
+        <div className="flex items-center gap-2 border-b border-[var(--border)] pb-4">
           <div className="flex gap-2 overflow-x-auto flex-1">
-            <button
-              onClick={() => handlePeriodChange("weekly")}
-              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "weekly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
-            >
-              Esta Semana
-            </button>
-            <button
-              onClick={() => handlePeriodChange("monthly")}
-              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "monthly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
-            >
-              Este Mês
-            </button>
-            <button
-              onClick={() => handlePeriodChange("yearly")}
-              className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${periodType === "yearly" ? "bg-primary-600 text-white font-bold" : "bg-surface-200 text-surface-600 hover:bg-surface-300"}`}
-            >
-              Este Ano
-            </button>
+            {periodChip("weekly", "Esta semana")}
+            {periodChip("monthly", "Este mês")}
+            {periodChip("yearly", "Este ano")}
           </div>
           <button
             onClick={() => setShowFilters((v) => !v)}
-            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
-              selectedSeller !== "all" || selectedPayment !== "all" ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-500"
+            className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] text-[11px] font-semibold uppercase tracking-wider transition ${
+              selectedSeller !== "all" || selectedPayment !== "all"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                : "bg-[var(--muted)] text-[var(--muted-foreground)]"
             }`}
           >
-            <i className={`fas fa-sliders transition-transform ${showFilters ? "rotate-180" : ""}`}></i>
+            <Icon name="sliders-horizontal" size={13} className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
             Filtros
           </button>
         </div>
@@ -250,9 +262,7 @@ const Relatorios = () => {
         {/* Inputs */}
         <div className={`${showFilters ? "grid" : "hidden"} lg:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end`}>
           <div>
-            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-              Início
-            </label>
+            <label className={filterLabel}>Início</label>
             <Input
               type="date"
               value={startDate}
@@ -263,9 +273,7 @@ const Relatorios = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-              Fim
-            </label>
+            <label className={filterLabel}>Fim</label>
             <Input
               type="date"
               value={endDate}
@@ -276,9 +284,7 @@ const Relatorios = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-              Vendedor
-            </label>
+            <label className={filterLabel}>Vendedor</label>
             <Select
               value={selectedSeller}
               onChange={(e) => setSelectedSeller(e.target.value)}
@@ -294,9 +300,7 @@ const Relatorios = () => {
             </Select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">
-              Pagamento
-            </label>
+            <label className={filterLabel}>Pagamento</label>
             <Select
               value={selectedPayment}
               onChange={(e) => setSelectedPayment(e.target.value)}
@@ -313,149 +317,103 @@ const Relatorios = () => {
       </div>
 
       {/* --- KPIS (Cards) --- */}
-      <h2 className="text-xs font-bold text-surface-400 uppercase tracking-widest mb-3 ml-1">
-        Indicadores Financeiros
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-6">
-        <StatCard
-          title="Fat. Produtos"
-          value={metrics.faturamento}
-          color="blue"
-          icon="fa-chart-line"
-          tooltip="Valor total das peças vendidas (excluindo Mão de Obra)."
-        />
-        <StatCard
-          title="Custos Peças"
-          value={metrics.custo}
-          color="red"
-          icon="fa-tags"
-          tooltip="Custo de aquisição das peças vendidas."
-        />
-        <StatCard
-          title="M.O. (Despesa)"
-          value={metrics.maoDeObra}
-          color="orange"
-          icon="fa-wrench"
-          tooltip="Valor TOTAL pago aos mecânicos (Serviços + Vendas)."
-        />
-        <StatCard
-          title="Acréscimos"
-          value={metrics.acrescimos}
-          color="green"
-          icon="fa-plus-circle"
-          tooltip="Taxas extras cobradas nas vendas."
-        />
-        <StatCard
-          title="Descontos"
-          value={metrics.descontos}
-          color="gray"
-          icon="fa-percent"
-          tooltip="Total de descontos concedidos."
-        />
-        <StatCard
-          title="Comissões"
-          value={metrics.comissoes}
-          color="purple"
-          icon="fa-user-tag"
-          tooltip="Valor devido aos vendedores sobre o faturamento de peças."
-        />
+      <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)] mb-3 ml-0.5">
+        Indicadores financeiros
+      </span>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-6 mt-3">
+        <StatCard title="Fat. produtos" value={metrics.faturamento} color="blue" icon="fa-chart-line" tooltip="Valor total das peças vendidas (excluindo mão de obra)." />
+        <StatCard title="Custos peças" value={metrics.custo} color="red" icon="fa-tags" tooltip="Custo de aquisição das peças vendidas." />
+        <StatCard title="M.O. (despesa)" value={metrics.maoDeObra} color="orange" icon="fa-wrench" tooltip="Valor total pago aos mecânicos (serviços + vendas)." />
+        <StatCard title="Acréscimos" value={metrics.acrescimos} color="green" icon="fa-plus-circle" tooltip="Taxas extras cobradas nas vendas." />
+        <StatCard title="Descontos" value={metrics.descontos} color="gray" icon="fa-percent" tooltip="Total de descontos concedidos." />
+        <StatCard title="Comissões" value={metrics.comissoes} color="purple" icon="fa-user-tag" tooltip="Valor devido aos vendedores sobre o faturamento de peças." />
       </div>
 
       {/* Lucro Líquido */}
-      <div className="bg-green-500/10 p-4 rounded-xl shadow-sm border border-green-500/20 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div className="bg-[var(--success-soft)] p-4 rounded-[var(--radius-xl)] border border-[var(--success-soft-border)] mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
-          <p className="text-sm text-green-600 font-bold uppercase tracking-tight">
-            Lucro Líquido Real
+          <p className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--success-soft-foreground)]">
+            Lucro líquido real
           </p>
-          <p className="text-xs text-green-600/80">
-            Fat. Peças + Acréscimos - (Custo Peças + Comissões)
+          <p className="text-xs text-[var(--success-soft-foreground)] opacity-80 mt-0.5">
+            Fat. peças + acréscimos − (custo peças + comissões)
           </p>
         </div>
-        <p className="text-3xl font-bold text-green-600 tracking-tight">
+        <p className="text-3xl font-semibold text-[var(--money-positive)]" style={MONO}>
           {formatCurrency(metrics.lucro)}
         </p>
       </div>
 
       {/* --- TABELAS --- */}
       {selectedPayment === "Múltiplos" && (
-        <div className="mb-6 bg-primary-500/10 text-primary-600 rounded-xl border border-primary-500/20 p-4">
-          <h3 className="font-bold mb-2 flex items-center">
-            <Icon name="info" size={13} className="mr-1 inline" /> Detalhamento de Vendas
-            com Múltiplos Pagamentos
+        <div className="mb-6 bg-[var(--info-soft)] text-[var(--info-soft-foreground)] rounded-[var(--radius-xl)] border border-[var(--info-soft-border)] p-4">
+          <h3 className="font-semibold mb-1.5 flex items-center gap-1.5">
+            <Icon name="info" size={15} /> Vendas com múltiplos pagamentos
           </h3>
-          <p className="text-sm opacity-80 mb-0">
-            Abaixo estão listadas as vendas onde foram utilizadas múltiplas
-            formas de pagamento.
+          <p className="text-sm opacity-80">
+            Abaixo estão listadas as vendas onde foram utilizadas múltiplas formas de pagamento.
           </p>
         </div>
       )}
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[500px]">
         {/* Esquerda: Vendas Detalhadas */}
-        <div className="flex-[2] bg-surface-100 rounded-xl shadow-md flex flex-col overflow-hidden border border-surface-200 min-h-[300px]">
-          <div className="p-3 bg-surface-50 border-b font-bold text-surface-800 text-sm flex justify-between items-center">
-            <span>Extrato de Vendas</span>
-            <span className="text-xs bg-surface-100 px-2 py-1 rounded border text-surface-500">
+        <div className={`${CARD} flex-[2] flex flex-col min-h-[300px]`}>
+          <div className="px-[18px] py-3 border-b border-[var(--border)] flex justify-between items-center">
+            <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]">
+              Extrato de vendas
+            </span>
+            <span className="text-[11px] font-medium text-[var(--muted-foreground)] bg-[var(--muted)] px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--border)]" style={MONO}>
               {filteredSales.length} registros
             </span>
           </div>
           <div className="overflow-y-auto flex-1 custom-scrollbar">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-surface-50 sticky top-0 z-10">
+            <table className="min-w-full">
+              <thead className="bg-[var(--content2)] sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-surface-500 uppercase">
-                    Data
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-surface-500 uppercase">
-                    Vendedor
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-surface-500 uppercase">
-                    Total Venda
-                  </th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-surface-500 uppercase">
-                    Pagto
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-surface-500 uppercase">
-                    Comissão
-                  </th>
+                  <th className={`${TH} text-left`}>Data</th>
+                  <th className={`${TH} text-left`}>Vendedor</th>
+                  <th className={`${TH} text-right`}>Total venda</th>
+                  <th className={`${TH} text-center`}>Pagto</th>
+                  <th className={`${TH} text-right`}>Comissão</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody>
                 {paginatedSales.map((v) => (
                   <tr
                     key={v.id}
-                    className={`hover:bg-surface-50 ${v.cancelada ? "bg-red-500/10 text-red-500 text-red-400" : ""}`}
+                    className={`border-t border-[var(--border)] transition-colors ${v.cancelada ? "bg-[var(--danger-soft)]" : "hover:bg-[var(--hover-surface)]"}`}
                   >
-                    <td className="px-4 py-2 text-sm">
+                    <td className="px-[18px] py-3 text-[13px] text-[var(--foreground)]" style={MONO}>
                       {dayjs(v.data_venda).format("DD/MM HH:mm")}
                     </td>
-                    <td className="px-4 py-2 text-sm">{v.vendedor_nome}</td>
-                    <td className="px-4 py-2 text-sm text-right font-medium">
+                    <td className="px-[18px] py-3 text-[13px] text-[var(--foreground)]">{v.vendedor_nome}</td>
+                    <td className="px-[18px] py-3 text-[13px] text-right font-semibold text-[var(--foreground)]" style={MONO}>
                       {formatCurrency(v.total_final)}
                     </td>
-                    <td className="px-4 py-2 text-center text-xs">
+                    <td className="px-[18px] py-3 text-center text-xs">
                       {v.lista_pagamentos && v.lista_pagamentos.length > 0 ? (
                         <div className="flex flex-col gap-1 items-center">
                           {v.lista_pagamentos.map((p, i) => (
-                            <span key={i} className="px-2 py-0.5 rounded bg-primary-500/10 text-primary-600 text-indigo-700 border border-indigo-100 whitespace-nowrap text-[10px]">
+                            <span key={i} className="px-2 py-0.5 rounded-[var(--radius-sm)] bg-[var(--primary-soft)] text-[var(--primary-soft-foreground)] border border-[var(--primary-soft-border)] whitespace-nowrap text-[10px]">
                               {p.metodo}: {formatCurrency(p.valor)}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className={`px-2 py-0.5 rounded ${v.forma_pagamento === "Múltiplos" ? "bg-indigo-100 text-indigo-700" : "bg-surface-200 text-surface-600"}`}>
+                        <span className="px-2 py-0.5 rounded-[var(--radius-sm)] bg-[var(--muted)] text-[var(--muted-foreground)]">
                           {standardizeMethod(v.forma_pagamento) || "-"}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-sm text-right text-purple-600">
+                    <td className="px-[18px] py-3 text-[13px] text-right text-[var(--foreground)]" style={MONO}>
                       {v.cancelada ? "-" : formatCurrency(v.comissao_calculada)}
                     </td>
                   </tr>
                 ))}
                 {paginatedSales.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="p-8 text-center text-surface-400">
+                    <td colSpan="5" className="p-8 text-center text-[var(--muted-foreground)]">
                       Nenhuma venda neste período.
                     </td>
                   </tr>
@@ -464,66 +422,51 @@ const Relatorios = () => {
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
-              <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
-                Pag {page} de {totalPages} • {filteredSales.length} total
+            <div className="px-[18px] py-3 border-t border-[var(--border)] flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">
+                Pág {page} de {totalPages} · {filteredSales.length} total
               </span>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
-                >
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                   Anterior
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
-                >
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                   Próximo
-                </button>
+                </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Direita: Resumos */}
+        {/* Direita: Resumos (quebras lado a lado) */}
         <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-[300px]">
-          {/* Tabela: Receita Produtos por Método */}
-          <div className="bg-surface-100 rounded-xl shadow-md flex flex-col overflow-hidden max-h-[50%] border border-primary-100">
-            <div className="p-3 bg-primary-50 border-b border-primary-100 font-bold text-primary-800 text-sm">
-              Total Recebido (Por Método)
+          {/* Total recebido por método */}
+          <div className={`${CARD} flex flex-col max-h-[50%]`}>
+            <div className="px-[18px] py-3 border-b border-[var(--border)]">
+              <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]">
+                Total recebido por método
+              </span>
             </div>
             <div className="overflow-y-auto flex-1 custom-scrollbar">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-surface-50 sticky top-0">
+              <table className="min-w-full">
+                <thead className="bg-[var(--content2)] sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-surface-500 uppercase">
-                      Método
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-surface-500 uppercase">
-                      Valor
-                    </th>
+                    <th className={`${TH} text-left`}>Método</th>
+                    <th className={`${TH} text-right`}>Valor</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {paymentSummary.map((p, i) => (
-                    <tr key={i} className="hover:bg-surface-50">
-                      <td className="px-4 py-2 text-sm text-surface-900">
-                        {p.metodo}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-right font-bold text-primary-600">
+                    <tr key={i} className="border-t border-[var(--border)] hover:bg-[var(--hover-surface)] transition-colors">
+                      <td className="px-[18px] py-3 text-[13px] text-[var(--foreground)]">{p.metodo}</td>
+                      <td className="px-[18px] py-3 text-[13px] text-right font-semibold text-[var(--foreground)]" style={MONO}>
                         {formatCurrency(p.valor)}
                       </td>
                     </tr>
                   ))}
                   {paymentSummary.length === 0 && (
                     <tr>
-                      <td
-                        colSpan="2"
-                        className="p-4 text-center text-surface-400 text-xs"
-                      >
+                      <td colSpan="2" className="p-4 text-center text-[var(--muted-foreground)] text-xs">
                         Sem dados
                       </td>
                     </tr>
@@ -533,40 +476,33 @@ const Relatorios = () => {
             </div>
           </div>
 
-          {/* Tabela: Mão de Obra a Pagar */}
-          <div className="bg-surface-100 rounded-xl shadow-md flex flex-col overflow-hidden flex-1 border border-orange-100">
-            <div className="p-3 bg-orange-500/10 text-orange-600 border-b border-orange-100 font-bold text-orange-800 text-sm">
-              Repasse Mão de Obra
+          {/* Repasse mão de obra */}
+          <div className={`${CARD} flex flex-col flex-1`}>
+            <div className="px-[18px] py-3 border-b border-[var(--border)]">
+              <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)]">
+                Repasse mão de obra
+              </span>
             </div>
             <div className="overflow-y-auto flex-1 custom-scrollbar">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-surface-50 sticky top-0">
+              <table className="min-w-full">
+                <thead className="bg-[var(--content2)] sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-surface-500 uppercase">
-                      Nome
-                    </th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-surface-500 uppercase">
-                      A Pagar
-                    </th>
+                    <th className={`${TH} text-left`}>Nome</th>
+                    <th className={`${TH} text-right`}>A pagar</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {laborSummary.map((l, i) => (
-                    <tr key={i} className="hover:bg-surface-50">
-                      <td className="px-4 py-2 text-sm text-surface-900">
-                        {l.nome}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-right font-bold text-orange-600">
+                    <tr key={i} className="border-t border-[var(--border)] hover:bg-[var(--hover-surface)] transition-colors">
+                      <td className="px-[18px] py-3 text-[13px] text-[var(--foreground)]">{l.nome}</td>
+                      <td className="px-[18px] py-3 text-[13px] text-right font-semibold text-[var(--warning-icon)]" style={MONO}>
                         {formatCurrency(l.total)}
                       </td>
                     </tr>
                   ))}
                   {laborSummary.length === 0 && (
                     <tr>
-                      <td
-                        colSpan="2"
-                        className="p-4 text-center text-surface-400 text-xs"
-                      >
+                      <td colSpan="2" className="p-4 text-center text-[var(--muted-foreground)] text-xs">
                         Sem dados
                       </td>
                     </tr>

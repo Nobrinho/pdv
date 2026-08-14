@@ -5,17 +5,22 @@ import FormField from "../ui/FormField";
 import Button from "../ui/Button";
 import StatusBadge from "../ui/StatusBadge";
 import { Card } from "../ui/Card";
+import ConfigCardHeader from "./ConfigCardHeader";
 
 const userColumns = ({ onDeleteUser, deletingUserId }) => [
   { key: "nome", label: "Nome completo", bold: true },
   {
     key: "username",
-    label: "Login / Usuario",
-    format: (v) => <span className="font-mono text-surface-500">{v}</span>,
+    label: "Login / usuário",
+    format: (v) => (
+      <span className="text-[var(--muted-foreground)]" style={{ fontFamily: "var(--font-mono)" }}>
+        {v}
+      </span>
+    ),
   },
   {
     key: "cargo",
-    label: "Permissao",
+    label: "Permissão",
     align: "center",
     format: (v) => {
       let type = "success";
@@ -34,19 +39,19 @@ const userColumns = ({ onDeleteUser, deletingUserId }) => [
   },
   {
     key: "actions",
-    label: "Acao",
+    label: "Ações",
     align: "center",
     format: (_, row) => (
       <button
         onClick={() => onDeleteUser(row.id)}
-        className="text-red-400 hover:text-red-600 hover:bg-red-500/10 text-red-500 p-2 rounded-lg transition"
-        title="Excluir Usuario"
+        className="text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] p-2 rounded-[var(--radius-md)] transition"
+        title="Excluir usuário"
       >
-        <i
-          className={`fas ${
-            deletingUserId === row.id ? "fa-spinner fa-spin" : "fa-trash"
-          }`}
-        ></i>
+        <Icon
+          name={deletingUserId === row.id ? "refresh-cw" : "trash-2"}
+          size={16}
+          className={deletingUserId === row.id ? "animate-spin" : ""}
+        />
       </button>
     ),
   },
@@ -65,27 +70,29 @@ const UserManager = ({
 }) => {
   return (
     <Card padding="lg">
-      <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <Icon name="users" size={16} className="text-[var(--primary)]" /> Usuarios de Acesso
-      </h2>
+      <ConfigCardHeader
+        icon="users"
+        title="Usuários e cargos"
+        subtitle="Quem tem acesso ao terminal"
+      />
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6">
         <form
           onSubmit={onAddUser}
-          className="lg:w-80 xl:w-96 space-y-4 shrink-0 bg-surface-50 p-6 rounded-2xl border border-surface-200"
+          className="lg:w-80 xl:w-96 space-y-4 shrink-0 bg-[var(--muted)] p-5 rounded-[var(--radius-lg)] border border-[var(--border)]"
         >
-          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4">
-            Novo Acesso
-          </h3>
+          <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)] block">
+            Novo acesso
+          </span>
           <FormField
-            label="Nome Completo"
-            placeholder="Ex: Joao da Silva"
+            label="Nome completo"
+            placeholder="Ex: João da Silva"
             value={newUser.nome}
             onChange={(v) => onNewUserChange({ ...newUser, nome: v })}
             required
           />
           <FormField
-            label="Login / Usuario"
+            label="Login / usuário"
             placeholder="Ex: joao.vendas"
             value={newUser.username}
             onChange={(v) => onNewUserChange({ ...newUser, username: v })}
@@ -94,9 +101,9 @@ const UserManager = ({
 
           <div className="relative">
             <FormField
-              label="Senha Segura"
+              label="Senha"
               type={showPassword ? "text" : "password"}
-              placeholder="******"
+              placeholder="••••••"
               value={newUser.password}
               onChange={(v) => onNewUserChange({ ...newUser, password: v })}
               required
@@ -104,41 +111,38 @@ const UserManager = ({
             <button
               type="button"
               onClick={onTogglePassword}
-              className="absolute right-3 top-[34px] text-surface-400 hover:text-indigo-600"
+              className="absolute right-3 top-[32px] text-[var(--muted-foreground)] hover:text-[var(--primary)]"
             >
-              <i className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"} text-xs`}></i>
+              <Icon name={showPassword ? "eye-off" : "eye"} size={15} />
             </button>
           </div>
 
-          <div>
-            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1 block">
-              Permissao
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] ml-0.5">
+              Permissão
             </label>
             <select
-              className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-100 outline-none focus:ring-2 focus:ring-indigo-100 transition text-sm font-medium"
+              className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
               value={newUser.cargo}
               onChange={(e) => onNewUserChange({ ...newUser, cargo: e.target.value })}
             >
-              <option value="vendedor">Vendedor (Basico)</option>
-              <option value="caixa">Caixa (Restrito)</option>
-              <option value="admin">Administrador (Total)</option>
+              <option value="vendedor">Vendedor (básico)</option>
+              <option value="caixa">Caixa (restrito)</option>
+              <option value="admin">Administrador (total)</option>
             </select>
           </div>
 
-          <Button type="submit" variant="primary" size="lg" fullWidth icon="fa-user-plus" className="mt-4">
+          <Button type="submit" variant="primary" size="lg" fullWidth icon="fa-user-plus" className="mt-2">
             Criar usuário
           </Button>
         </form>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-4 ml-4">
-            Usuarios com Acesso ao Terminal
-          </h3>
+        <div className="flex-1 overflow-hidden flex flex-col min-w-0">
           <DataTable
             columns={userColumns({ onDeleteUser, deletingUserId })}
             data={users}
             loading={loading}
-            emptyMessage="Nenhum usuario de acesso cadastrado."
+            emptyMessage="Nenhum usuário de acesso cadastrado."
           />
         </div>
       </div>

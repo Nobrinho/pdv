@@ -1,8 +1,8 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import FormField from "../ui/FormField";
 import Button from "../ui/Button";
 import { Card } from "../ui/Card";
+import ConfigCardHeader from "./ConfigCardHeader";
 
 const CommissionSettings = ({
   defaultCommission = "",
@@ -14,13 +14,15 @@ const CommissionSettings = ({
 }) => {
   return (
     <Card padding="lg" className="flex flex-col">
-      <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
-        <Icon name="percent" size={16} className="text-[var(--primary)]" /> Taxas de Comissao
-      </h2>
+      <ConfigCardHeader
+        icon="percent"
+        title="Taxas de comissão"
+        subtitle="Só valem para vendas futuras"
+      />
 
       <div className="space-y-4 flex-1">
         <FormField
-          label="Pecas Novas (% Total)"
+          label="Peças novas (% total)"
           type="number"
           placeholder="Ex: 5"
           value={defaultCommission}
@@ -28,7 +30,7 @@ const CommissionSettings = ({
           icon="fa-tag"
         />
         <FormField
-          label="Pecas Usadas (% Lucro)"
+          label="Peças usadas (% lucro)"
           type="number"
           placeholder="Ex: 25"
           value={usedCommission}

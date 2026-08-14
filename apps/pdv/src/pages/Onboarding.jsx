@@ -177,45 +177,31 @@ const Onboarding = () => {
     exit: (direction) => ({ x: direction < 0 ? 300 : -300, opacity: 0 }),
   };
 
-  const bgStyle = tenant?.bgBase64
-    ? {
-        backgroundImage: `url(${tenant.bgBase64})`,
-        backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-      }
-    : {};
-
   return (
-    <div
-      className={`fixed inset-0 flex items-center justify-center p-4 overflow-hidden antialiased font-sans select-none ${
-        !tenant?.bgBase64 ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-950" : ""
-      }`}
-      style={bgStyle}
-    >
-      <div className="bg-surface-100 w-full max-w-2xl rounded-[2rem] shadow-2xl xl:shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden relative z-10 border border-surface-200/60 pb-4">
-        <div className="bg-surface-50 p-6 md:px-10 border-b border-surface-200 shadow-sm flex items-center justify-between">
+    <div className="fixed inset-0 flex items-center justify-center p-4 overflow-hidden antialiased font-sans select-none bg-[var(--sidebar)]">
+      <div className="bg-[var(--card)] w-full max-w-2xl rounded-[var(--radius-2xl)] shadow-2xl overflow-hidden relative z-10 border border-[var(--border)] pb-4">
+        <div className="bg-[var(--content1)] p-6 md:px-10 border-b border-[var(--border)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-surface-800 text-surface-100 flex items-center justify-center rounded-xl shadow-md">
-              <Icon name="layers" size={16} />
+            <div className="w-10 h-10 bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center rounded-[var(--radius-md)] shadow-sm">
+              <Icon name="store" size={18} />
             </div>
             <div>
-              <h1 className="text-lg font-black text-surface-800 tracking-tight leading-none">
+              <h1 className="text-lg font-semibold text-[var(--foreground)] tracking-tight leading-none" style={{ fontFamily: "var(--font-display)" }}>
                 SysControl
               </h1>
-              <p className="text-[10px] text-surface-400 font-bold uppercase tracking-widest mt-1">
-                Configuracao inicial
+              <p className="text-[10px] text-[var(--muted-foreground)] font-semibold uppercase tracking-[var(--tracking-caps)] mt-1">
+                Configuração inicial
               </p>
             </div>
           </div>
 
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black text-surface-500 uppercase tracking-widest mb-2">
+            <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] mb-2">
               Passo {step} de 3
             </span>
-            <div className="w-24 h-1.5 bg-surface-200 rounded-full overflow-hidden">
+            <div className="w-24 h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-primary-600"
+                className="h-full bg-[var(--primary)]"
                 initial={{ width: "33%" }}
                 animate={{ width: `${(step / 3) * 100}%` }}
                 transition={{ duration: 0.6, ease: "circOut" }}
@@ -243,7 +229,7 @@ const Onboarding = () => {
                       <Icon name="store" size={20} className="text-[var(--foreground)]" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-black text-surface-800 tracking-tight">
+                      <h2 className="text-xl font-semibold text-[var(--foreground)] tracking-tight">
                         Identidade da Loja
                       </h2>
                       <p className="text-sm text-surface-500 mt-1 leading-relaxed">
@@ -335,7 +321,7 @@ const Onboarding = () => {
                     <div className="w-16 h-16 bg-surface-200 border border-surface-300 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm transform -rotate-3">
                       <Icon name="percent" size={24} className="text-[var(--foreground)]" />
                     </div>
-                    <h2 className="text-2xl font-black text-surface-800 tracking-tight">
+                    <h2 className="text-2xl font-semibold text-[var(--foreground)] tracking-tight">
                       Comissoes Padrao
                     </h2>
                     <p className="text-sm text-surface-500 mt-2 max-w-sm mx-auto">
@@ -400,7 +386,7 @@ const Onboarding = () => {
                       <Icon name="shield" size={24} className="text-[var(--foreground)]" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-black text-surface-800 tracking-tight">
+                      <h2 className="text-xl font-semibold text-[var(--foreground)] tracking-tight">
                         Administrador do Sistema
                       </h2>
                       <p className="text-sm text-surface-500 mt-1 leading-relaxed">

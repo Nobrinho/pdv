@@ -134,21 +134,25 @@ const Servicos = () => {
       label: "Data", 
       format: (val) => dayjs(val).format("DD/MM/YYYY HH:mm") 
     },
-    { 
-      key: "trocador_nome", 
+    {
+      key: "trocador_nome",
       label: "Responsável",
       format: (val) => val ? (
-        <span className="bg-surface-200 text-surface-800 px-2 py-0.5 rounded text-[10px] font-bold border border-surface-200 uppercase">
+        <span className="bg-[var(--muted)] text-[var(--foreground)] px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium border border-[var(--border)]">
           {val}
         </span>
-      ) : <span className="text-red-400 text-xs italic">Excluído</span>
+      ) : <span className="text-[var(--danger)] text-xs italic">Excluído</span>
     },
     { key: "descricao", label: "Descrição" },
-    { 
-      key: "valor", 
-      label: "Valor Pago", 
-      align: "right", 
-      format: (val) => <span className="font-bold text-orange-600">{formatCurrency(val)}</span>
+    {
+      key: "valor",
+      label: "Valor pago",
+      align: "right",
+      format: (val) => (
+        <span className="font-semibold text-[var(--warning-icon)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
+          {formatCurrency(val)}
+        </span>
+      )
     }
   ];
 
@@ -168,12 +172,12 @@ const Servicos = () => {
             <Icon name="plus" size={14} className="text-[var(--primary)]" /> Novo registro
           </h2>
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 ml-1">
-                Responsável (Trocador)
+            <div className="flex flex-col gap-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] ml-0.5">
+                Responsável (trocador)
               </label>
               <select
-                className="w-full border border-surface-300 rounded-xl p-2.5 bg-surface-50 focus:ring-2 focus:ring-primary-100 focus:border-primary-400 outline-none transition text-sm font-medium"
+                className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
                 value={formData.trocadorId}
                 onChange={(e) => setFormData({ ...formData, trocadorId: e.target.value })}
                 required
@@ -215,30 +219,30 @@ const Servicos = () => {
 
         {/* --- COLUNA DIREITA: RELATÓRIO --- */}
         <div className="flex-1 flex flex-col lg:h-full lg:overflow-hidden gap-4">
-          <div className="bg-surface-100 p-4 rounded-2xl shadow-sm border border-surface-200 flex flex-col gap-4">
+          <div className="bg-[var(--card)] p-4 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <div className="flex gap-2 overflow-x-auto custom-scrollbar flex-1">
                 {['weekly', 'monthly', 'yearly'].map(period => (
                   <button
                     key={period}
                     onClick={() => handlePeriodChange(period)}
-                    className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all tracking-wider whitespace-nowrap ${
+                    className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${
                       periodType === period
-                        ? "bg-primary-600 text-white shadow-[0_8px_20px_-12px_rgba(37,99,235,0.85)]"
-                        : "bg-surface-200 text-surface-400 hover:bg-surface-300"
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"
                     }`}
                   >
-                    {period === 'weekly' ? 'Esta Semana' : period === 'monthly' ? 'Este Mês' : 'Este Ano'}
+                    {period === 'weekly' ? 'Esta semana' : period === 'monthly' ? 'Este mês' : 'Este ano'}
                   </button>
                 ))}
               </div>
               <button
                 onClick={() => setShowFilters((v) => !v)}
-                className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
-                  selectedMechanicFilter !== "all" ? "bg-primary-600 text-white" : "bg-surface-200 text-surface-500"
+                className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] text-[11px] font-semibold uppercase tracking-wider transition ${
+                  selectedMechanicFilter !== "all" ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--muted)] text-[var(--muted-foreground)]"
                 }`}
               >
-                <Icon name="settings" size={13} className={showFilters ? "rotate-180 transition-transform" : "transition-transform"} />
+                <Icon name="sliders-horizontal" size={13} className={showFilters ? "rotate-180 transition-transform" : "transition-transform"} />
                 Filtros
               </button>
             </div>
@@ -256,10 +260,10 @@ const Servicos = () => {
                 value={endDate}
                 onChange={(val) => { setEndDate(val); setPeriodType("custom"); setPage(1); }}
               />
-              <div>
-                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-1 block ml-1">Mecânico</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] block ml-0.5">Mecânico</label>
                 <select
-                  className="w-full border border-surface-300 rounded-xl p-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-100 outline-none bg-surface-100 transition-all"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
                   value={selectedMechanicFilter}
                   onChange={(e) => { setSelectedMechanicFilter(e.target.value); setPage(1); }}
                 >
@@ -298,25 +302,17 @@ const Servicos = () => {
               emptyMessage="Nenhum serviço registrado para este período."
             />
             {totalPages > 1 && (
-              <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
-                <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
-                  Pag {page} de {totalPages} • {totalRecords} total
+              <div className="px-[18px] py-3 border-t border-[var(--border)] flex justify-between items-center shrink-0">
+                <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">
+                  Pág {page} de {totalPages} · {totalRecords} total
                 </span>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                     Anterior
-                  </button>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
-                  >
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                     Próximo
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

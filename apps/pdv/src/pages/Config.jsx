@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
-import { processLogoForWeb, processBackgroundImage } from "../context/TenantContext";
+import { processLogoForWeb } from "../context/TenantContext";
 import { api } from "../services/api";
-import FormField from "../components/ui/FormField";
 import CommissionSettings from "../components/config/CommissionSettings";
-import LocalThemePicker from "../components/config/LocalThemePicker";
 import RoleManager from "../components/config/RoleManager";
 import StoreIdentitySettings from "../components/config/StoreIdentitySettings";
 import SystemToolsPanel from "../components/config/SystemToolsPanel";
@@ -24,6 +22,9 @@ const INITIAL_USER_FORM = {
   cargo: "vendedor",
 };
 
+// Marca fixa SysControl (sem white-label): a identidade guarda só os dados que
+// saem impressos no recibo — nome, contato, documento e a logo. Cores/tema não
+// são mais configuráveis por loja (ver docs/DESIGN_SYSTEM.md).
 const INITIAL_IDENTITY = {
   nome: "",
   subtitulo: "",
@@ -31,27 +32,25 @@ const INITIAL_IDENTITY = {
   cidade: "",
   telefone: "",
   documento: "",
-  corPrimaria: "#2563EB",
-  corSecundaria: "#4F46E5",
   devNome: "",
   devLink: "",
 };
 
 const Config = () => {
   const { showAlert, showConfirm } = useAlert();
-  const { tenant, saveTenantBatch, updateTenant } = useTenant();
+  const { tenant, saveTenantBatch } = useTenant();
 
   const [roles, setRoles] = useState([]);
   const [newRole, setNewRole] = useState("");
   const [printers, setPrinters] = useState([]);
   const [selectedPrinter, setSelectedPrinter] = useState("");
 
-  const [defaultCommission, setDefaultCommission] = useState(""); 
-  const [usedCommission, setUsedCommission] = useState(""); 
+  const [defaultCommission, setDefaultCommission] = useState("");
+  const [usedCommission, setUsedCommission] = useState("");
 
   const [systemUsers, setSystemUsers] = useState([]);
   const [newUser, setNewUser] = useState(INITIAL_USER_FORM);
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -64,26 +63,11 @@ const Config = () => {
   const [isBackupRunning, setIsBackupRunning] = useState(false);
   const [isRestoreRunning, setIsRestoreRunning] = useState(false);
 
-  const availableThemes = [
-    { id: "default", name: "Azul Padrão", color: "#3B82F6" },
-    { id: "emerald", name: "Esmeralda", color: "#10B981" },
-    { id: "rose", name: "Rosa", color: "#F43F5E" },
-    { id: "amber", name: "Âmbar", color: "#F59E0B" },
-    { id: "violet", name: "Violeta", color: "#8B5CF6" },
-    { id: "cyan", name: "Ciano", color: "#06B6D4" },
-    { id: "fuchsia", name: "Fúcsia", color: "#D946EF" },
-    { id: "orange", name: "Laranja", color: "#F97316" },
-    { id: "teal", name: "Verde Água", color: "#14B8A6" },
-    { id: "slate", name: "Grafite", color: "#64748B" },
-  ];
-
-  // --- WHITE LABEL: Estado local da identidade ---
+  // --- Identidade da loja (dados do recibo) ---
   const [identity, setIdentity] = useState(INITIAL_IDENTITY);
   const [logoPreview, setLogoPreview] = useState("");
-  const [bgPreview, setBgPreview] = useState("");
   const [savingIdentity, setSavingIdentity] = useState(false);
   const logoInputRef = useRef(null);
-  const bgInputRef = useRef(null);
 
   // Sincronizar estado local com tenant carregado
   useEffect(() => {
@@ -96,13 +80,10 @@ const Config = () => {
         cidade: tenant.cidade || "",
         telefone: tenant.telefone || "",
         documento: tenant.documento || "",
-        corPrimaria: tenant.corPrimaria || INITIAL_IDENTITY.corPrimaria,
-        corSecundaria: tenant.corSecundaria || INITIAL_IDENTITY.corSecundaria,
         devNome: tenant.devNome || "",
         devLink: tenant.devLink || "",
       });
       setLogoPreview(tenant.logoBase64 || "");
-      setBgPreview(tenant.bgBase64 || "");
     }
   }, [tenant]);
 
@@ -118,19 +99,19 @@ const Config = () => {
       setLoadingData(true);
       setDataLoadError("");
       const [
-        rolesData, 
-        configData, 
-        configUsados, 
-        printerConfig, 
-        printersData, 
-        usersData
+        rolesData,
+        configData,
+        configUsados,
+        printerConfig,
+        printersData,
+        usersData,
       ] = await Promise.all([
         api.auth.getRoles(),
         api.config.get("comissao_padrao"),
         api.config.get("comissao_usados"),
         api.config.get("impressora_padrao"),
         api.print.printers(),
-        api.auth.listUsers()
+        api.auth.listUsers(),
       ]);
 
       setRoles(rolesData);
@@ -155,7 +136,6 @@ const Config = () => {
     loadData();
   }, [loadData]);
 
-  // --- Handlers existentes ---
   const handleSaveCommission = async () => {
     setIsLoading(true);
     try {
@@ -164,7 +144,7 @@ const Config = () => {
 
       await Promise.all([
         api.config.save("comissao_padrao", valueToSave),
-        api.config.save("comissao_usados", valueUsadosToSave)
+        api.config.save("comissao_usados", valueUsadosToSave),
       ]);
 
       showAlert("Taxas de comissão atualizadas com sucesso!", "Sucesso", "success");
@@ -312,17 +292,14 @@ const Config = () => {
     }
   };
 
-  // --- WHITE LABEL: Handlers de identidade ---
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validar tipo
     if (!file.type.startsWith("image/")) {
       return showAlert("Selecione um arquivo de imagem válido.", "Formato Inválido", "error");
     }
 
-    // Validar tamanho (max 5MB antes do processamento)
     if (file.size > 5 * 1024 * 1024) {
       return showAlert("A imagem deve ter no máximo 5MB.", "Arquivo Grande", "error");
     }
@@ -330,30 +307,13 @@ const Config = () => {
     try {
       const processed = await processLogoForWeb(file);
       setLogoPreview(processed);
-      showAlert("Logo enviada (colorida). Na impressão do recibo ela sai em P&B automaticamente.", "Pré-visualização", "success");
+      showAlert(
+        "Logo enviada (colorida). Na impressão do recibo ela sai em P&B automaticamente.",
+        "Pré-visualização",
+        "success",
+      );
     } catch (err) {
       showAlert("Erro ao processar logo: " + err.message, "Erro", "error");
-    }
-  };
-
-  const handleBgUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      return showAlert("Selecione um arquivo de imagem válido.", "Formato Inválido", "error");
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      return showAlert("A imagem deve ter no máximo 10MB.", "Arquivo Grande", "error");
-    }
-
-    try {
-      const processed = await processBackgroundImage(file);
-      setBgPreview(processed);
-      showAlert("Background processado e otimizado.", "Pré-visualização", "success");
-    } catch (err) {
-      showAlert("Erro ao processar imagem: " + err.message, "Erro", "error");
     }
   };
 
@@ -367,9 +327,12 @@ const Config = () => {
       await saveTenantBatch({
         ...identity,
         logoBase64: logoPreview,
-        bgBase64: bgPreview,
       });
-      showAlert("Identidade da loja atualizada com sucesso! As mudanças já estão visíveis.", "Sucesso", "success");
+      showAlert(
+        "Identidade da loja atualizada com sucesso! As mudanças já estão visíveis.",
+        "Sucesso",
+        "success",
+      );
     } catch (error) {
       showAlert("Erro ao salvar identidade: " + error.message, "Erro", "error");
     } finally {
@@ -380,90 +343,83 @@ const Config = () => {
   return (
     <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto bg-surface-50 custom-scrollbar">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-black text-surface-800 tracking-tight">Painel de Configurações</h1>
-        <p className="text-xs text-surface-500 mt-1">Ajuste taxas, gerencie usuários e personalize a identidade da loja.</p>
+        <h1
+          className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          Configurações
+        </h1>
+        <p className="text-xs text-[var(--muted-foreground)] mt-1">
+          Ajuste as taxas, gerencie a equipe e os dados que saem no recibo.
+        </p>
       </div>
 
       {dataLoadError && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-[var(--radius-md)] border border-[var(--danger-soft-border)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger-soft-foreground)]">
           {dataLoadError}
         </div>
       )}
 
-      <StoreIdentitySettings
-        identity={identity}
-        onIdentityChange={updateIdentityField}
-        logoPreview={logoPreview}
-        logoInputRef={logoInputRef}
-        onLogoUpload={handleLogoUpload}
-        onClearLogo={() => setLogoPreview("")}
-        onSave={handleSaveIdentity}
-        isSaving={savingIdentity}
-      />
-
-      {/* ====== SECOES EXISTENTES ====== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        <CommissionSettings
-          defaultCommission={defaultCommission}
-          usedCommission={usedCommission}
-          onDefaultCommissionChange={setDefaultCommission}
-          onUsedCommissionChange={setUsedCommission}
-          onSave={handleSaveCommission}
-          isSaving={isLoading}
+      <div className="flex flex-col gap-6">
+        <StoreIdentitySettings
+          identity={identity}
+          onIdentityChange={updateIdentityField}
+          logoPreview={logoPreview}
+          logoInputRef={logoInputRef}
+          onLogoUpload={handleLogoUpload}
+          onClearLogo={() => setLogoPreview("")}
+          onSave={handleSaveIdentity}
+          isSaving={savingIdentity}
         />
 
-        <LocalThemePicker
-          themes={availableThemes}
-          selectedColor={identity.corPrimaria}
-          onSelectTheme={(theme) => {
-            updateTenant("corPrimaria", theme.color);
-            updateIdentityField("corPrimaria", theme.color);
-          }}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="flex flex-col gap-6">
+            <CommissionSettings
+              defaultCommission={defaultCommission}
+              usedCommission={usedCommission}
+              onDefaultCommissionChange={setDefaultCommission}
+              onUsedCommissionChange={setUsedCommission}
+              onSave={handleSaveCommission}
+              isSaving={isLoading}
+            />
 
-        <SystemToolsPanel
-          printers={printers}
-          selectedPrinter={selectedPrinter}
-          onSelectedPrinterChange={setSelectedPrinter}
-          onSavePrinter={handleSavePrinter}
-          isSavingPrinter={isSavingPrinter}
-          onBackup={handleBackup}
-          onRestore={handleRestore}
-          isBackupRunning={isBackupRunning}
-          isRestoreRunning={isRestoreRunning}
-        />
+            <RoleManager
+              roles={roles}
+              newRole={newRole}
+              onNewRoleChange={setNewRole}
+              onAddRole={handleAddRole}
+              onDeleteRole={handleDeleteRole}
+              deletingRoleId={deletingRoleId}
+            />
+          </div>
 
-        <RoleManager
-          roles={roles}
-          newRole={newRole}
-          onNewRoleChange={setNewRole}
-          onAddRole={handleAddRole}
-          onDeleteRole={handleDeleteRole}
-          deletingRoleId={deletingRoleId}
+          <SystemToolsPanel
+            printers={printers}
+            selectedPrinter={selectedPrinter}
+            onSelectedPrinterChange={setSelectedPrinter}
+            onSavePrinter={handleSavePrinter}
+            isSavingPrinter={isSavingPrinter}
+            onBackup={handleBackup}
+            onRestore={handleRestore}
+            isBackupRunning={isBackupRunning}
+            isRestoreRunning={isRestoreRunning}
+          />
+        </div>
+
+        <UserManager
+          users={systemUsers}
+          loading={loadingData}
+          newUser={newUser}
+          onNewUserChange={setNewUser}
+          onAddUser={handleAddUser}
+          onDeleteUser={handleDeleteUser}
+          showPassword={showPassword}
+          onTogglePassword={() => setShowPassword(!showPassword)}
+          deletingUserId={deletingUserId}
         />
       </div>
-
-      <UserManager
-        users={systemUsers}
-        loading={loadingData}
-        newUser={newUser}
-        onNewUserChange={setNewUser}
-        onAddUser={handleAddUser}
-        onDeleteUser={handleDeleteUser}
-        showPassword={showPassword}
-        onTogglePassword={() => setShowPassword(!showPassword)}
-        deletingUserId={deletingUserId}
-      />
     </div>
   );
 };
 
-
-
-
 export default Config;
-
-
-
-
-
