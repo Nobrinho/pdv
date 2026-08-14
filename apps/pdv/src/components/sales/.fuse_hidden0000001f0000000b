@@ -1,0 +1,151 @@
+import React, { useEffect, useRef, useState } from "react";
+
+/**
+ * Leitor de código de barras por câmera.
+ * Usa a BarcodeDetector API nativa (sem dependências). Onde não houver suporte
+ * (ex.: alguns navegadores desktop / iOS antigo), mostra mensagem para digitar
+ * o código manualmente. Chama onDetected(code) ao ler.
+ */
+const BARCODE_FORMATS = [
+  "ean_13",
+  "ean_8",
+  "upc_a",
+  "upc_e",
+  "code_128",
+  "code_39",
+  "itf",
+  "codabar",
+  "qr_code",
+];
+
+const BarcodeScannerModal = ({ isOpen, onClose, onDetected }) => {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const rafRef = useRef(null);
+  const [error, setError] = useState("");
+  const supported = typeof window !== "undefined" && "BarcodeDetector" in window;
+
+  const stopCamera = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const handleClose = () => {
+    stopCamera();
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!isOpen || !supported) return;
+    let cancelled = false;
+    setError("");
+
+    let detector;
+    try {
+      detector = new window.BarcodeDetector({ formats: BARCODE_FORMATS });
+    } catch {
+      detector = new window.BarcodeDetector();
+    }
+
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        const tick = async () => {
+          if (cancelled || !videoRef.current) return;
+          try {
+            const codes = await detector.detect(videoRef.current);
+            const value = codes && codes[0] && codes[0].rawValue;
+            if (value) {
+              stopCamera();
+              onDetected(String(value));
+              return;
+            }
+          } catch {
+            /* frame não pronto — ignora e continua */
+          }
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch (err) {
+        setError(
+          err && err.name === "NotAllowedError"
+            ? "Permissão de câmera negada. Libere o acesso à câmera para escanear."
+            : "Não foi possível acessar a câmera.",
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, supported]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex flex-col bg-black">
+      <div className="flex items-center justify-between p-4 pt-safe text-white">
+        <span className="font-bold">Escanear código</span>
+        <button onClick={handleClose} className="p-2 -mr-2" aria-label="Fechar">
+          <Icon name="x" size={20} />
+        </button>
+      </div>
+
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+        {supported && !error ? (
+          <>
+            <video
+              ref={videoRef}
+              className="h-full w-full object-cover"
+              playsInline
+              muted
+              autoPlay
+            />
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="h-40 w-64 rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+            </div>
+            <p className="absolute inset-x-0 bottom-10 text-center text-sm text-white/80">
+              Aponte a câmera para o código de barras
+            </p>
+          </>
+        ) : (
+          <div className="px-8 text-center text-white/80">
+            <Icon name="camera-off" size={30} className="mb-3" />
+            <p className="text-sm">
+              {error ||
+                "Leitor por câmera não é suportado neste dispositivo. Digite o código manualmente."}
+            </p>
+            <button
+              onClick={handleClose}
+              className="mt-4 rounded-lg bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BarcodeScannerModal;

@@ -1,0 +1,541 @@
+// @ts-nocheck
+import React, { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import dayjs from "dayjs";
+import { useAlert } from "../context/AlertSystem";
+import {
+  applyCpfCnpjMask,
+  applyNameMask,
+  applyPhoneMask,
+  validarDocumento,
+} from "../utils/validators";
+import { formatCurrency } from "../utils/format";
+import { api } from "../services/api";
+import DataTable from "../components/ui/DataTable";
+import FormField from "../components/ui/FormField";
+import Button from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import Modal from "../components/ui/Modal";
+import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
+
+const Clientes = () => {
+  const { showAlert, showConfirm } = useAlert();
+
+  const queryClient = useQueryClient();
+  const { data: clients = [], isLoading: loading } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => api.clients.list(),
+  });
+  const refreshClients = () => queryClient.invalidateQueries({ queryKey: ["clients"] });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSavingClient, setIsSavingClient] = useState(false);
+  const [deletingClientId, setDeletingClientId] = useState(null);
+  const [payingDebtId, setPayingDebtId] = useState(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
+
+  // Modal Cadastro
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    nome: "",
+    telefone: "",
+    documento: "",
+    endereco: "",
+  });
+  const [editingId, setEditingId] = useState(null);
+
+  // Modal Dívida
+  const [showDebtModal, setShowDebtModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [debts, setDebts] = useState([]);
+  const [paymentValue, setPaymentValue] = useState("");
+  const [debtLoading, setDebtLoading] = useState(false);
+
+  const filteredClients = useMemo(() => {
+    if (!searchTerm) return clients;
+    const lower = searchTerm.toLowerCase();
+    const rawSearch = searchTerm.replace(/\D/g, "");
+
+    return clients.filter((c) => {
+      const docRaw = c.documento ? c.documento.replace(/\D/g, "") : "";
+      const telRaw = c.telefone ? c.telefone.replace(/\D/g, "") : "";
+      return (
+        c.nome.toLowerCase().includes(lower) ||
+        (c.documento && c.documento.toLowerCase().includes(lower)) ||
+        (rawSearch && docRaw && docRaw.includes(rawSearch)) ||
+        (c.telefone && c.telefone.includes(lower)) ||
+        (rawSearch && telRaw && telRaw.includes(rawSearch))
+      );
+    });
+  }, [searchTerm, clients]);
+
+  const totalPages = Math.ceil(filteredClients.length / PAGE_SIZE);
+  const paginatedClients = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredClients.slice(start, start + PAGE_SIZE);
+  }, [filteredClients, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  // --- CRUD ---
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (isSavingClient) return;
+    if (!formData.nome.trim())
+      return showAlert("Nome é obrigatório.", "Atenção", "warning");
+
+    const clientToSave = {
+      nome: formData.nome,
+      telefone: formData.telefone,
+      documento: formData.documento,
+      endereco: formData.endereco,
+    };
+
+    if (editingId) clientToSave.id = editingId;
+
+    try {
+      setIsSavingClient(true);
+      const result = await api.clients.save(clientToSave);
+
+      if (result.success) {
+        setShowModal(false);
+        resetForm();
+        refreshClients();
+        showAlert(
+          editingId ? "Cliente atualizado!" : "Cliente cadastrado!",
+          "Sucesso",
+          "success",
+        );
+      } else {
+        showAlert("Erro ao salvar: " + result.error, "Erro", "error");
+      }
+    } catch (error) {
+      showAlert("Erro técnico ao salvar.", "Erro", "error");
+    } finally {
+      setIsSavingClient(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const confirmou = await showConfirm(
+      "Tem a certeza que deseja excluir este cliente?",
+    );
+    if (confirmou) {
+      try {
+        const result = await api.clients.delete(id);
+        if (result.success) {
+          refreshClients();
+          showAlert("Cliente excluído.", "Sucesso", "success");
+        } else {
+          showAlert(result.error, "Não permitido", "warning");
+        }
+      } catch (error) {
+        showAlert("Erro ao excluir cliente.", "Erro", "error");
+      }
+    }
+  };
+
+  const handleEdit = (client) => {
+    setFormData({
+      nome: client.nome || "",
+      telefone: client.telefone || "",
+      documento: client.documento || "",
+      endereco: client.endereco || "",
+    });
+    setEditingId(client.id);
+    setShowModal(true);
+  };
+
+  const resetForm = () => {
+    setFormData({ nome: "", telefone: "", documento: "", endereco: "" });
+    setEditingId(null);
+  };
+
+  // --- GESTÃO DE DÍVIDAS ---
+  const handleOpenDebt = async (client) => {
+    setSelectedClient(client);
+    setDebtLoading(true);
+    setShowDebtModal(true);
+    setPaymentValue("");
+    try {
+      const data = await api.clients.debts(client.id);
+      setDebts(data);
+    } catch (error) {
+      showAlert("Erro ao carregar débitos.", "Erro", "error");
+    } finally {
+      setDebtLoading(false);
+    }
+  };
+
+  const handlePayDebt = async (debtId, saldoDevedor) => {
+    if (payingDebtId) return;
+    if (!paymentValue || parseFloat(paymentValue) <= 0)
+      return showAlert("Digite um valor válido.");
+
+    const valorPagar = parseFloat(paymentValue);
+    if (valorPagar > saldoDevedor + 0.01)
+      return showAlert("Valor maior que a dívida.", "Aviso", "warning");
+
+    try {
+      setPayingDebtId(debtId);
+      const result = await api.clients.payDebt({
+        contaId: debtId,
+        valorPago: valorPagar,
+      });
+
+      if (result.success) {
+        showAlert("Pagamento registrado!", "Sucesso", "success");
+        const updatedDebts = await api.clients.debts(selectedClient.id);
+        setDebts(updatedDebts);
+        setPaymentValue("");
+        refreshClients();
+      } else {
+        showAlert("Erro: " + result.error, "Erro", "error");
+      }
+    } catch (error) {
+      showAlert("Erro ao processar pagamento.", "Erro", "error");
+    } finally {
+      setPayingDebtId(null);
+    }
+  };
+
+  const columns = [
+    {
+      key: "nome",
+      label: "Nome",
+      bold: true,
+      format: (val, row) => (
+        <div>
+          <div className="font-bold text-surface-900">{val}</div>
+          {row.documento && (
+            <div className="text-[10px] text-surface-400 font-normal">
+              {row.documento}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "telefone",
+      label: "Contato",
+      format: (val) =>
+        val ? (
+          <span className="flex items-center gap-1.5">
+            <Icon name="phone" size={12} className="text-[var(--muted-foreground)]" />
+            {val}
+          </span>
+        ) : (
+          "-"
+        ),
+    },
+    {
+      key: "saldo_devedor",
+      label: "Saldo devedor",
+      align: "right",
+      format: (val) =>
+        val > 0.01 ? (
+          <span className="font-semibold text-[var(--money-negative)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
+            {formatCurrency(val)}
+          </span>
+        ) : (
+          <Badge variant="success">Em dia</Badge>
+        ),
+    },
+    {
+      key: "id",
+      label: "Ações",
+      align: "center",
+      format: (_, row) => (
+        <div className="flex justify-center gap-1">
+          <button
+            onClick={() => handleOpenDebt(row)}
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
+            title="Ver conta / pagar"
+          >
+            <Icon name="wallet" size={16} />
+          </button>
+          <button
+            onClick={() => handleEdit(row)}
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
+            title="Editar dados"
+          >
+            <Icon name="pencil" size={16} />
+          </button>
+          <button
+            onClick={() => handleDelete(row.id)}
+            disabled={deletingClientId === row.id}
+            className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50"
+            title="Excluir"
+          >
+            <Icon name={deletingClientId === row.id ? "refresh-cw" : "trash-2"} size={16} className={deletingClientId === row.id ? "animate-spin" : ""} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-4 md:p-6 h-full flex flex-col bg-surface-50">
+      <div className="flex justify-between items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+            Clientes & fiado
+          </h1>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">
+            Gerencie seu cadastro de clientes e controle de pendências
+            financeiras.
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          size="lg"
+          className="gap-2"
+          onClick={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+        >
+          <Icon name="plus" size={16} /> Novo cliente
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+        {/* Busca */}
+        <div className="bg-[var(--card)] p-3 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)]">
+          <div className="relative max-w-xl">
+            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
+            <Input
+              className="pl-9"
+              placeholder="Buscar por nome, telefone ou documento..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Lista */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <DataTable
+            columns={columns}
+            data={paginatedClients}
+            loading={loading}
+            emptyMessage="Nenhum cliente encontrado."
+          />
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+                Pag {page} de {totalPages} • {filteredClients.length} total
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* --- MODAL CADASTRO --- */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingId ? "Editar Cliente" : "Novo Cliente"}
+        icon="fa-user-plus"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button
+              variant="primary"
+              icon="fa-save"
+              loading={isSavingClient}
+              disabled={
+                !formData.nome.trim() ||
+                (formData.documento && !validarDocumento(formData.documento)) ||
+                (formData.endereco && formData.endereco.trim().length < 4)
+              }
+              onClick={handleSubmit}
+            >
+              {isSavingClient ? "Salvando..." : editingId ? "Atualizar" : "Salvar cliente"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <FormField
+            label="Nome Completo *"
+            value={formData.nome}
+            onChange={(val) =>
+              setFormData({ ...formData, nome: applyNameMask(val) })
+            }
+            placeholder="Ex: João da Silva"
+            error={
+              formData.nome.trim().length > 0 && formData.nome.trim().length < 2
+                ? "Nome muito curto"
+                : null
+            }
+            autoFocus
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              label="Telefone"
+              value={formData.telefone}
+              onChange={(val) =>
+                setFormData({ ...formData, telefone: applyPhoneMask(val) })
+              }
+              placeholder="(XX) XXXXX-XXXX"
+              icon="fa-phone"
+            />
+            <FormField
+              label="CPF / Documento"
+              value={formData.documento}
+              onChange={(val) =>
+                setFormData({ ...formData, documento: applyCpfCnpjMask(val) })
+              }
+              placeholder="Opcional"
+              icon="fa-id-card"
+              maxLength={18}
+              error={
+                formData.documento && !validarDocumento(formData.documento)
+                  ? "Documento inválido"
+                  : null
+              }
+            />
+          </div>
+
+          <FormField
+            label="Endereço"
+            value={formData.endereco}
+            onChange={(val) => setFormData({ ...formData, endereco: val })}
+            placeholder="Opcional"
+            icon="fa-map-marker-alt"
+            error={
+              formData.endereco && formData.endereco.trim().length < 4
+                ? "Endereço muito curto"
+                : null
+            }
+          />
+        </div>
+      </Modal>
+
+      {/* --- MODAL CONTA CORRENTE (PAGAMENTOS) --- */}
+      <Modal
+        isOpen={showDebtModal}
+        onClose={() => setShowDebtModal(false)}
+        title={selectedClient?.nome || "Extrato de Débitos"}
+        icon="fa-file-invoice-dollar"
+        size="lg"
+      >
+        <div className="flex flex-col h-[60vh]">
+          {selectedClient && (
+            <div className="bg-primary-50 p-4 rounded-xl border border-primary-100 flex justify-between items-center mb-4">
+              <div className="text-sm font-medium text-primary-800 uppercase tracking-wider">
+                Saldo Devedor Total
+              </div>
+              <div className="text-2xl font-black text-red-600">
+                {formatCurrency(selectedClient.saldo_devedor)}
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-hidden">
+            <DataTable
+              loading={debtLoading}
+              columns={[
+                {
+                  key: "data_lancamento",
+                  label: "Data",
+                  format: (val) => dayjs(val).format("DD/MM/YY"),
+                },
+                { key: "descricao", label: "Descrição", bold: true },
+                {
+                  key: "valor_total",
+                  label: "Original",
+                  align: "right",
+                  format: formatCurrency,
+                },
+                {
+                  key: "valor_pago",
+                  label: "Pago",
+                  align: "right",
+                  format: formatCurrency,
+                },
+                {
+                  key: "restante",
+                  label: "Restante",
+                  align: "right",
+                  format: (_, row) => {
+                    const restante = row.valor_total - row.valor_pago;
+                    const isQuitado = restante <= 0.01;
+                    return (
+                      <span
+                        className={`font-bold ${isQuitado ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {isQuitado ? "QUITADO" : formatCurrency(restante)}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  key: "acoes",
+                  label: "Abater",
+                  align: "right",
+                  format: (_, row) => {
+                    const restante = row.valor_total - row.valor_pago;
+                    if (restante <= 0.01)
+                      return (
+                        <Icon name="circle-check" size={18} className="text-[var(--success)]" />
+                      );
+                    return (
+                      <div className="flex items-center gap-2 justify-end">
+                        <input
+                          type="number"
+                          className="w-24 border border-surface-300 rounded-lg p-1.5 text-xs text-right focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+                          placeholder="Valor R$"
+                          value={paymentValue}
+                          onChange={(e) => setPaymentValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter")
+                              handlePayDebt(row.id, restante);
+                          }}
+                        />
+                        <button
+                          onClick={() => handlePayDebt(row.id, restante)}
+                          disabled={payingDebtId === row.id}
+                          className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition shadow-sm active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Pagar"
+                        >
+                          <Icon name={payingDebtId === row.id ? "refresh-cw" : "check"} size={13} className={payingDebtId === row.id ? "animate-spin" : ""} />
+                        </button>
+                      </div>
+                    );
+                  },
+                },
+              ]}
+              data={debts}
+              emptyMessage="Cliente sem débitos registrados."
+            />
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+export default Clientes;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAuthSession, requireAdmin } from "../../electron/lib/authSession.js";
+import { createAuthSession, requireAdmin } from "../../apps/pdv/electron/lib/authSession.js";
 
 const eventFor = (id) => ({ sender: { id } });
 

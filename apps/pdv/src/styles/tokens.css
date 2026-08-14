@@ -1,0 +1,147 @@
+/* =============================================================
+   SysControl Design System — tokens (fixos, sem white-label).
+   Fonte: ds/SysControl Design System-handoff.zip (tokens/*.css).
+   Dark mode adaptado do seletor .dark → [data-theme='dark'] (usado pelo app).
+   ============================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* ---- Paleta base ---- */
+  --zinc-50:#fafafa; --zinc-100:#f4f4f5; --zinc-200:#e4e4e7; --zinc-300:#d4d4d8;
+  --zinc-400:#a1a1aa; --zinc-500:#71717a; --zinc-600:#52525b; --zinc-700:#3f3f46;
+  --zinc-800:#27272a; --zinc-900:#18181b; --zinc-950:#09090b; --white:#fff; --black:#000;
+
+  --teal-50:#e8f4f8; --teal-100:#cfe8f1; --teal-200:#a1d1e3; --teal-300:#6bb5d1;
+  --teal-400:#3897ba; --teal-500:#0f7391; --teal-600:#0b5c76; --teal-700:#08465b;
+  --teal-800:#063040; --teal-900:#041c26;
+
+  --green-50:#e8faf0; --green-100:#d1f4e0; --green-200:#a2e9c1; --green-300:#74dfa2;
+  --green-400:#45d483; --green-500:#17c964; --green-600:#12a150; --green-700:#0e793c;
+  --green-800:#095028; --green-900:#052814;
+
+  --yellow-50:#fefce8; --yellow-100:#fdedd3; --yellow-200:#fbdba7; --yellow-300:#f9c97c;
+  --yellow-400:#f7b750; --yellow-500:#f5a524; --yellow-600:#c4841d; --yellow-700:#936316;
+  --yellow-800:#62420e; --yellow-900:#312107;
+
+  --red-50:#fef2f2; --red-100:#fee2e2; --red-200:#fecaca; --red-300:#fca5a5;
+  --red-400:#f87171; --red-500:#dc2626; --red-600:#b91c1c; --red-700:#991b1b;
+  --red-800:#7f1d1d; --red-900:#450a0a;
+
+  --blue-50:#e6f1fe; --blue-100:#cce3fd; --blue-200:#99c7fb; --blue-300:#66aaf9;
+  --blue-400:#338ef7; --blue-500:#006fee; --blue-600:#005bc4; --blue-700:#004493;
+  --blue-800:#002e62; --blue-900:#001731;
+
+  --chart-1:#0f7391; --chart-2:#3897ba; --chart-3:#12a150; --chart-4:#f5a524; --chart-5:#71717a;
+
+  /* ---- Fontes ---- */
+  --font-display:"Sora","Barlow",system-ui,sans-serif;
+  --font-sans:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"Roboto Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  /* ---- Tipografia ---- */
+  --text-tiny:.75rem;   --leading-tiny:1rem;
+  --text-small:.8125rem;--leading-small:1.125rem;
+  --text-body:.875rem;  --leading-body:1.25rem;
+  --text-medium:1rem;   --leading-medium:1.5rem;
+  --text-large:1.125rem;--leading-large:1.75rem;
+  --text-h4:1.25rem;    --leading-h4:1.75rem;
+  --text-h3:1.5rem;     --leading-h3:2rem;
+  --text-h2:2rem;       --leading-h2:2.375rem;
+  --text-h1:2.75rem;    --leading-h1:3rem;
+  --text-display:3.75rem;--leading-display:1.04;
+  --weight-regular:400; --weight-medium:500; --weight-semibold:600; --weight-bold:700;
+  --tracking-display:-0.03em; --tracking-heading:-0.015em; --tracking-body:0;
+  --tracking-label:0.02em; --tracking-caps:0.08em;
+  --numeric-feature:"tnum" 1,"lnum" 1;
+
+  /* ---- Espaçamento / layout ---- */
+  --space-0:0; --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px;
+  --space-16:64px; --space-20:80px; --space-24:96px;
+  --control-sm:32px; --control-md:36px; --control-lg:40px;
+  --topbar-h:56px;
+
+  /* ---- Raio ---- */
+  --radius:0.625rem; --radius-xs:4px; --radius-sm:6px; --radius-md:8px;
+  --radius-lg:10px; --radius-xl:14px; --radius-2xl:18px; --radius-full:9999px;
+  --border-width:1px; --border-width-medium:2px;
+
+  /* ---- Elevação ---- */
+  --shadow-xs:0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm:0 1px 3px 0 rgb(0 0 0 / 0.10),0 1px 2px -1px rgb(0 0 0 / 0.10);
+  --shadow-small:0 0 5px 0 rgb(0 0 0 / 0.02),0 2px 10px 0 rgb(0 0 0 / 0.06),0 0 1px 0 rgb(0 0 0 / 0.3);
+  --shadow-medium:0 0 15px 0 rgb(0 0 0 / 0.03),0 2px 30px 0 rgb(0 0 0 / 0.08),0 0 1px 0 rgb(0 0 0 / 0.3);
+  --shadow-large:0 0 30px 0 rgb(0 0 0 / 0.04),0 30px 60px 0 rgb(0 0 0 / 0.12),0 0 1px 0 rgb(0 0 0 / 0.3);
+  --ring-width:3px;
+
+  /* ---- Movimento ---- */
+  --duration-fast:120ms; --duration-base:150ms; --duration-slow:250ms;
+  --ease-standard:ease; --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --press-scale:0.97; --hover-opacity:0.8; --disabled-opacity:0.5;
+
+  /* ---- Semânticos (light) ---- */
+  --background:var(--white); --foreground:#11181c;
+  --card:var(--white); --card-foreground:#11181c;
+  --popover:var(--white); --popover-foreground:#11181c;
+  --muted:var(--zinc-100); --muted-foreground:var(--zinc-500);
+  --accent:var(--zinc-100); --accent-foreground:var(--zinc-900);
+  --border:var(--zinc-200); --input:var(--zinc-200); --ring:var(--teal-500);
+  --divider:rgba(17,17,17,0.15); --overlay:rgba(0,0,0,0.5);
+  --primary:var(--teal-500); --primary-hover:var(--teal-600); --primary-active:var(--teal-700);
+  --primary-foreground:var(--white); --primary-soft:var(--teal-50); --primary-soft-foreground:var(--teal-700);
+  --secondary:var(--zinc-100); --secondary-foreground:var(--zinc-900);
+  --success:var(--green-600); --success-foreground:var(--white); --success-soft:var(--green-50); --success-soft-foreground:var(--green-700);
+  --warning:var(--yellow-500); --warning-foreground:#11181c; --warning-soft:var(--yellow-50); --warning-soft-foreground:var(--yellow-700);
+  --danger:var(--red-500); --danger-foreground:var(--white); --danger-soft:var(--red-50); --danger-soft-foreground:var(--red-600);
+  --info:var(--blue-600); --info-soft:var(--blue-50); --info-soft-foreground:var(--blue-700);
+  --content1:var(--white); --content2:var(--zinc-100); --content3:var(--zinc-200); --content4:var(--zinc-300);
+  --app-canvas:var(--zinc-50);
+  --hover-surface:var(--zinc-50); --secondary-hover:var(--zinc-200); --primary-soft-hover:var(--teal-100);
+  --danger-hover:var(--red-600); --success-hover:var(--green-700);
+  --primary-soft-border:var(--teal-100); --success-soft-border:var(--green-100);
+  --warning-soft-border:var(--yellow-200); --danger-soft-border:var(--red-100); --info-soft-border:var(--blue-100);
+  --neutral-soft:var(--zinc-100); --neutral-soft-foreground:var(--zinc-700); --neutral-soft-border:var(--zinc-200);
+  --icon-muted:var(--zinc-400); --tooltip:var(--zinc-900); --tooltip-foreground:var(--white);
+  --money-positive:var(--green-700); --money-negative:var(--red-600);
+  /* Redesenho (novastelas): sidebar, skeleton, switch, avatares, ring, warning-icon */
+  --sidebar:var(--teal-800); --sidebar-foreground:#cfe0e7; --sidebar-muted:#7fa3b1;
+  --skeleton-from:var(--content2); --skeleton-to:var(--content3);
+  --switch-track:var(--zinc-300); --switch-thumb:var(--white);
+  --avatar-neutral:var(--zinc-200); --avatar-neutral-foreground:var(--zinc-700);
+  --avatar-primary:var(--teal-100); --avatar-primary-foreground:var(--teal-700);
+  --avatar-success:var(--green-100); --avatar-success-foreground:var(--green-700);
+  --ring-shadow:rgb(15 115 145 / 0.25); --ring-shadow-danger:rgb(220 38 38 / 0.2);
+  --warning-icon:var(--yellow-600);
+}
+
+[data-theme='dark'] {
+  --background:var(--zinc-950); --foreground:#ecedee;
+  --card:var(--zinc-900); --card-foreground:#ecedee;
+  --popover:var(--zinc-900); --popover-foreground:#ecedee;
+  --muted:var(--zinc-800); --muted-foreground:var(--zinc-400);
+  --accent:var(--zinc-800); --accent-foreground:var(--zinc-50);
+  --border:rgba(255,255,255,0.10); --input:rgba(255,255,255,0.15); --divider:rgba(255,255,255,0.15);
+  --primary:var(--teal-400); --primary-hover:var(--teal-300); --primary-active:var(--teal-500);
+  --primary-foreground:#041c26; --primary-soft:rgba(56,151,186,0.15); --primary-soft-foreground:var(--teal-200);
+  --secondary:var(--zinc-800); --secondary-foreground:var(--zinc-50);
+  --content1:var(--zinc-900); --content2:var(--zinc-800); --content3:var(--zinc-700); --content4:var(--zinc-600);
+  --app-canvas:#111113;
+  --success:var(--green-500); --success-foreground:#052814; --success-soft:rgba(23,201,100,0.14); --success-soft-foreground:var(--green-300);
+  --warning:var(--yellow-500); --warning-foreground:#312107; --warning-soft:rgba(245,165,36,0.14); --warning-soft-foreground:var(--yellow-300);
+  --danger:var(--red-400); --danger-foreground:#450a0a; --danger-soft:rgba(220,38,38,0.16); --danger-soft-foreground:var(--red-300);
+  --info:var(--blue-500); --info-soft:rgba(0,111,238,0.16); --info-soft-foreground:var(--blue-300);
+  --hover-surface:rgba(255,255,255,0.04); --secondary-hover:var(--zinc-700); --primary-soft-hover:rgba(56,151,186,0.26);
+  --danger-hover:var(--red-400); --success-hover:var(--green-400);
+  --neutral-soft:var(--zinc-800); --neutral-soft-foreground:var(--zinc-300); --neutral-soft-border:rgba(255,255,255,0.10);
+  --icon-muted:var(--zinc-500); --tooltip:var(--zinc-100); --tooltip-foreground:var(--zinc-900);
+  /* Redesenho (novastelas) — variantes escuras */
+  --sidebar:var(--zinc-900); --sidebar-foreground:var(--zinc-400); --sidebar-muted:var(--zinc-500);
+  --skeleton-from:var(--content2); --skeleton-to:var(--content3);
+  --switch-track:var(--zinc-600); --switch-thumb:var(--zinc-100);
+  --avatar-neutral:var(--zinc-700); --avatar-neutral-foreground:var(--zinc-200);
+  --avatar-primary:rgba(56,151,186,0.22); --avatar-primary-foreground:var(--teal-200);
+  --avatar-success:rgba(23,201,100,0.20); --avatar-success-foreground:var(--green-300);
+  --ring-shadow:rgb(56 151 186 / 0.35); --ring-shadow-danger:rgb(248 113 113 / 0.3);
+  --warning-icon:var(--yellow-400);
+}

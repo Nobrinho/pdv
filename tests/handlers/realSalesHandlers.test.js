@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Knex from "knex";
-import { createAuthSession } from "../../electron/lib/authSession.js";
-import { hashPassword } from "../../electron/services/auth.js";
-import { register as registerAuth } from "../../electron/handlers/auth.js";
-import { register as registerSales } from "../../electron/handlers/sales.js";
+import { createAuthSession } from "../../apps/pdv/electron/lib/authSession.js";
+import { hashPassword } from "../../apps/pdv/electron/services/auth.js";
+import { register as registerAuth } from "../../apps/pdv/electron/handlers/auth.js";
+import { register as registerSales } from "../../apps/pdv/electron/handlers/sales.js";
 import { createIpcHarness, eventFor } from "../helpers/ipc.js";
 
 const createDb = () =>

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: syscontrol-postgres
+    environment:
+      POSTGRES_DB: syscontrol
+      POSTGRES_USER: syscontrol
+      POSTGRES_PASSWORD: syscontrol
+    ports:
+      - "54329:5432"
+    volumes:
+      - syscontrol-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U syscontrol -d syscontrol"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  syscontrol-postgres-data:

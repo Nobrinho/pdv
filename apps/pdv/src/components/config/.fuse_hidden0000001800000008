@@ -1,0 +1,142 @@
+import React from "react";
+import FormField from "../ui/FormField";
+import Button from "../ui/Button";
+import { Card } from "../ui/Card";
+
+const StoreIdentitySettings = ({
+  identity,
+  onIdentityChange,
+  logoPreview = "",
+  logoInputRef,
+  onLogoUpload,
+  onClearLogo,
+  onSave,
+  isSaving = false,
+}) => {
+  return (
+    <Card padding="lg" className="mb-6">
+      <h2 className="text-sm font-black mb-6 text-surface-800 uppercase tracking-widest border-b pb-4 flex items-center gap-2">
+        <Icon name="palette" size={16} className="text-[var(--primary)]" /> Identidade da Loja
+      </h2>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
+            Dados da Empresa
+          </h3>
+          <FormField
+            label="Nome da Loja *"
+            placeholder="Ex: Barba Pneus"
+            value={identity.nome}
+            onChange={(value) => onIdentityChange("nome", value)}
+            icon="fa-store"
+          />
+          <FormField
+            label="Subtítulo do Sistema"
+            placeholder="Ex: Terminal de Vendas"
+            value={identity.subtitulo}
+            onChange={(value) => onIdentityChange("subtitulo", value)}
+            icon="fa-tag"
+          />
+          <FormField
+            label="Endereço"
+            placeholder="Av. Principal, 100"
+            value={identity.endereco}
+            onChange={(value) => onIdentityChange("endereco", value)}
+            icon="fa-map-marker-alt"
+          />
+          <FormField
+            label="Cidade / UF"
+            placeholder="Ex: São Paulo/SP"
+            value={identity.cidade}
+            onChange={(value) => onIdentityChange("cidade", value)}
+            icon="fa-city"
+          />
+          <FormField
+            label="Telefone"
+            placeholder="(00) 00000-0000"
+            value={identity.telefone}
+            onChange={(value) => onIdentityChange("telefone", value)}
+            icon="fa-phone"
+          />
+          <FormField
+            label="CNPJ"
+            placeholder="00.000.000/0000-00"
+            value={identity.documento}
+            onChange={(value) => onIdentityChange("documento", value)}
+            icon="fa-file-alt"
+          />
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2">
+            Imagens
+          </h3>
+
+          <div className="p-4 border border-surface-200 rounded-xl bg-surface-50">
+            <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-2 block">
+              Logo do Recibo
+            </label>
+            <p className="text-[9px] text-surface-400 mb-3 leading-relaxed">
+              A logo é exibida <strong>colorida</strong> na tela e no
+              compartilhamento (WhatsApp). Na <strong>impressão do recibo</strong> ela
+              é convertida automaticamente para <strong>preto e branco</strong>.
+            </p>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={onLogoUpload}
+              className="hidden bg-surface-100 text-surface-800 border-surface-300 focus:ring-primary-500/20"
+            />
+
+            {logoPreview ? (
+              <div className="flex items-center gap-3">
+                <div
+                  className="bg-surface-100 border border-surface-200 rounded-lg p-2 flex items-center justify-center"
+                  style={{ width: 80, height: 60 }}
+                >
+                  <img
+                    src={logoPreview}
+                    alt="Logo"
+                    style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => logoInputRef.current?.click()}
+                    className="text-xs font-bold text-primary hover:underline"
+                  >
+                    <Icon name="rotate-cw" size={13} className="mr-1 inline" /> Trocar
+                  </button>
+                  <button
+                    onClick={onClearLogo}
+                    className="text-xs font-bold text-red-500 hover:underline"
+                  >
+                    <Icon name="trash-2" size={13} className="mr-1 inline" /> Remover
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-surface-300 rounded-xl py-6 text-center hover:border-surface-500 transition text-surface-400 hover:text-surface-600"
+              >
+                <Icon name="cloud-upload" size={24} className="mb-2 mx-auto" />
+                <span className="text-xs font-bold">Clique para enviar logo</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-surface-200 flex justify-end">
+        <Button variant="primary" size="lg" icon="fa-save" loading={isSaving} onClick={onSave}>
+          {isSaving ? "Salvando..." : "Salvar identidade"}
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+export default StoreIdentitySettings;

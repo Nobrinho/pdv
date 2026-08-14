@@ -1,12 +1,12 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import SaleCartPanel from "../../src/components/sales/SaleCartPanel.jsx";
-import SaleEntryBar from "../../src/components/sales/SaleEntryBar.jsx";
-import QuickClientModal from "../../src/components/sales/QuickClientModal.jsx";
-import SaleReceiptModal from "../../src/components/sales/SaleReceiptModal.jsx";
+import SaleCartPanel from "../../apps/pdv/src/components/sales/SaleCartPanel.jsx";
+import SaleEntryBar from "../../apps/pdv/src/components/sales/SaleEntryBar.jsx";
+import QuickClientModal from "../../apps/pdv/src/components/sales/QuickClientModal.jsx";
+import SaleReceiptModal from "../../apps/pdv/src/components/sales/SaleReceiptModal.jsx";
 
-vi.mock("../../src/components/CupomFiscal", () => ({
+vi.mock("../../apps/pdv/src/components/CupomFiscal", () => ({
   default: ({ sale }) => <div>Cupom {sale.id}</div>,
 }));
 

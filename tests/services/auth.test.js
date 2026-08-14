@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hashPassword, verifyPassword } from "../../electron/services/auth.js";
+import { hashPassword, verifyPassword } from "../../apps/pdv/electron/services/auth.js";
 import crypto from "crypto";
 
 describe("hashPassword", () => {

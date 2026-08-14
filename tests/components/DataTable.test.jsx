@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import DataTable from "../../src/components/ui/DataTable.jsx";
+import DataTable from "../../apps/pdv/src/components/ui/DataTable.jsx";
 
 describe("DataTable", () => {
   it("exibe estado de erro contextual antes do estado vazio", () => {
