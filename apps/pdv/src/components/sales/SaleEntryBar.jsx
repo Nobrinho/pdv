@@ -109,29 +109,30 @@ const SaleEntryBar = ({
         </div>
       </div>
 
-      <div className="relative">
+      <div>
         <label className={`block mb-1 ${CAPS}`}>Produto (bipar ou digitar)</label>
-        <input
-          ref={searchInputRef}
-          className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-11 pl-10 pr-14 text-base outline-none focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
-          placeholder="Código ou nome..."
-          value={searchTerm}
-          onChange={(e) => onSearchTermChange(e.target.value)}
-          onKeyDown={onSearchKeyDown}
-          style={MONO}
-        />
-        <Icon name="search" size={18} className="absolute left-3 top-1/2 mt-[10px] -translate-y-1/2 text-[var(--muted-foreground)]" />
-        {onScanCode && (
-          <button
-            type="button"
-            onClick={() => setScanOpen(true)}
-            className="absolute right-2 top-[26px] flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)] text-white shadow-sm active:scale-95 hover:bg-[var(--primary-hover)] transition"
-            title="Ler código com a câmera"
-            aria-label="Ler código de barras"
-          >
-            <Icon name="camera" size={18} />
-          </button>
-        )}
+        <div className="relative">
+          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-11 pl-10 pr-14 text-base outline-none focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
+            placeholder="Código ou nome..."
+            value={searchTerm}
+            onChange={(e) => onSearchTermChange(e.target.value)}
+            onKeyDown={onSearchKeyDown}
+            style={MONO}
+          />
+          {onScanCode && (
+            <button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)] text-white shadow-sm active:scale-95 hover:bg-[var(--primary-hover)] transition"
+              title="Ler código com a câmera"
+              aria-label="Ler código de barras"
+            >
+              <Icon name="camera" size={18} />
+            </button>
+          )}
 
         {searchTerm.trim().length >= 2 && (
           <div className="absolute top-full left-0 w-full bg-[var(--popover)] border border-[var(--border)] rounded-[var(--radius-md)] shadow-lg mt-1 max-h-60 overflow-y-auto z-50">
@@ -168,6 +169,7 @@ const SaleEntryBar = ({
             )}
           </div>
         )}
+        </div>
       </div>
 
       <BarcodeScannerModal

@@ -157,13 +157,16 @@ async function createSale(knex, lojaId, userId, saleData = {}) {
       .returning(["id"]);
 
     const saleId = sale.id;
-    await trx("venda_itens").insert(
-      normalizedItems.map((item) => ({
-        loja_id: lojaId,
-        venda_id: saleId,
-        ...item,
-      })),
-    );
+    const itemRows = normalizedItems.map((item) => ({
+      loja_id: lojaId,
+      venda_id: saleId,
+      ...item,
+    }));
+    // batchInsert defensivo: uma venda com muitos itens nao pode estourar o
+    // limite de 65535 parametros por statement do Postgres (Int16).
+    const itemColumnCount = Object.keys(itemRows[0]).length || 1;
+    const itemChunkSize = Math.max(1, Math.floor(60000 / itemColumnCount));
+    await knex.batchInsert("venda_itens", itemRows, itemChunkSize).transacting(trx);
 
     for (const item of normalizedItems) {
       await trx("produtos")

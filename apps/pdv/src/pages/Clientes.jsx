@@ -521,7 +521,7 @@ const Clientes = () => {
                           className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition shadow-sm active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Pagar"
                         >
-                          <i className={`fas text-xs ${payingDebtId === row.id ? "fa-circle-notch fa-spin" : "fa-check"}`}></i>
+                          <Icon name={payingDebtId === row.id ? "refresh-cw" : "check"} size={13} className={payingDebtId === row.id ? "animate-spin" : ""} />
                         </button>
                       </div>
                     );

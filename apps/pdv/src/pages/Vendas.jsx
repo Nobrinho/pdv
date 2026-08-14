@@ -27,6 +27,13 @@ const INITIAL_NEW_CLIENT_DATA = {
   endereco: "",
 };
 
+// Fallback estável: enquanto as queries carregam, `data` é undefined. Usar um
+// array literal (`data || []`) criaria uma nova referência a cada render, o que
+// muda a identidade de `products`/`clients` e reexecuta em loop os effects dos
+// hooks que os recebem como dependência (ex.: useProductSearch) → "Maximum
+// update depth exceeded". Esta constante mantém a mesma referência entre renders.
+const EMPTY_ARRAY = [];
+
 const Vendas = () => {
   const { showAlert } = useAlert();
 
@@ -35,10 +42,10 @@ const Vendas = () => {
   const productsQuery = useQuery({ queryKey: ["products"], queryFn: () => api.products.list() });
   const peopleQuery = useQuery({ queryKey: ["people"], queryFn: () => api.people.list() });
   const clientsQuery = useQuery({ queryKey: ["clients"], queryFn: () => api.clients.list() });
-  const products = productsQuery.data || [];
-  const clients = clientsQuery.data || [];
+  const products = productsQuery.data ?? EMPTY_ARRAY;
+  const clients = clientsQuery.data ?? EMPTY_ARRAY;
   const { sellers, mechanics } = useMemo(
-    () => getSalesPeopleByRole(peopleQuery.data || []),
+    () => getSalesPeopleByRole(peopleQuery.data ?? EMPTY_ARRAY),
     [peopleQuery.data],
   );
   // Skeleton só na primeira carga (sem cache); revisitas usam o cache.

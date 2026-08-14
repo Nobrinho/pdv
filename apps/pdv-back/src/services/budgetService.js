@@ -103,9 +103,15 @@ async function validateItems(trx, lojaId, items = []) {
   return normalized;
 }
 
-async function persistItems(trx, lojaId, budgetId, items) {
+async function persistItems(knex, trx, lojaId, budgetId, items) {
   await trx("orcamento_itens").where({ loja_id: lojaId, orcamento_id: budgetId }).del();
-  await trx("orcamento_itens").insert(items.map((item) => ({ ...item, orcamento_id: budgetId })));
+  const rows = items.map((item) => ({ ...item, orcamento_id: budgetId }));
+  if (!rows.length) return;
+  // batchInsert defensivo: evita estourar o limite de 65535 parametros por
+  // statement do Postgres (Int16) quando um orcamento tem muitos itens.
+  const columnCount = Object.keys(rows[0]).length || 1;
+  const chunkSize = Math.max(1, Math.floor(60000 / columnCount));
+  await knex.batchInsert("orcamento_itens", rows, chunkSize).transacting(trx);
 }
 
 async function createBudget(knex, lojaId, budget = {}) {
@@ -138,7 +144,7 @@ async function createBudget(knex, lojaId, budget = {}) {
       })
       .returning(["id"]);
 
-    await persistItems(trx, lojaId, created.id, items);
+    await persistItems(knex, trx, lojaId, created.id, items);
     return { success: true, id: created.id, codigo };
   }).catch((error) => ({ success: false, error: error.message }));
 }
@@ -170,7 +176,7 @@ async function updateBudget(knex, lojaId, budget = {}) {
       data_atualizacao: Date.now(),
       updated_at: trx.fn.now(),
     });
-    await persistItems(trx, lojaId, budgetId, items);
+    await persistItems(knex, trx, lojaId, budgetId, items);
     return { success: true, id: budgetId };
   }).catch((error) => ({ success: false, error: error.message }));
 }
@@ -280,12 +286,14 @@ async function duplicateBudget(knex, lojaId, id) {
       })
       .returning(["id"]);
     if (items.length) {
-      await trx("orcamento_itens").insert(
-        items.map(({ id: _id, created_at, updated_at, ...item }) => ({
-          ...item,
-          orcamento_id: created.id,
-        })),
-      );
+      const rows = items.map(({ id: _id, created_at, updated_at, ...item }) => ({
+        ...item,
+        orcamento_id: created.id,
+      }));
+      // batchInsert defensivo: respeita o limite de 65535 parametros do Postgres.
+      const columnCount = Object.keys(rows[0]).length || 1;
+      const chunkSize = Math.max(1, Math.floor(60000 / columnCount));
+      await knex.batchInsert("orcamento_itens", rows, chunkSize).transacting(trx);
     }
     return { success: true, id: created.id, codigo };
   }).catch((error) => ({ success: false, error: error.message }));

@@ -146,12 +146,19 @@ async function restoreStoreBackup(knex, lojaId, payload = {}) {
       const rows = Array.isArray(tables[table]) ? tables[table] : [];
       if (!rows.length) continue;
 
-      await trx(table).insert(
-        rows.map((row) => ({
-          ...row,
-          loja_id: lojaId,
-        })),
-      );
+      const mapped = rows.map((row) => ({
+        ...row,
+        loja_id: lojaId,
+      }));
+
+      // O Postgres limita cada statement a 65535 parametros (o contador do
+      // protocolo e um Int16). Um insert unico de tabelas grandes (ex.: vendas
+      // com milhares de linhas x 20 colunas) estoura esse limite e o driver
+      // falha com "bind message has N parameter formats but 0 parameters".
+      // Inserimos em lotes, dimensionando o lote pelo numero de colunas.
+      const columnCount = Object.keys(mapped[0]).length || 1;
+      const chunkSize = Math.max(1, Math.floor(60000 / columnCount));
+      await knex.batchInsert(table, mapped, chunkSize).transacting(trx);
     }
 
     for (const table of SERIAL_TABLES) {

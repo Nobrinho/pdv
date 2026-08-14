@@ -17,7 +17,7 @@ const MobileReceipt = ({ sale, items = [] }) => {
   const { tenant } = useTenant();
   if (!sale) return null;
 
-  const accent = tenant?.corPrimaria || "#2563eb";
+  const accent = "#0f7391"; // teal petróleo — marca fixa SysControl (sem white-label)
   const subtotal = toNumber(sale.subtotal);
   const acrescimo = toNumber(sale.acrescimo_valor ?? sale.acrescimo);
   const desconto = toNumber(sale.desconto_valor);

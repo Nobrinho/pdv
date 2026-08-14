@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon, faToLucide } from "./Icon";
 
 /**
  * Card — container de superfície alinhado ao Design System (SysControl).
@@ -41,7 +42,7 @@ export function CardHeader({ title, icon, actions, className = "" }) {
   return (
     <div className={`flex items-center justify-between gap-3 ${className}`}>
       <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
-        {icon && <i className={`fas ${icon} text-[var(--primary)]`} />}
+        {icon && <Icon name={faToLucide(icon)} size={16} className="text-[var(--primary)]" />}
         {title}
       </h2>
       {actions}

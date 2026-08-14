@@ -1,85 +1,15 @@
 // =============================================================
 // TenantContext.jsx — Contexto global de identidade da loja
 // =============================================================
-// Carrega configurações white-label do banco e injeta CSS vars
-// dinâmicas para cores em toda a interface.
+// Marca fixa SysControl (sem white-label): as cores/tema são fixas do design
+// system (styles/tokens.css). O contexto expõe apenas os dados da loja que ainda
+// fazem sentido — nome, contato e documento (recibos) e a logo (impressa no
+// recibo). Não há mais injeção de cor/tema por loja em runtime.
 // =============================================================
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from "react";
 import { api } from "../services/api";
 // Versão ESM do contrato (o frontend/Vite não faz interop de CJS de fonte).
 import { TENANT_FIELD_MAP, parseTenantResponse } from "../../../../packages/shared/domain/tenant.mjs";
-
-// --- Utilitários de cores ---
-
-/** Converte hex (#RRGGBB) para componentes HSL */
-function hexToHSL(hex) {
-  let r = parseInt(hex.slice(1, 3), 16) / 255;
-  let g = parseInt(hex.slice(3, 5), 16) / 255;
-  let b = parseInt(hex.slice(5, 7), 16) / 255;
-
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0, l = (max + min) / 2;
-
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
-    }
-  }
-  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
-
-/** HSL para R G B nativo (para suportar opacidade do Tailwind) */
-function hslToRgbValues(h, s, l) {
-  s /= 100; l /= 100;
-  const k = n => (n + h / 30) % 12;
-  const a = s * Math.min(l, 1 - l);
-  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  return `${Math.round(255 * f(0))} ${Math.round(255 * f(8))} ${Math.round(255 * f(4))}`;
-}
-
-function hexToRgbValues(hex) {
-  let r = parseInt(hex.slice(1, 3), 16);
-  let g = parseInt(hex.slice(3, 5), 16);
-  let b = parseInt(hex.slice(5, 7), 16);
-  return `${r} ${g} ${b}`;
-}
-
-/** Gera uma palette completa a partir de uma cor hex, retornando apenas valores RGB */
-function generatePalette(hex) {
-  try {
-    const { h, s } = hexToHSL(hex);
-    return {
-      50:  hslToRgbValues(h, s, 97),
-      100: hslToRgbValues(h, s, 93),
-      200: hslToRgbValues(h, s, 85),
-      300: hslToRgbValues(h, s, 73),
-      400: hslToRgbValues(h, s, 60),
-      500: hslToRgbValues(h, s, 50),
-      600: hexToRgbValues(hex),
-      700: hslToRgbValues(h, s, 38),
-      800: hslToRgbValues(h, s, 28),
-      900: hslToRgbValues(h, s, 18),
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** Injeta CSS custom properties no :root */
-// Sem white-label: as cores são fixas do design system (styles/tokens.css +
-// camada de compatibilidade no index.css). Não injetamos mais cores por loja.
-// Mantido como no-op para não quebrar os call sites existentes.
-function injectCSSVars() {}
-
-// Marca fixa do design system (teal). Sem white-label: qualquer cor vinda do
-// backend é ignorada e substituída por estes valores para manter a identidade
-// única do SysControl.
-const BRAND_PRIMARY = "#0f7391"; // --teal-500
-const BRAND_SECONDARY = "#08465b"; // --teal-700
 
 // --- Defaults ---
 const DEFAULT_TENANT = {
@@ -90,9 +20,6 @@ const DEFAULT_TENANT = {
   telefone: "",
   documento: "",
   logoBase64: "",
-  bgBase64: "",
-  corPrimaria: BRAND_PRIMARY,
-  corSecundaria: BRAND_SECONDARY,
   devNome: "",
   devLink: "",
 };
@@ -108,8 +35,7 @@ function readBrandCache() {
   try {
     const raw = localStorage.getItem(BRAND_CACHE_KEY);
     if (!raw) return null;
-    // Marca fixa: caches antigos podem trazer cores por loja; sobrescreve.
-    return { ...DEFAULT_TENANT, ...JSON.parse(raw), corPrimaria: BRAND_PRIMARY, corSecundaria: BRAND_SECONDARY };
+    return { ...DEFAULT_TENANT, ...JSON.parse(raw) };
   } catch {
     return null;
   }
@@ -261,49 +187,14 @@ export function processLogoForWeb(file) {
   });
 }
 
-/**
- * Processa uma imagem de background para o login.
- * - Redimensiona para max 1920px de largura
- * - Mantém cores originais
- * - Comprime como JPEG com qualidade média (economizar espaço no SQLite)
- */
-export function processBackgroundImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX_WIDTH = 1920;
-        const scale = Math.min(1, MAX_WIDTH / img.width);
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-
-        const base64 = canvas.toDataURL("image/jpeg", 0.7);
-        resolve(base64);
-      };
-      img.onerror = () => reject(new Error("Falha ao processar imagem"));
-      img.src = e.target.result;
-    };
-    reader.onerror = () => reject(new Error("Falha ao ler arquivo"));
-    reader.readAsDataURL(file);
-  });
-}
-
 export const TenantProvider = ({ children }) => {
   // Reidrata da última identidade conhecida (persiste no web após refresh).
   const [tenant, setTenant] = useState(() => readBrandCache() || DEFAULT_TENANT);
   const [loading, setLoading] = useState(true);
 
-  // Aplica as cores/título da marca em cache imediatamente no boot, antes de
-  // qualquer carregamento de rede, para o login já nascer com a identidade.
+  // Aplica o título da marca em cache imediatamente no boot, antes de qualquer
+  // carregamento de rede, para o login já nascer com a identidade.
   useEffect(() => {
-    injectCSSVars(tenant.corPrimaria, tenant.corSecundaria);
     if (tenant.nome) document.title = tenant.nome;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -315,12 +206,8 @@ export const TenantProvider = ({ children }) => {
         // Contrato único (packages/shared): converte a resposta snake_case
         // para o tenant camelCase usado pela UI.
         const mapped = parseTenantResponse(raw);
-        // Marca fixa: ignora cores por loja vindas do backend.
-        mapped.corPrimaria = BRAND_PRIMARY;
-        mapped.corSecundaria = BRAND_SECONDARY;
         setTenant(mapped);
         writeBrandCache(mapped);
-        injectCSSVars(mapped.corPrimaria, mapped.corSecundaria);
         document.title = mapped.nome;
       }
     } catch (err) {
@@ -343,10 +230,6 @@ export const TenantProvider = ({ children }) => {
     await api.config.save(dbKey, value);
     setTenant((prev) => {
       const next = { ...prev, [key]: value };
-      // Re-injetar cores se mudou
-      if (key === "corPrimaria" || key === "corSecundaria") {
-        injectCSSVars(next.corPrimaria, next.corSecundaria);
-      }
       if (key === "nome") {
         document.title = value;
       }
@@ -367,7 +250,6 @@ export const TenantProvider = ({ children }) => {
 
     setTenant((prev) => {
       const next = { ...prev, ...updates };
-      injectCSSVars(next.corPrimaria, next.corSecundaria);
       if (updates.nome) document.title = updates.nome;
       writeBrandCache(next);
       return next;

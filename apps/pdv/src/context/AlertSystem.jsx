@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
+import { Icon } from "../components/ui/Icon";
 
 const AlertContext = createContext();
 
@@ -78,28 +79,28 @@ export const AlertProvider = ({ children }) => {
     switch (alertState.type) {
       case "error":
         return {
-          icon: "fa-times",
+          icon: "x",
           color: "text-red-500",
           bg: "bg-red-100",
           btn: "bg-red-600 hover:bg-red-700",
         };
       case "success":
         return {
-          icon: "fa-check",
+          icon: "check",
           color: "text-green-500",
           bg: "bg-green-100",
           btn: "bg-green-600 hover:bg-green-700",
         };
       case "confirm":
         return {
-          icon: "fa-question",
+          icon: "circle-help",
           color: "text-primary-500",
           bg: "bg-primary-100",
           btn: "bg-primary-600 hover:bg-primary-700",
         };
       default:
         return {
-          icon: "fa-info",
+          icon: "info",
           color: "text-primary-500",
           bg: "bg-primary-100",
           btn: "bg-primary-600 hover:bg-primary-700",
@@ -130,7 +131,7 @@ export const AlertProvider = ({ children }) => {
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${styles.bg} ${styles.color}`}
               >
-                <i className={`fas ${styles.icon} text-lg`}></i>
+                <Icon name={styles.icon} size={20} />
               </div>
               <h3 className="text-xl font-bold text-surface-800">
                 {alertState.title}

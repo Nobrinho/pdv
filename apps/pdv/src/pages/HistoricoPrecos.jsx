@@ -8,6 +8,7 @@ import { formatCurrency } from "../utils/format";
 import { api } from "../services/api";
 import DataTable from "../components/ui/DataTable";
 import { Badge } from "../components/ui/Badge";
+import { Icon } from "../components/ui/Icon";
 import Button from "../components/ui/Button";
 import FormField from "../components/ui/FormField";
 
@@ -152,7 +153,7 @@ const HistoricoPrecos = () => {
         return (
           <div className="flex items-center justify-center gap-2">
             <span className="text-surface-300 line-through text-[10px]">{formatCurrency(row.preco_antigo)}</span>
-            <i className={`fas fa-caret-right text-xs ${subiu ? 'text-red-500' : 'text-green-500'}`}></i>
+            <Icon name="chevron-right" size={13} className={subiu ? 'text-red-500' : 'text-green-500'} />
             <span className={`font-black ${subiu ? 'text-red-600' : 'text-surface-900'}`}>{formatCurrency(row.preco_novo)}</span>
           </div>
         );
@@ -169,7 +170,7 @@ const HistoricoPrecos = () => {
         return (
           <div className="flex items-center justify-center gap-2">
             <span className="text-surface-300 text-[10px]">{row.estoque_antigo}</span>
-            <i className={`fas fa-long-arrow-alt-right text-xs ${subiu ? 'text-green-500' : 'text-red-400'}`}></i>
+            <Icon name="arrow-right" size={13} className={subiu ? 'text-green-500' : 'text-red-400'} />
             <span className="font-black text-surface-900">{row.estoque_novo}</span>
           </div>
         );

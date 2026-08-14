@@ -416,16 +416,18 @@ const Recibos = () => {
         icon="fa-receipt"
         size="sm"
         footer={
-          <div className="flex gap-2 w-full">
-            <Button variant="secondary" onClick={() => setShowReceiptModal(false)} className="flex-1">
+          <div className="flex flex-col gap-2 w-full">
+            <div className="flex gap-2">
+              <Button variant="success" loading={isSharing} onClick={handleShareReceipt} className="flex-1 min-w-0">
+                {!isSharing && <Icon name="whatsapp" size={14} className="mr-1 inline" />}
+                {isSharing ? "Gerando..." : "Compartilhar"}
+              </Button>
+              <Button variant="primary" icon="fa-print" loading={isPrintingReceipt} onClick={handleSilentPrint} className="flex-1 min-w-0">
+                {isPrintingReceipt ? "Imprimindo..." : "Reimprimir"}
+              </Button>
+            </div>
+            <Button variant="secondary" onClick={() => setShowReceiptModal(false)} fullWidth>
               Fechar
-            </Button>
-            <Button variant="success" loading={isSharing} onClick={handleShareReceipt} className="flex-1">
-              {!isSharing && <Icon name="whatsapp" size={14} className="mr-1 inline" />}
-              {isSharing ? "Gerando..." : "Compartilhar"}
-            </Button>
-            <Button variant="primary" icon="fa-print" loading={isPrintingReceipt} onClick={handleSilentPrint} className="flex-[2]">
-              {isPrintingReceipt ? "Imprimindo..." : "Reimprimir"}
             </Button>
           </div>
         }

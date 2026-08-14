@@ -4,7 +4,7 @@
 // largura total, cantos arredondados no topo, com grabber).
 // =============================================================
 import React from "react";
-import { Icon } from "./Icon";
+import { Icon, faToLucide } from "./Icon";
 
 const Modal = ({ isOpen, onClose, title, children, footer, size = "md", icon }) => {
   if (!isOpen) return null;
@@ -30,7 +30,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = "md", icon }) 
         {title && (
           <h2 className="text-lg sm:text-xl font-bold px-5 sm:px-6 pt-2 sm:pt-6 pb-3 text-[var(--foreground)] border-b border-[var(--border)] flex items-center justify-between shrink-0">
             <span className="flex items-center gap-2">
-              {icon && <i className={`fas ${icon} text-[var(--primary)]`}></i>}
+              {icon && <Icon name={faToLucide(icon)} size={18} className="text-[var(--primary)]" />}
               {title}
             </span>
             {onClose && (
