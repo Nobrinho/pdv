@@ -1,0 +1,226 @@
+import React, { useEffect, useState } from "react";
+import { Icon } from "../ui/Icon";
+import { api } from "../../services/api";
+import Button from "../ui/Button";
+import { Card } from "../ui/Card";
+import ConfigCardHeader from "./ConfigCardHeader";
+
+const AccessLinkCard = () => {
+  const [invites, setInvites] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [copied, setCopied] = useState(null);
+
+  const buildLink = (codigo) => `${window.location.origin}${window.location.pathname}?c=${codigo}`;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setInvites(await api.invites.list());
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const generate = async () => {
+    setCreating(true);
+    try {
+      const res = await api.invites.create({});
+      if (res.success) await load();
+      else window.alert(res.error || "Falha ao gerar link.");
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const copy = async (codigo) => {
+    try {
+      await navigator.clipboard.writeText(buildLink(codigo));
+      setCopied(codigo);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      window.prompt("Copie o link:", buildLink(codigo));
+    }
+  };
+
+  const revoke = async (id) => {
+    if (!window.confirm("Revogar este link? Quem usar o link antigo não conseguirá mais entrar por ele.")) return;
+    try {
+      await api.invites.revoke(id);
+      await load();
+    } catch (error) {
+      window.alert(error.message);
+    }
+  };
+
+  return (
+    <Card padding="lg">
+      <ConfigCardHeader
+        icon="link"
+        title="Links de acesso"
+        subtitle="Abre o login já com esta loja preenchida"
+      />
+
+      <Button variant="primary" fullWidth icon="fa-plus" loading={creating} onClick={generate} className="mb-4">
+        {creating ? "Gerando..." : "Gerar novo link"}
+      </Button>
+
+      <div className="space-y-2">
+        {loading && <p className="text-xs text-[var(--muted-foreground)]">Carregando...</p>}
+        {!loading && invites.length === 0 && (
+          <p className="text-xs text-[var(--muted-foreground)]">Nenhum link ativo. Gere o primeiro acima.</p>
+        )}
+        {invites.map((inv) => (
+          <div
+            key={inv.id}
+            className="flex items-center gap-2 bg-[var(--muted)] border border-[var(--border)] rounded-[var(--radius-md)] p-2 pl-3"
+          >
+            <code className="text-xs font-semibold text-[var(--foreground)] flex-1 truncate" style={{ fontFamily: "var(--font-mono)" }}>
+              {inv.codigo}
+            </code>
+            <button
+              onClick={() => copy(inv.codigo)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--hover-surface)] transition"
+            >
+              <Icon
+                name={copied === inv.codigo ? "check" : "copy"}
+                size={13}
+                className={copied === inv.codigo ? "text-[var(--success)]" : ""}
+              />
+              {copied === inv.codigo ? "Copiado" : "Copiar"}
+            </button>
+            <button
+              onClick={() => revoke(inv.id)}
+              className="text-[var(--muted-foreground)] hover:text-[var(--danger)] px-2"
+              title="Revogar"
+            >
+              <Icon name="trash-2" size={15} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+const MigrateLocalCard = () => {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const run = async () => {
+    const confirmed = window.confirm(
+      "Isto vai enviar TODOS os dados desta instalacao local (produtos, clientes, vendas, etc.) para a loja online em que voce esta logado.\n\nUse apenas em uma loja online recem-criada e vazia. Continuar?",
+    );
+    if (!confirmed) return;
+    setRunning(true);
+    setResult(null);
+    try {
+      const res = await api.migrateLocalToOnline();
+      if (res.success) {
+        const total = Object.values(res.summary || {}).reduce((a, b) => a + Number(b || 0), 0);
+        setResult({ ok: true, msg: `Migração concluída: ${total} registros importados.` });
+      } else {
+        setResult({ ok: false, msg: res.error || "Falha na migração." });
+      }
+    } catch (error) {
+      setResult({ ok: false, msg: error.message });
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <Card padding="lg" className="border-[var(--danger-soft-border)]">
+      <ConfigCardHeader
+        icon="cloud-upload"
+        title="Migrar dados locais para a nuvem"
+        subtitle="Ação destrutiva — não pode ser desfeita"
+      />
+      <p className="text-xs text-[var(--muted-foreground)] mb-4 leading-relaxed">
+        Envia os dados desta instalação local para a loja online atual. Recomendado apenas em uma loja
+        online nova e vazia.
+      </p>
+      {result && (
+        <div
+          className={`text-xs font-semibold mb-3 p-3 rounded-[var(--radius-md)] ${
+            result.ok
+              ? "bg-[var(--success-soft)] text-[var(--success-soft-foreground)]"
+              : "bg-[var(--danger-soft)] text-[var(--danger-soft-foreground)]"
+          }`}
+        >
+          {result.msg}
+        </div>
+      )}
+      <Button variant="outline" fullWidth icon="fa-cloud-arrow-up" loading={running} onClick={run} className="!text-[var(--danger)] !border-[var(--danger-soft-border)]">
+        {running ? "Migrando..." : "Migrar para a loja online"}
+      </Button>
+    </Card>
+  );
+};
+
+const SystemToolsPanel = ({
+  printers = [],
+  selectedPrinter = "",
+  onSelectedPrinterChange,
+  onSavePrinter,
+  isSavingPrinter = false,
+  onBackup,
+  onRestore,
+  isBackupRunning = false,
+  isRestoreRunning = false,
+}) => {
+  return (
+    <div className="space-y-6">
+      <Card padding="lg">
+        <ConfigCardHeader icon="printer" title="Impressão" subtitle="Dispositivo padrão dos recibos" />
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] mb-1.5 block ml-0.5">
+              Dispositivo padrão
+            </label>
+            <select
+              className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
+              value={selectedPrinter}
+              onChange={(e) => onSelectedPrinterChange(e.target.value)}
+            >
+              <option value="">Configuração do Windows</option>
+              {printers.map((printer) => (
+                <option key={printer.name} value={printer.name}>
+                  {printer.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button variant="primary" loading={isSavingPrinter} onClick={onSavePrinter}>
+            Salvar
+          </Button>
+        </div>
+      </Card>
+
+      <Card padding="lg">
+        <ConfigCardHeader icon="database" title="Manutenção local" subtitle="Backup e restauração dos dados" />
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="success" size="lg" icon="fa-download" loading={isBackupRunning} onClick={onBackup} fullWidth>
+            {isBackupRunning ? "Executando" : "Backup"}
+          </Button>
+          <Button variant="outline" size="lg" icon="fa-upload" loading={isRestoreRunning} onClick={onRestore} fullWidth>
+            {isRestoreRunning ? "Restaurando" : "Restaurar"}
+          </Button>
+        </div>
+      </Card>
+
+      {api.isRemote && !api.isElectron && <AccessLinkCard />}
+      {api.isElectron && api.isRemote && <MigrateLocalCard />}
+    </div>
+  );
+};
+
+export default SystemToolsPanel;

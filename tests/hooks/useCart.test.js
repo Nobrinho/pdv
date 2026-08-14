@@ -1,9 +1,9 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import useCart from "../../src/hooks/useCart";
+import useCart from "../../apps/pdv/src/hooks/useCart";
 
 // Mock do hook useAlert
-vi.mock("../../src/context/AlertSystem", () => ({
+vi.mock("../../apps/pdv/src/context/AlertSystem", () => ({
   useAlert: () => ({
     showAlert: vi.fn(),
   }),

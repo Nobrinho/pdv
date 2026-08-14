@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import Knex from "knex";
-import { register as registerBudgets } from "../../electron/handlers/budgets.js";
+import { register as registerBudgets } from "../../apps/pdv/electron/handlers/budgets.js";
 import { createIpcHarness, eventFor } from "../helpers/ipc.js";
 
 const createDb = () =>

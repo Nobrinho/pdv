@@ -1,0 +1,61 @@
+import React from "react";
+import { Icon } from "../ui/Icon";
+import Button from "../ui/Button";
+import { Input, Field } from "../ui/Input";
+
+const QuickClientModal = ({
+  newClientData,
+  onClientFieldChange,
+  onClose,
+  onSubmit,
+  isSavingClient = false,
+}) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-end justify-center sm:items-center sm:p-4 z-[70] animate-fade-in">
+      <div className="bg-surface-100 rounded-t-2xl sm:rounded-xl shadow-2xl p-6 pt-3 w-full sm:max-w-md max-h-[92vh] overflow-y-auto pb-safe">
+        <div className="sheet-grabber sm:hidden" />
+        <h2 className="text-xl font-bold mb-4 text-surface-800 border-b pb-2 flex items-center">
+          <Icon name="user" size={18} className="mr-2 text-[var(--primary)]" /> Novo Cliente Rápido
+        </h2>
+        <form onSubmit={onSubmit} className="space-y-3">
+          <Field label="Nome Completo" required>
+            <Input
+              value={newClientData.nome}
+              onChange={(e) => onClientFieldChange("nome", e.target.value)}
+              autoFocus
+              required
+            />
+          </Field>
+          <Field label="CPF / Documento" required>
+            <Input
+              value={newClientData.documento}
+              onChange={(e) => onClientFieldChange("documento", e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Telefone / WhatsApp" required>
+            <Input
+              value={newClientData.telefone}
+              onChange={(e) => onClientFieldChange("telefone", e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Endereço (Opcional)">
+            <Input
+              value={newClientData.endereco}
+              onChange={(e) => onClientFieldChange("endereco", e.target.value)}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
+            <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" variant="primary" loading={isSavingClient}>
+              {isSavingClient ? "Salvando..." : "Salvar e selecionar"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default QuickClientModal;

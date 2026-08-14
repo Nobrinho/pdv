@@ -1,0 +1,326 @@
+// @ts-nocheck
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import dayjs from "dayjs";
+import { useAlert } from "../context/AlertSystem";
+import { api } from "../services/api";
+import { formatCurrency } from "../utils/format";
+import DataTable from "../components/ui/DataTable";
+import FormField from "../components/ui/FormField";
+import StatCard from "../components/ui/StatCard";
+import Button from "../components/ui/Button";
+import { Icon } from "../components/ui/Icon";
+import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
+
+const Servicos = () => {
+  const { showAlert } = useAlert();
+
+  // Dados Gerais
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [isSavingService, setIsSavingService] = useState(false);
+  const LIMIT = 100;
+
+  // Estado do Formulário (Registro)
+  const [formData, setFormData] = useState({
+    trocadorId: "",
+    descricao: "",
+    valor: "",
+  });
+
+  // Filtros Avançados
+  const [periodType, setPeriodType] = useState("weekly");
+  const [startDate, setStartDate] = useState(
+    dayjs().startOf("week").format("YYYY-MM-DD"),
+  );
+  const [endDate, setEndDate] = useState(
+    dayjs().endOf("week").format("YYYY-MM-DD"),
+  );
+  const [selectedMechanicFilter, setSelectedMechanicFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false); // avançados colapsados no mobile
+
+  const hasInvalidRange = startDate && endDate && dayjs(startDate).isAfter(dayjs(endDate));
+  const { startTimestamp, endTimestamp } = buildDateRangeTimestamps(startDate, endDate);
+  const servicesParams = {
+    page,
+    limit: LIMIT,
+    startDate: startTimestamp,
+    endDate: endTimestamp,
+    trocadorId:
+      selectedMechanicFilter && selectedMechanicFilter !== "all" ? selectedMechanicFilter : undefined,
+  };
+  const servicesQuery = useQuery({
+    queryKey: ["services", servicesParams],
+    queryFn: () => api.services.list(servicesParams),
+    enabled: !hasInvalidRange,
+  });
+  const rawServices = servicesQuery.data;
+  const servicesList = Array.isArray(rawServices) ? rawServices : rawServices?.data || [];
+  const services = useMemo(
+    () => [...servicesList].sort((a, b) => b.data_servico - a.data_servico),
+    [servicesList],
+  );
+  const totalPages = Array.isArray(rawServices) ? 0 : rawServices?.totalPages || 0;
+  const totalRecords = Array.isArray(rawServices) ? services.length : rawServices?.total || 0;
+  const loading = servicesQuery.isLoading;
+
+  const { data: people = [] } = useQuery({ queryKey: ["people"], queryFn: () => api.people.list() });
+  const mechanics = useMemo(() => people.filter((p) => p.cargo_nome === "Trocador"), [people]);
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (isSavingService) return;
+    if (!formData.trocadorId || !formData.valor) {
+      return showAlert("Preencha todos os campos obrigatórios!", "Atenção", "warning");
+    }
+    const normalizedValue = Number(formData.valor);
+    if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) {
+      return showAlert("Informe um valor maior que zero.", "Valor invalido", "warning");
+    }
+
+    const serviceData = {
+      trocador_id: parseInt(formData.trocadorId),
+      descricao: (formData.descricao || "").trim(),
+      valor: normalizedValue,
+      forma_pagamento: "Saída",
+    };
+
+    try {
+      setIsSavingService(true);
+      const result = await api.services.create(serviceData);
+      if (result.success) {
+        showAlert("Serviço registrado com sucesso!", "Sucesso", "success");
+        setFormData({ ...formData, descricao: "", valor: "" });
+        queryClient.invalidateQueries({ queryKey: ["services"] });
+      } else {
+        showAlert("Erro ao registrar: " + result.error, "Erro", "error");
+      }
+    } catch (err) {
+      showAlert("Erro técnico ao salvar.", "Erro", "error");
+    } finally {
+      setIsSavingService(false);
+    }
+  };
+
+  const handlePeriodChange = (type) => {
+    setPeriodType(type);
+    setPage(1);
+    const range = getPeriodRange(type);
+    if (range) {
+      setStartDate(range.startDate);
+      setEndDate(range.endDate);
+    }
+  };
+
+  const filteredServices = useMemo(() => {
+    return services;
+  }, [services]);
+
+  // Resumo (Qtd. e Total Pago) deve refletir TODOS os registros do filtro,
+  // não só a página atual. O backend devolve os agregados (total, totalValor);
+  // usamos eles quando disponíveis e caímos para a soma da página como fallback.
+  const reportSummary = useMemo(() => {
+    const pageValue = filteredServices.reduce((acc, curr) => acc + Number(curr.valor || 0), 0);
+    const hasServerAgg = rawServices && !Array.isArray(rawServices);
+    return {
+      totalCount: hasServerAgg && rawServices.total != null ? rawServices.total : filteredServices.length,
+      totalValue: hasServerAgg && rawServices.totalValor != null ? rawServices.totalValor : pageValue,
+    };
+  }, [filteredServices, rawServices]);
+
+  const columns = [
+    { 
+      key: "data_servico", 
+      label: "Data", 
+      format: (val) => dayjs(val).format("DD/MM/YYYY HH:mm") 
+    },
+    {
+      key: "trocador_nome",
+      label: "Responsável",
+      format: (val) => val ? (
+        <span className="bg-[var(--muted)] text-[var(--foreground)] px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium border border-[var(--border)]">
+          {val}
+        </span>
+      ) : <span className="text-[var(--danger)] text-xs italic">Excluído</span>
+    },
+    { key: "descricao", label: "Descrição" },
+    {
+      key: "valor",
+      label: "Valor pago",
+      align: "right",
+      format: (val) => (
+        <span className="font-semibold text-[var(--warning-icon)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
+          {formatCurrency(val)}
+        </span>
+      )
+    }
+  ];
+
+  return (
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-y-auto lg:overflow-hidden custom-scrollbar bg-surface-50">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Serviços</h1>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">Controle de pagamentos de mão de obra e serviços extras.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6 lg:h-full lg:overflow-hidden">
+        {/* --- COLUNA ESQUERDA: REGISTRO --- */}
+        <div className="w-full lg:w-80 xl:w-96 bg-[var(--card)] p-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] h-fit border border-[var(--border)] shrink-0">
+          <h2 className="text-[10px] font-semibold mb-6 text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] border-b border-[var(--border)] pb-4 flex items-center gap-2">
+            <Icon name="plus" size={14} className="text-[var(--primary)]" /> Novo registro
+          </h2>
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] ml-0.5">
+                Responsável (trocador)
+              </label>
+              <select
+                className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
+                value={formData.trocadorId}
+                onChange={(e) => setFormData({ ...formData, trocadorId: e.target.value })}
+                required
+              >
+                <option value="">Selecione...</option>
+                {mechanics.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            <FormField
+              label="Descrição do Serviço"
+              placeholder="Ex: Troca de óleo, Regulagem..."
+              value={formData.descricao}
+              onChange={(val) => setFormData({ ...formData, descricao: val })}
+            />
+
+            <FormField
+              label="Valor (Saída de Caixa)"
+              type="number"
+              icon="fa-hand-holding-dollar"
+              value={formData.valor}
+              onChange={(val) => {
+                const next = String(val ?? "").replace(",", ".");
+                if (next.includes("-")) return;
+                setFormData({ ...formData, valor: next });
+              }}
+              min="0.01"
+              step="0.01"
+              required
+            />
+
+            <Button type="submit" variant="primary" size="lg" fullWidth icon="fa-check" loading={isSavingService} className="mt-4">
+              {isSavingService ? "Salvando..." : "Registrar serviço"}
+            </Button>
+          </form>
+        </div>
+
+        {/* --- COLUNA DIREITA: RELATÓRIO --- */}
+        <div className="flex-1 flex flex-col lg:h-full lg:overflow-hidden gap-4">
+          <div className="bg-[var(--card)] p-4 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex gap-2 overflow-x-auto custom-scrollbar flex-1">
+                {['weekly', 'monthly', 'yearly'].map(period => (
+                  <button
+                    key={period}
+                    onClick={() => handlePeriodChange(period)}
+                    className={`px-4 py-1.5 text-sm rounded-full transition whitespace-nowrap ${
+                      periodType === period
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--hover-surface)]"
+                    }`}
+                  >
+                    {period === 'weekly' ? 'Esta semana' : period === 'monthly' ? 'Este mês' : 'Este ano'}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-md)] text-[11px] font-semibold uppercase tracking-wider transition ${
+                  selectedMechanicFilter !== "all" ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--muted)] text-[var(--muted-foreground)]"
+                }`}
+              >
+                <Icon name="sliders-horizontal" size={13} className={showFilters ? "rotate-180 transition-transform" : "transition-transform"} />
+                Filtros
+              </button>
+            </div>
+
+            <div className={`${showFilters ? "grid" : "hidden"} lg:grid grid-cols-1 md:grid-cols-3 gap-3 items-end`}>
+              <FormField
+                label="Início"
+                type="date"
+                value={startDate}
+                onChange={(val) => { setStartDate(val); setPeriodType("custom"); setPage(1); }}
+              />
+              <FormField
+                label="Fim"
+                type="date"
+                value={endDate}
+                onChange={(val) => { setEndDate(val); setPeriodType("custom"); setPage(1); }}
+              />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] block ml-0.5">Mecânico</label>
+                <select
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
+                  value={selectedMechanicFilter}
+                  onChange={(e) => { setSelectedMechanicFilter(e.target.value); setPage(1); }}
+                >
+                  <option value="all">Todos os Profissionais</option>
+                  {mechanics.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nome}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard
+              title="Qtd. Serviços"
+              value={reportSummary.totalCount}
+              format={(v) => `${v} registros`}
+              color="blue"
+              icon="fa-clipboard-list"
+            />
+            <StatCard
+              title="Total Pago (Saída)"
+              value={reportSummary.totalValue}
+              color="orange"
+              icon="fa-hand-holding-usd"
+            />
+          </div>
+
+          <div className="flex flex-col lg:flex-1 lg:overflow-hidden min-h-[55vh] lg:min-h-0">
+            <DataTable
+              columns={columns}
+              data={filteredServices}
+              loading={loading}
+              onRefresh={() => servicesQuery.refetch()}
+              emptyIcon="fa-clipboard-list"
+              emptyMessage="Nenhum serviço registrado para este período."
+            />
+            {totalPages > 1 && (
+              <div className="px-[18px] py-3 border-t border-[var(--border)] flex justify-between items-center shrink-0">
+                <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)]">
+                  Pág {page} de {totalPages} · {totalRecords} total
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+                    Anterior
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                    Próximo
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Servicos;

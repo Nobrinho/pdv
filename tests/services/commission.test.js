@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   calcularComissaoItem,
   calcularComissaoVenda,
-} from "../../electron/services/commission.js";
+} from "../../apps/pdv/electron/services/commission.js";
 
 // ============================
 // Helpers

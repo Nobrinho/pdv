@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+dist_electron
+build
+apps/pdv/dist
+apps/pdv-admin/dist
+**/*.sqlite3
+*.log
+.git
+.agent
+.env
+**/.env
+docs
+tests
+*.md

@@ -4,7 +4,7 @@ import {
   buildProductTemplateWorkbook,
   getProductExportFilename,
   mapProductsToSpreadsheetRows,
-} from "../../src/utils/productSpreadsheet";
+} from "../../apps/pdv/src/utils/productSpreadsheet";
 
 describe("productSpreadsheet utils", () => {
   it("mapeia produtos para linhas de exportacao", () => {

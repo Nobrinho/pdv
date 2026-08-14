@@ -1,9 +1,9 @@
 {
   "name": "syscontrol",
   "productName": "SysControl",
-  "version": "1.8.1",
+  "version": "1.9.1",
   "description": "Sistema PDV White Label - Controle de Estoque e Vendas",
-  "main": "electron/main.js",
+  "main": "apps/pdv/electron/main.js",
   "author": "Emerson Nobre",
   "license": "MIT",
   "repository": {
@@ -11,16 +11,27 @@
     "url": "https://github.com/Nobrinho/pdv.git"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --config apps/pdv/vite.config.js",
+    "admin:dev": "vite --config apps/pdv-admin/vite.config.js",
+    "admin:build": "vite build --config apps/pdv-admin/vite.config.js",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "server:dev": "node apps/pdv-back/src/server.js",
+    "server:start": "node apps/pdv-back/src/server.js",
+    "server:migrate": "knex migrate:latest --knexfile ./apps/pdv-back/knexfile.js",
+    "server:smoke": "node apps/pdv-back/scripts/smoke.js",
+    "server:dunning": "node apps/pdv-back/scripts/dunning.js",
+    "server:smoke:local": "node apps/pdv-back/scripts/smoke-local.mjs",
+    "schema:parity": "node scripts/schema-parity.mjs",
+    "build": "vite build --config apps/pdv/vite.config.js",
     "electron": "electron .",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dist": "vite build && electron-builder",
+    "dist": "vite build --config apps/pdv/vite.config.js && electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "migrate:make": "knex migrate:make --knexfile ./database/knexfile.js",
-    "migrate:latest": "knex migrate:latest --knexfile ./database/knexfile.js"
+    "migrate:make": "knex migrate:make --knexfile ./apps/pdv/database/knexfile.js",
+    "migrate:latest": "knex migrate:latest --knexfile ./apps/pdv/database/knexfile.js"
   },
   "build": {
     "appId": "com.pdv.whitelabel",
@@ -37,14 +48,15 @@
       "output": "dist_electron"
     },
     "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "database/**/*",
+      "apps/pdv/dist/**/*",
+      "apps/pdv/electron/**/*",
+      "apps/pdv/database/**/*",
+      "packages/shared/**/*",
       "package.json"
     ],
     "extraResources": [
       {
-        "from": "./database",
+        "from": "./apps/pdv/database",
         "to": "database",
         "filter": [
           "**/*"
@@ -72,15 +84,22 @@
     }
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.1.0",
+    "@tanstack/query-sync-storage-persister": "^5.59.16",
+    "@tanstack/react-query": "^5.59.16",
+    "@tanstack/react-query-persist-client": "^5.59.16",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "better-sqlite3": "^9.4.0",
     "chart.js": "^4.4.1",
     "dayjs": "^1.11.10",
     "electron-updater": "^6.6.2",
     "framer-motion": "^12.38.0",
+    "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.23",
     "knex": "^3.1.0",
+    "lucide-react": "^0.469.0",
+    "pg": "^8.13.1",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
@@ -88,6 +107,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@tanstack/react-query-devtools": "^5.59.16",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

@@ -1,9 +1,9 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import usePayments from "../../src/hooks/usePayments";
+import usePayments from "../../apps/pdv/src/hooks/usePayments";
 
 // Mock do hook useAlert que é usado dentro de usePayments
-vi.mock("../../src/context/AlertSystem", () => ({
+vi.mock("../../apps/pdv/src/context/AlertSystem", () => ({
   useAlert: () => ({
     showAlert: vi.fn(),
   }),
