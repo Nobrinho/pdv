@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Search,
   Banknote,
+  Plus,
   CircleHelp,
 } from "lucide-react";
 
@@ -56,6 +57,7 @@ const REGISTRY = {
   "refresh-cw": RefreshCw,
   search: Search,
   banknote: Banknote,
+  plus: Plus,
 };
 
 export function Icon({ name, size = 18, strokeWidth = 2, className = "", ...props }) {

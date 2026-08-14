@@ -122,6 +122,10 @@ export const api = {
     return (await http("/platform/plans")).plans || [];
   },
 
+  async savePlan(payload = {}) {
+    return await http("/platform/plans", { method: "POST", body: payload });
+  },
+
   async runDunning() {
     return await http("/platform/billing/run-dunning", { method: "POST", body: {} });
   },

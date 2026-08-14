@@ -282,6 +282,10 @@ function Dashboard({ user, onLogout }) {
   const [actionError, setError] = useState("");
   const error = actionError || storesQuery.error?.message || "";
   const [detailStore, setDetailStore] = useState(null);
+  // Edição de planos (CRUD): overrides por id + linha de novo plano.
+  const [planEdits, setPlanEdits] = useState({});
+  const [newPlan, setNewPlan] = useState(null);
+  const [savingPlan, setSavingPlan] = useState(null); // id ou "new"
 
   const refreshAll = () =>
     Promise.all([
@@ -320,6 +324,59 @@ function Dashboard({ user, onLogout }) {
     () => [...stores].sort((a, b) => Number(b.faturamento || 0) - Number(a.faturamento || 0)),
     [stores],
   );
+
+  // ---- Planos (CRUD) ----
+  const planVal = (p, field) => {
+    const e = planEdits[p.id];
+    return e && field in e ? e[field] : p[field];
+  };
+  const setPlanField = (id, field, value) =>
+    setPlanEdits((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+  const planDirty = (p) => !!planEdits[p.id] && Object.keys(planEdits[p.id]).length > 0;
+
+  const buildPlanPayload = (base) => ({
+    id: base.id,
+    nome: String(base.nome || "").trim(),
+    preco_mensal: Number(base.preco_mensal) || 0,
+    limite_usuarios: Number(base.limite_usuarios) || 0,
+    limite_dispositivos: Number(base.limite_dispositivos) || 0,
+    ativo: base.ativo == null ? true : !!base.ativo,
+  });
+
+  const savePlanRow = async (p) => {
+    const payload = buildPlanPayload({ ...p, ...(planEdits[p.id] || {}) });
+    if (!payload.nome) return setError("Informe o nome do plano.");
+    setSavingPlan(p.id);
+    try {
+      await api.savePlan(payload);
+      setPlanEdits((prev) => {
+        const next = { ...prev };
+        delete next[p.id];
+        return next;
+      });
+      await refreshAll();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingPlan(null);
+    }
+  };
+
+  const saveNewPlan = async () => {
+    const payload = buildPlanPayload(newPlan || {});
+    if (!payload.nome) return setError("Informe o nome do novo plano.");
+    delete payload.id;
+    setSavingPlan("new");
+    try {
+      await api.savePlan(payload);
+      setNewPlan(null);
+      await refreshAll();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingPlan(null);
+    }
+  };
 
   const blockStore = async (store) => {
     const motivo = window.prompt(`Motivo do bloqueio da loja ${store.nome}:`, "Bloqueio administrativo");
@@ -599,24 +656,80 @@ function Dashboard({ user, onLogout }) {
         {view === "subscriptions" && (
           <>
             <div className="table-wrap" style={{ marginBottom: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px" }}>
+                <strong>Planos</strong>
+                {!newPlan && (
+                  <button
+                    className="ghost ok"
+                    onClick={() => setNewPlan({ nome: "", preco_mensal: 0, limite_usuarios: 3, limite_dispositivos: 1, ativo: true })}
+                  >
+                    <Icon name="plus" size={15} /> Novo plano
+                  </button>
+                )}
+              </div>
               <table>
                 <thead>
-                  <tr><th>Plano</th><th>Preço/mês</th><th>Limites (usuários/disp.)</th><th>Lojas</th><th>Receita</th></tr>
+                  <tr><th>Plano</th><th>Preço/mês (R$)</th><th>Usuários</th><th>Dispositivos</th><th>Ativo</th><th>Lojas</th><th></th></tr>
                 </thead>
                 <tbody>
                   {plans.map((p) => {
                     const agg = (billing?.por_plano || []).find((x) => x.plano === p.nome);
+                    const busy = savingPlan === p.id;
                     return (
                       <tr key={p.id}>
-                        <td className="cell-main"><strong>{p.nome}</strong>{!p.ativo && <span>inativo</span>}</td>
-                        <td className="num" data-label="Preço/mês">{money.format(p.preco_mensal || 0)}</td>
-                        <td className="num" data-label="Limites (usu./disp.)">{p.limite_usuarios} / {p.limite_dispositivos}</td>
+                        <td className="cell-main" data-label="Plano">
+                          <input value={planVal(p, "nome") ?? ""} onChange={(e) => setPlanField(p.id, "nome", e.target.value)} style={{ width: "100%" }} />
+                        </td>
+                        <td className="num" data-label="Preço/mês">
+                          <input type="number" min="0" step="1" value={planVal(p, "preco_mensal") ?? 0} onChange={(e) => setPlanField(p.id, "preco_mensal", e.target.value)} style={{ width: 90, textAlign: "right" }} />
+                        </td>
+                        <td className="num" data-label="Usuários">
+                          <input type="number" min="0" value={planVal(p, "limite_usuarios") ?? 0} onChange={(e) => setPlanField(p.id, "limite_usuarios", e.target.value)} style={{ width: 70, textAlign: "right" }} />
+                        </td>
+                        <td className="num" data-label="Dispositivos">
+                          <input type="number" min="0" value={planVal(p, "limite_dispositivos") ?? 0} onChange={(e) => setPlanField(p.id, "limite_dispositivos", e.target.value)} style={{ width: 70, textAlign: "right" }} />
+                        </td>
+                        <td data-label="Ativo">
+                          <input type="checkbox" checked={!!planVal(p, "ativo")} onChange={(e) => setPlanField(p.id, "ativo", e.target.checked)} />
+                        </td>
                         <td className="num" data-label="Lojas">{agg?.lojas || 0}</td>
-                        <td className="num" data-label="Receita">{money.format(agg?.receita || 0)}</td>
+                        <td className="actions" data-label="Ações">
+                          <button className="ghost ok" disabled={busy || !planDirty(p)} onClick={() => savePlanRow(p)}>
+                            {busy ? "Salvando…" : (<><Icon name="check" size={15} /> Salvar</>)}
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
-                  {!plans.length && <tr><td colSpan="5" className="empty">Nenhum plano.</td></tr>}
+                  {newPlan && (
+                    <tr>
+                      <td className="cell-main" data-label="Plano">
+                        <input placeholder="Nome do plano" value={newPlan.nome} onChange={(e) => setNewPlan({ ...newPlan, nome: e.target.value })} style={{ width: "100%" }} autoFocus />
+                      </td>
+                      <td className="num" data-label="Preço/mês">
+                        <input type="number" min="0" step="1" value={newPlan.preco_mensal} onChange={(e) => setNewPlan({ ...newPlan, preco_mensal: e.target.value })} style={{ width: 90, textAlign: "right" }} />
+                      </td>
+                      <td className="num" data-label="Usuários">
+                        <input type="number" min="0" value={newPlan.limite_usuarios} onChange={(e) => setNewPlan({ ...newPlan, limite_usuarios: e.target.value })} style={{ width: 70, textAlign: "right" }} />
+                      </td>
+                      <td className="num" data-label="Dispositivos">
+                        <input type="number" min="0" value={newPlan.limite_dispositivos} onChange={(e) => setNewPlan({ ...newPlan, limite_dispositivos: e.target.value })} style={{ width: 70, textAlign: "right" }} />
+                      </td>
+                      <td data-label="Ativo">
+                        <input type="checkbox" checked={!!newPlan.ativo} onChange={(e) => setNewPlan({ ...newPlan, ativo: e.target.checked })} />
+                      </td>
+                      <td className="num">—</td>
+                      <td className="actions">
+                        <button className="ghost ok" disabled={savingPlan === "new"} onClick={saveNewPlan}>
+                          {savingPlan === "new" ? "Criando…" : (<><Icon name="check" size={15} /> Criar</>)}
+                        </button>
+                        <button className="ghost" disabled={savingPlan === "new"} onClick={() => setNewPlan(null)}>
+                          <Icon name="x" size={15} /> Cancelar
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                  {!plans.length && !newPlan && <tr><td colSpan="7" className="empty">Nenhum plano.</td></tr>}
                 </tbody>
               </table>
             </div>
