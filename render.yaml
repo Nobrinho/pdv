@@ -1,0 +1,112 @@
+# =============================================================
+# Render Blueprint — dois ambientes online (dev + produção).
+#
+# Serviços:
+#   pdv-api        -> backend PRODUÇÃO
+#   pdv-api-dev    -> backend DEV/HOMOLOG
+#   pdv-web        -> web (pdv) PRODUÇÃO      (build usa .env.production)
+#   pdv-web-dev    -> web (pdv) DEV           (build usa .env.staging)
+#   pdv-admin      -> admin PRODUÇÃO          (build usa .env.production)
+#   pdv-admin-dev  -> admin DEV               (build usa .env.staging)
+#
+# Segredos (marcados `sync: false`) NÃO ficam aqui — você define no painel de
+# cada serviço (Environment). O SERVER_TOKEN_SECRET é gerado pela Render.
+#
+# O VITE_API_URL do front NÃO vai aqui: é assado no build a partir dos arquivos
+# apps/*/.env.production (prod) e apps/*/.env.staging (dev). Só troque o
+# placeholder de .env.staging pela URL real do pdv-api-dev.
+# =============================================================
+services:
+  # ---------- BACKEND: PRODUÇÃO ----------
+  - type: web
+    name: pdv-api
+    runtime: node
+    plan: free            # sobe para starter+ quando quiser sem spin-down
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci
+    preDeployCommand: npm run server:migrate
+    startCommand: npm run server:start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVER_TOKEN_SECRET
+        generateValue: true      # Render gera um segredo forte
+      - key: DATABASE_URL
+        sync: false              # Neon (branch principal) — setar no painel
+      - key: PLATFORM_ADMIN_EMAIL
+        sync: false
+      - key: PLATFORM_ADMIN_PASSWORD
+        sync: false
+      - key: PLATFORM_ADMIN_NAME
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false              # URLs de pdv-web e pdv-admin (por vírgula)
+      - key: BILLING_GRACE_DAYS
+        value: "5"
+
+  # ---------- BACKEND: DEV / HOMOLOG ----------
+  - type: web
+    name: pdv-api-dev
+    runtime: node
+    plan: free
+    branch: main               # troque para uma branch 'develop' se preferir
+    autoDeploy: true
+    buildCommand: npm ci
+    preDeployCommand: npm run server:migrate
+    startCommand: npm run server:start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production        # staging também roda em modo produção
+      - key: SERVER_TOKEN_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false              # Neon (branch 'dev') — setar no painel
+      - key: PLATFORM_ADMIN_EMAIL
+        sync: false
+      - key: PLATFORM_ADMIN_PASSWORD
+        sync: false
+      - key: PLATFORM_ADMIN_NAME
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false              # URLs de pdv-web-dev e pdv-admin-dev
+      - key: BILLING_GRACE_DAYS
+        value: "5"
+
+  # ---------- WEB (pdv): PRODUÇÃO ----------
+  - type: web
+    name: pdv-web
+    runtime: static
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    staticPublishPath: apps/pdv/dist
+
+  # ---------- WEB (pdv): DEV ----------
+  - type: web
+    name: pdv-web-dev
+    runtime: static
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci && npm run build:staging
+    staticPublishPath: apps/pdv/dist
+
+  # ---------- ADMIN: PRODUÇÃO ----------
+  - type: web
+    name: pdv-admin
+    runtime: static
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci && npm run admin:build
+    staticPublishPath: apps/pdv-admin/dist
+
+  # ---------- ADMIN: DEV ----------
+  - type: web
+    name: pdv-admin-dev
+    runtime: static
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci && npm run admin:build:staging
+    staticPublishPath: apps/pdv-admin/dist

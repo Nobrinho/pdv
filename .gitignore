@@ -18,8 +18,14 @@ build/
 .DS_Store
 Thumbs.db
 
-# Arquivos de ambiente local (chaves secretas)
+# Arquivos de ambiente com SEGREDOS (ignorados):
+#   .env            -> raiz e apps/pdv-back/.env (DATABASE_URL, SERVER_TOKEN_SECRET, admin...)
+#   .env.local / .env.*.local -> overrides pessoais
+# NÃO ignorados (commitados de propósito, só têm VITE_API_URL público):
+#   apps/pdv/.env.development, apps/pdv/.env.production
+#   apps/pdv-admin/.env.development, apps/pdv-admin/.env.production
 .env
 .env.local
+.env.*.local
 .agent
 .syscontrol
