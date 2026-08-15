@@ -48,6 +48,8 @@ const Servicos = () => {
     endDate: endTimestamp,
     trocadorId:
       selectedMechanicFilter && selectedMechanicFilter !== "all" ? selectedMechanicFilter : undefined,
+    // Inclui a mão de obra registrada nas vendas (linhas somente-leitura).
+    includeSales: true,
   };
   const servicesQuery = useQuery({
     queryKey: ["services", servicesParams],
@@ -145,6 +147,20 @@ const Servicos = () => {
     },
     { key: "descricao", label: "Descrição" },
     {
+      key: "origem",
+      label: "Origem",
+      format: (val) =>
+        val === "venda" ? (
+          <span className="bg-[var(--primary-soft)] text-[var(--primary-soft-foreground)] px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium border border-[var(--primary-soft-border)]">
+            Venda
+          </span>
+        ) : (
+          <span className="bg-[var(--muted)] text-[var(--muted-foreground)] px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium border border-[var(--border)]">
+            Avulso
+          </span>
+        ),
+    },
+    {
       key: "valor",
       label: "Valor pago",
       align: "right",
@@ -161,7 +177,7 @@ const Servicos = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-lg md:text-xl font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Serviços</h1>
-          <p className="text-xs text-[var(--muted-foreground)] mt-1">Controle de pagamentos de mão de obra e serviços extras.</p>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">Pagamentos de mão de obra e serviços extras (inclui a mão de obra das vendas).</p>
         </div>
       </div>
 

@@ -29,7 +29,7 @@ async function getDashboardStats(knex, lojaId) {
   const vendaIds = vendas.map((venda) => venda.id);
   const vendedorIds = [...new Set(vendas.map((venda) => venda.vendedor_id).filter(Boolean))];
 
-  const [servicos, pessoas, itens, { comissaoPadrao, comissaoUsados }] = await Promise.all([
+  const [servicos, pessoas, itens, { comissaoPadrao, comissaoUsados }, despesaRow] = await Promise.all([
     knex("servicos_avulsos")
       .where({ loja_id: lojaId })
       .whereBetween("data_servico", [start, end])
@@ -51,6 +51,11 @@ async function getDashboardStats(knex, lojaId) {
           .select("venda_itens.*", "produtos.tipo")
       : [],
     carregarTaxas(knex, lojaId),
+    knex("despesas")
+      .where({ loja_id: lojaId })
+      .whereBetween("data_despesa", [start, end])
+      .sum("valor as total")
+      .first(),
   ]);
 
   let faturamento = 0;
@@ -74,7 +79,9 @@ async function getDashboardStats(knex, lojaId) {
   }
 
   maoDeObra += servicos.reduce((total, servico) => total + toNumber(servico.valor), 0);
-  const lucro = faturamento - custoProdutos - comissoes;
+  const despesas = toNumber(despesaRow?.total);
+  // Lucro líquido: resultado operacional menos as despesas cadastradas no dia.
+  const lucro = faturamento - custoProdutos - comissoes - despesas;
 
   return {
     faturamento,
@@ -82,6 +89,7 @@ async function getDashboardStats(knex, lojaId) {
     vendasCount: vendas.length,
     maoDeObra,
     comissoes,
+    despesas,
   };
 }
 

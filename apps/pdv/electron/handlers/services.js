@@ -8,6 +8,65 @@ function register(safeHandle, knex) {
     const limit = filters.limit ? parseInt(filters.limit, 10) : null;
     const hasPagination = Number.isInteger(page) && Number.isInteger(limit) && page > 0 && limit > 0;
     const offset = hasPagination ? (page - 1) * limit : 0;
+    const includeSales = filters.includeSales === true || filters.includeSales === "true";
+
+    // Tela de Serviços: mescla avulsos + mão de obra de vendas (leitura).
+    // O relatório NÃO passa includeSales, evitando contagem em dobro.
+    if (includeSales) {
+      const avulsosQ = knex("servicos_avulsos")
+        .leftJoin("pessoas", "servicos_avulsos.trocador_id", "pessoas.id")
+        .select("servicos_avulsos.*", "pessoas.nome as trocador_nome");
+      const vendasQ = knex("vendas")
+        .leftJoin("pessoas", "vendas.trocador_id", "pessoas.id")
+        .where("vendas.cancelada", 0)
+        .where("vendas.mao_de_obra", ">", 0)
+        .select(
+          "vendas.id",
+          "vendas.data_venda",
+          "vendas.mao_de_obra",
+          "vendas.trocador_id",
+          "pessoas.nome as trocador_nome",
+        );
+      if (filters.startDate) {
+        avulsosQ.where("servicos_avulsos.data_servico", ">=", filters.startDate);
+        vendasQ.where("vendas.data_venda", ">=", filters.startDate);
+      }
+      if (filters.endDate) {
+        avulsosQ.where("servicos_avulsos.data_servico", "<=", filters.endDate);
+        vendasQ.where("vendas.data_venda", "<=", filters.endDate);
+      }
+      if (filters.trocadorId) {
+        avulsosQ.where("servicos_avulsos.trocador_id", filters.trocadorId);
+        vendasQ.where("vendas.trocador_id", filters.trocadorId);
+      }
+
+      const [avulsos, vendas] = await Promise.all([avulsosQ, vendasQ]);
+      const rows = [
+        ...avulsos.map((s) => ({ ...s, origem: "avulso" })),
+        ...vendas.map((v) => ({
+          id: `venda-${v.id}`,
+          venda_id: v.id,
+          data_servico: v.data_venda,
+          trocador_id: v.trocador_id,
+          trocador_nome: v.trocador_nome,
+          descricao: `Mão de obra — Venda #${v.id}`,
+          valor: Number(v.mao_de_obra) || 0,
+          forma_pagamento: "Saida",
+          origem: "venda",
+        })),
+      ].sort((a, b) => Number(b.data_servico) - Number(a.data_servico));
+
+      const total = rows.length;
+      const totalValor = rows.reduce((acc, r) => acc + (Number(r.valor) || 0), 0);
+      if (!hasPagination) return rows;
+      return {
+        data: rows.slice(offset, offset + limit),
+        total,
+        totalValor,
+        page,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
 
     const query = knex("servicos_avulsos")
       .leftJoin("pessoas", "servicos_avulsos.trocador_id", "pessoas.id")

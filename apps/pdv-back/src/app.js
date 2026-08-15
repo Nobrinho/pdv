@@ -943,6 +943,7 @@ async function handleRequest(req, res) {
         startDate: url.searchParams.get("startDate"),
         endDate: url.searchParams.get("endDate"),
         trocadorId: url.searchParams.get("trocadorId"),
+        includeSales: url.searchParams.get("includeSales"),
       });
       return sendJson(res, 200, Array.isArray(result) ? { success: true, services: result } : { success: true, ...result });
     }

@@ -186,6 +186,7 @@ const normalizeDashboardStats = (stats = {}) => ({
   vendasCount: toNumber(stats.vendasCount ?? stats.vendasHoje ?? stats.totalVendas),
   maoDeObra: toNumber(stats.maoDeObra),
   comissoes: toNumber(stats.comissoes),
+  despesas: toNumber(stats.despesas),
   hasFinancialBreakdown: stats.maoDeObra !== undefined || stats.comissoes !== undefined,
 });
 

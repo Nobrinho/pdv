@@ -92,18 +92,20 @@ const Relatorios = () => {
           [
             "Faturamento (Peças)",
             "(-) Custo Peças",
-            "(-) Mão de Obra Paga",
             "(-) Comissões",
-            "= LUCRO",
+            "(-) Despesas",
+            "= LUCRO LÍQUIDO",
+            "M.O. (repasse)",
           ],
         ],
         body: [
           [
             formatCurrency(metrics.faturamento),
             formatCurrency(metrics.custo),
-            formatCurrency(metrics.maoDeObra),
             formatCurrency(metrics.comissoes),
-            formatCurrency(metrics.lucro),
+            formatCurrency(metrics.despesas),
+            formatCurrency(metrics.lucroLiquido),
+            formatCurrency(metrics.maoDeObra),
           ],
         ],
         theme: "grid",
@@ -327,20 +329,28 @@ const Relatorios = () => {
         <StatCard title="Acréscimos" value={metrics.acrescimos} color="green" icon="fa-plus-circle" tooltip="Taxas extras cobradas nas vendas." />
         <StatCard title="Descontos" value={metrics.descontos} color="gray" icon="fa-percent" tooltip="Total de descontos concedidos." />
         <StatCard title="Comissões" value={metrics.comissoes} color="purple" icon="fa-user-tag" tooltip="Valor devido aos vendedores sobre o faturamento de peças." />
+        <StatCard title="Despesas" value={metrics.despesas} color="red" icon="fa-wallet" tooltip="Saídas cadastradas na tela de Despesas no período (aluguel, contas, etc.)." />
       </div>
 
       {/* Lucro Líquido */}
-      <div className="bg-[var(--success-soft)] p-4 rounded-[var(--radius-xl)] border border-[var(--success-soft-border)] mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div className="bg-[var(--success-soft)] p-4 rounded-[var(--radius-xl)] border border-[var(--success-soft-border)] mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--success-soft-foreground)]">
             Lucro líquido real
           </p>
           <p className="text-xs text-[var(--success-soft-foreground)] opacity-80 mt-0.5">
-            Fat. peças + acréscimos − (custo peças + comissões)
+            Fat. peças + acréscimos − custo peças − comissões − despesas
           </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-[var(--success-soft-foreground)] opacity-90" style={MONO}>
+            <span>Operacional: {formatCurrency(metrics.lucro)}</span>
+            <span>(−) Despesas: {formatCurrency(metrics.despesas)}</span>
+          </div>
         </div>
-        <p className="text-3xl font-semibold text-[var(--money-positive)]" style={MONO}>
-          {formatCurrency(metrics.lucro)}
+        <p
+          className={`text-3xl font-semibold ${metrics.lucroLiquido < 0 ? "text-[var(--money-negative)]" : "text-[var(--money-positive)]"}`}
+          style={MONO}
+        >
+          {formatCurrency(metrics.lucroLiquido)}
         </p>
       </div>
 

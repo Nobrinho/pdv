@@ -9,38 +9,40 @@ Cada projeto conecta o repo (Nobrinho/pdv) e usa os campos abaixo. O
 `VITE_API_URL` NÃO vai em variável do Cloudflare — é assado no build a partir dos
 arquivos `.env.production` (prod) e `.env.staging` (dev), já commitados.
 
-> Importante: **não** defina `NODE_ENV=production` no Cloudflare. Isso faz o
-> `npm ci` pular as devDependencies e o `vite` some (build quebra com "vite: not found").
+> Importante 1: **não** defina `NODE_ENV=production` no Cloudflare. Isso faz o
+> install pular as devDependencies e o `vite` some (build quebra com "vite: not found").
+>
+> Importante 2: o **Comando da build apaga o lockfile e reinstala** — isso contorna
+> o bug do npm com deps opcionais nativas (Rollup: `@rollup/rollup-linux-x64-gnu`),
+> que acontece porque o `package-lock.json` é gerado no Windows e não traz o binário
+> nativo do Linux. NÃO use `npm ci` aqui (ele respeita o lock e quebra no Linux).
 
 ### syscontrol-web-prod  ·  Branch de produção: `main`
-- **Comando da build:** `npm ci && npm run build`
+- **Comando da build:** `rm -rf node_modules package-lock.json && npm install && npm run build`
 - **Comando de implantação:** `npx wrangler deploy -c wrangler.web.jsonc`
 - **Comando da versão:** `npx wrangler versions upload -c wrangler.web.jsonc`
 - **Diretório raiz:** `/`
 
 ### syscontrol-web-staging  ·  Branch de produção: `staging`
-- **Comando da build:** `npm ci && npm run build:staging`
+- **Comando da build:** `rm -rf node_modules package-lock.json && npm install && npm run build:staging`
 - **Comando de implantação:** `npx wrangler deploy -c wrangler.web.jsonc --env staging`
 - **Comando da versão:** `npx wrangler versions upload -c wrangler.web.jsonc --env staging`
 - **Diretório raiz:** `/`
 
 ### pdv-admin-prod  ·  Branch de produção: `main`
-- **Comando da build:** `npm ci && npm run admin:build`
+- **Comando da build:** `rm -rf node_modules package-lock.json && npm install && npm run admin:build`
 - **Comando de implantação:** `npx wrangler deploy -c wrangler.jsonc`
 - **Comando da versão:** `npx wrangler versions upload -c wrangler.jsonc`
 - **Diretório raiz:** `/`
 
 ### pdv-admin-staging  ·  Branch de produção: `staging`
-- **Comando da build:** `npm ci && npm run admin:build:staging`
+- **Comando da build:** `rm -rf node_modules package-lock.json && npm install && npm run admin:build:staging`
 - **Comando de implantação:** `npx wrangler deploy -c wrangler.jsonc --env staging`
 - **Comando da versão:** `npx wrangler versions upload -c wrangler.jsonc --env staging`
 - **Diretório raiz:** `/`
 
 Resultado: push em `main` → deploy dos dois `*-prod` (API de prod). Push em
 `staging` → deploy dos dois `*-staging` (API de dev). Sem `wrangler` na mão, sem warning.
-
-> Se o `npm ci` reclamar de lockfile desatualizado, troque por
-> `npm install && npm run <build>` no Comando da build.
 
 Os arquivos de config ficam na raiz: `wrangler.web.jsonc` (web) e `wrangler.jsonc`
 (admin), cada um com o ambiente `staging` embutido (`--env staging` muda só o nome

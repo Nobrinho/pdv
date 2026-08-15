@@ -31,10 +31,12 @@ const EMPTY_METRICS = {
   descontos: 0,
   comissoes: 0,
   lucro: 0,
+  despesas: 0,
+  lucroLiquido: 0,
 };
 
 // Cálculo do relatório no cliente (modo local). Função pura.
-function computeReport({ allSales, allServices, allPeople, selectedSeller, selectedPayment, defaultCommission }) {
+function computeReport({ allSales, allServices, allPeople, selectedSeller, selectedPayment, defaultCommission, despesasTotal = 0 }) {
   const vendasFiltradas = allSales.filter((s) => {
     const isSeller = selectedSeller === "all" || s.vendedor_id === parseInt(selectedSeller);
     const metodoNormalizado = standardizeMethod(s.forma_pagamento);
@@ -141,7 +143,10 @@ function computeReport({ allSales, allServices, allPeople, selectedSeller, selec
     }
   });
 
-  const lucroLiquido = totalFaturamentoPecas - (totalCustoPecas + totalComissoes);
+  // Resultado operacional (peças): faturamento − custo − comissões.
+  const lucroOperacional = totalFaturamentoPecas - (totalCustoPecas + totalComissoes);
+  // Lucro líquido: resultado operacional menos as despesas cadastradas no período.
+  const lucroLiquido = lucroOperacional - (Number(despesasTotal) || 0);
 
   return {
     metrics: {
@@ -151,7 +156,9 @@ function computeReport({ allSales, allServices, allPeople, selectedSeller, selec
       acrescimos: totalAcrescimos,
       descontos: totalDescontos,
       comissoes: totalComissoes,
-      lucro: lucroLiquido,
+      lucro: lucroOperacional,
+      despesas: Number(despesasTotal) || 0,
+      lucroLiquido,
     },
     filteredSales: vendasProcessadas,
     laborSummary: Object.values(mapMO),
@@ -210,6 +217,14 @@ const useReportData = () => {
   });
   const defaultCommission = commissionQuery.data ? parseFloat(commissionQuery.data) : 0.3;
 
+  // Despesas do período (modo local). No online já vêm no relatório do servidor.
+  const expensesQuery = useQuery({
+    queryKey: ["report-expenses", { startTimestamp, endTimestamp }],
+    queryFn: () => api.expenses.list({ startDate: startTimestamp, endDate: endTimestamp }),
+    enabled: !isOnlineReports && validRange,
+  });
+  const despesasTotal = Number(expensesQuery.data?.totals?.total) || 0;
+
   const allSales = useMemo(() => {
     if (isOnlineReports) return onlineReportQuery.data?.sales || [];
     return [...toArray(salesQuery.data)].sort((a, b) => b.data_venda - a.data_venda);
@@ -236,8 +251,14 @@ const useReportData = () => {
   const processed = useMemo(() => {
     if (isOnlineReports) {
       const d = onlineReportQuery.data || {};
+      const m = d.metrics || EMPTY_METRICS;
+      // O servidor entrega snake_case (lucro_liquido); normaliza p/ a UI.
       return {
-        metrics: d.metrics || EMPTY_METRICS,
+        metrics: {
+          ...m,
+          despesas: Number(m.despesas) || 0,
+          lucroLiquido: Number(m.lucroLiquido ?? m.lucro_liquido ?? m.lucro) || 0,
+        },
         filteredSales: d.sales || [],
         laborSummary: d.laborSummary || [],
         paymentSummary: d.paymentSummary || [],
@@ -250,6 +271,7 @@ const useReportData = () => {
       selectedSeller,
       selectedPayment,
       defaultCommission,
+      despesasTotal,
     });
   }, [
     isOnlineReports,
@@ -260,11 +282,12 @@ const useReportData = () => {
     selectedSeller,
     selectedPayment,
     defaultCommission,
+    despesasTotal,
   ]);
 
   const loading = isOnlineReports
     ? onlineReportQuery.isLoading
-    : salesQuery.isLoading || servicesQuery.isLoading;
+    : salesQuery.isLoading || servicesQuery.isLoading || expensesQuery.isLoading;
 
   const derivePagination = (raw, fallbackLen) => {
     if (!raw || Array.isArray(raw)) return { page: 1, totalPages: 0, total: fallbackLen };

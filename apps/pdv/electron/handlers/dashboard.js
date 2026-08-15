@@ -66,8 +66,15 @@ function register(safeHandle, knex) {
       totalMaoDeObra += s.valor;
     });
 
+    const despesaRow = await knex("despesas")
+      .whereBetween("data_despesa", [startOfDay, endOfDay])
+      .sum("valor as total")
+      .first();
+    const despesas = Number(despesaRow?.total || 0);
+
+    // Lucro líquido: resultado operacional menos as despesas do dia.
     const lucro =
-      totalFaturamento - totalCustoProdutos - totalComissoes;
+      totalFaturamento - totalCustoProdutos - totalComissoes - despesas;
 
     return {
       faturamento: totalFaturamento,
@@ -75,6 +82,7 @@ function register(safeHandle, knex) {
       vendasCount: vendas.length,
       maoDeObra: totalMaoDeObra,
       comissoes: totalComissoes,
+      despesas,
     };
   });
 
