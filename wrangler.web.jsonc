@@ -3,7 +3,7 @@
   // O painel admin usa o wrangler.jsonc da raiz (apps/pdv-admin/dist).
   // No projeto web do Cloudflare, defina o Deploy command:
   //   npx wrangler deploy -c wrangler.web.jsonc
-  "name": "syscontrol-web",
+  "name": "syscontrol-web-staging",
   "compatibility_date": "2024-11-01",
   "assets": {
     "directory": "./apps/pdv/dist",
