@@ -1,112 +1,62 @@
-# Deploy — SysControl (API + Painel Admin)
+# Deploy — Cloudflare Workers (Git integration) + Render + Neon
 
-Guia para publicar a **API** (`apps/pdv-back`) e o **painel admin** (`apps/pdv-admin`).
-O app desktop (Electron) continua sendo distribuido via GitHub Releases (auto-update)
-e nao precisa de hospedagem. Este guia foca no Railway, mas o `Dockerfile` da raiz
-e portavel (Fly.io, Render, VPS).
+Fronts nos **Cloudflare Workers** (Builds via Git), backends na **Render**, banco no
+**Neon**. Branches: `main` = produção, `staging` = dev online.
 
----
+## Fronts — Cloudflare Workers Builds (4 projetos)
 
-## 1. Banco de dados (PostgreSQL no Railway)
+Cada projeto conecta o repo (Nobrinho/pdv) e usa os campos abaixo. O
+`VITE_API_URL` NÃO vai em variável do Cloudflare — é assado no build a partir dos
+arquivos `.env.production` (prod) e `.env.staging` (dev), já commitados.
 
-1. Crie uma conta em railway.com e um novo projeto.
-2. **+ New → Database → Add PostgreSQL**. O Railway provisiona o banco e expoe a
-   variavel `DATABASE_URL` (aba **Variables** do servico do Postgres).
+> Importante: **não** defina `NODE_ENV=production` no Cloudflare. Isso faz o
+> `npm ci` pular as devDependencies e o `vite` some (build quebra com "vite: not found").
 
-> Quer os dados no Brasil (LGPD) / menor latencia? Use o **Neon** na regiao
-> `São Paulo (sa-east-1)` em vez do Postgres do Railway e cole a connection string
-> dele em `DATABASE_URL`. O resto do guia continua igual.
+### syscontrol-web-prod  ·  Branch de produção: `main`
+- **Comando da build:** `npm ci && npm run build`
+- **Comando de implantação:** `npx wrangler deploy -c wrangler.web.jsonc`
+- **Comando da versão:** `npx wrangler versions upload -c wrangler.web.jsonc`
+- **Diretório raiz:** `/`
 
----
+### syscontrol-web-staging  ·  Branch de produção: `staging`
+- **Comando da build:** `npm ci && npm run build:staging`
+- **Comando de implantação:** `npx wrangler deploy -c wrangler.web.jsonc --env staging`
+- **Comando da versão:** `npx wrangler versions upload -c wrangler.web.jsonc --env staging`
+- **Diretório raiz:** `/`
 
-## 2. API (a partir do Dockerfile)
+### pdv-admin-prod  ·  Branch de produção: `main`
+- **Comando da build:** `npm ci && npm run admin:build`
+- **Comando de implantação:** `npx wrangler deploy -c wrangler.jsonc`
+- **Comando da versão:** `npx wrangler versions upload -c wrangler.jsonc`
+- **Diretório raiz:** `/`
 
-1. No mesmo projeto: **+ New → GitHub Repo** e selecione `Nobrinho/pdv`. O Railway
-   detecta o `Dockerfile` da raiz automaticamente.
-2. Na aba **Variables** do servico da API, configure (o boot **falha de proposito**
-   em producao se faltar segredo forte):
+### pdv-admin-staging  ·  Branch de produção: `staging`
+- **Comando da build:** `npm ci && npm run admin:build:staging`
+- **Comando de implantação:** `npx wrangler deploy -c wrangler.jsonc --env staging`
+- **Comando da versão:** `npx wrangler versions upload -c wrangler.jsonc --env staging`
+- **Diretório raiz:** `/`
 
-   ```txt
-   NODE_ENV=production
-   DATABASE_URL=${{Postgres.DATABASE_URL}}   # referencia a variavel do Postgres
-   SERVER_TOKEN_SECRET=<gere: openssl rand -hex 32>
-   PLATFORM_ADMIN_EMAIL=voce@suaempresa.com
-   PLATFORM_ADMIN_PASSWORD=<senha forte>
-   PLATFORM_ADMIN_NAME=Administrador
-   CORS_ORIGINS=https://admin.suaempresa.com  # URL do painel (passo 4)
-   ENABLE_DOCS=0                               # 1 para expor /docs em producao
-   BILLING_GRACE_DAYS=5
-   ```
+Resultado: push em `main` → deploy dos dois `*-prod` (API de prod). Push em
+`staging` → deploy dos dois `*-staging` (API de dev). Sem `wrangler` na mão, sem warning.
 
-3. Em **Settings → Networking**, gere um **dominio publico** (ex.:
-   `pdv-api.up.railway.app`). Railway ja entrega **HTTPS**.
-4. Confirme que a API subiu acessando `https://SEU-DOMINIO/health` →
-   `{"success":true,"status":"ok"}`.
+> Se o `npm ci` reclamar de lockfile desatualizado, troque por
+> `npm install && npm run <build>` no Comando da build.
 
-### Migrations
+Os arquivos de config ficam na raiz: `wrangler.web.jsonc` (web) e `wrangler.jsonc`
+(admin), cada um com o ambiente `staging` embutido (`--env staging` muda só o nome
+do Worker; o diretório de assets é o mesmo, o que muda é o build).
 
-Rode uma vez (e a cada release com migrations novas). Opcoes:
+## Backends — Render (2 serviços)
 
-- **Local, apontando para o banco de producao:**
-  ```bash
-  DATABASE_URL="<url-do-railway>" npm run server:migrate
-  ```
-- **Ou** via Railway (aba do servico da API → **Deploy → Run command**):
-  ```bash
-  npm run server:migrate
-  ```
+- `pdv-w4es` (prod) e `pdv-api-staging` (dev). Variáveis no painel (segredos):
+  `NODE_ENV=production`, `DATABASE_URL` (Neon: branch principal no prod / branch
+  `dev` no staging), `SERVER_TOKEN_SECRET`, `PLATFORM_ADMIN_*`, `CORS_ORIGINS`.
+- **CORS_ORIGINS** (sem barra no fim, `https://`, vírgula):
+  - prod: `https://syscontrol-web-prod.emerson-14.workers.dev,https://pdv-admin-prod.emerson-14.workers.dev`
+  - staging: `https://syscontrol-web-staging.emerson-14.workers.dev,https://pdv-admin-staging.emerson-14.workers.dev`
+- Build `npm ci`; Start `npm run server:start`; Pre-Deploy `npm run server:migrate`.
 
-As migrations criam as tabelas e o **seed do platform admin** (usando
-`PLATFORM_ADMIN_EMAIL`/`PASSWORD`). Depois disso, `POST /platform/auth/login` ja funciona.
+## Banco — Neon
 
----
-
-## 3. Cobranca automatica (dunning)
-
-Crie um servico agendado que roda a rotina diariamente:
-
-1. **+ New → Cron** (ou um servico duplicado da API) usando o mesmo repo/imagem.
-2. **Start command:** `npm run server:dunning`
-3. **Schedule:** `0 6 * * *` (6h UTC = 3h de Brasilia). Use as mesmas variaveis
-   (`DATABASE_URL`, etc.).
-
-Isso marca assinaturas vencidas como `past_due` e bloqueia apos a carencia. Pagamento
-no painel reativa a loja.
-
----
-
-## 4. Painel admin (estatico)
-
-O painel e um build estatico do Vite. Hospede de graca no Cloudflare Pages, Netlify
-ou Vercel.
-
-1. Build apontando para a API:
-   ```bash
-   VITE_API_URL="https://SEU-DOMINIO-API" npm run admin:build
-   ```
-   Saida em `apps/pdv-admin/dist`.
-2. Publique a pasta `dist` no host estatico escolhido. Anote a URL final e
-   **coloque-a em `CORS_ORIGINS`** da API (passo 2) para o navegador liberar as chamadas.
-
----
-
-## 5. App desktop (Electron) apontando para a nuvem
-
-No app, o usuario escolhe o modo **Online** e informa a URL da API
-(`https://SEU-DOMINIO-API`) na tela de login (campo "Servidor da API"). Para nao pedir
-isso a cada instalacao, defina `VITE_API_URL` no build do desktop
-(`apps/pdv/vite.config.js`/env) antes de gerar o `.exe`.
-
----
-
-## Checklist de produção
-
-- [ ] `NODE_ENV=production` e `SERVER_TOKEN_SECRET` forte (o boot falha sem isso).
-- [ ] `PLATFORM_ADMIN_PASSWORD` diferente do padrao `admin123`.
-- [ ] `CORS_ORIGINS` com a URL do painel (nao deixar `*`).
-- [ ] `ENABLE_DOCS=0` (ou proteja o `/docs`).
-- [ ] Migrations aplicadas; `/health` responde 200.
-- [ ] Dunning agendado.
-- [ ] **Backups automaticos do banco** habilitados no provedor (Railway/Neon fazem;
-      confira a retencao).
-- [ ] Monitor de uptime no `/health` (ex.: UptimeRobot) e, opcional, Sentry para erros.
+Branch principal (prod) e branch `dev` (staging), cada um com sua connection
+string *pooled* (`?sslmode=require`) → vai no `DATABASE_URL` do backend correspondente.
