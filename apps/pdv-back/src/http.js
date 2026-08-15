@@ -7,15 +7,21 @@ function isFirstPartyAppOrigin(origin) {
   return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 }
 
+// Normaliza uma origem para comparar sem tropecar em barra no fim / espacos.
+function normalizeOrigin(o) {
+  return String(o || "").trim().replace(/\/+$/, "").toLowerCase();
+}
+
 function applySecurity(req, res, config) {
   const origin = req.headers.origin;
-  const list = config.corsOrigins || [];
+  const normOrigin = normalizeOrigin(origin);
+  const list = (config.corsOrigins || []).map(normalizeOrigin);
   let allowOrigin = null;
 
   if (!list.length) {
     allowOrigin = "*"; // dev: sem allowlist
-  } else if (origin && list.includes(origin)) {
-    allowOrigin = origin; // origem web autorizada (painel)
+  } else if (origin && list.includes(normOrigin)) {
+    allowOrigin = origin; // origem web autorizada (compara normalizado; ecoa a original)
   } else if (origin && isFirstPartyAppOrigin(origin)) {
     allowOrigin = origin; // app desktop (localhost em dev ou file:// empacotado)
   }

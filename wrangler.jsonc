@@ -1,7 +1,7 @@
 {
   // Deploy do painel admin como site estatico (Cloudflare Workers/Assets).
   // O build (vite) gera apps/pdv-admin/dist; aqui so publicamos os arquivos.
-  "name": "pdv-admin",
+  "name": "pdv-admin-prod",
   "compatibility_date": "2024-11-01",
   "assets": {
     "directory": "./apps/pdv-admin/dist",
