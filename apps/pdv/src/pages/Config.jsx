@@ -8,6 +8,7 @@ import RoleManager from "../components/config/RoleManager";
 import StoreIdentitySettings from "../components/config/StoreIdentitySettings";
 import SystemToolsPanel from "../components/config/SystemToolsPanel";
 import UserManager from "../components/config/UserManager";
+import UserPermissionsModal from "../components/config/UserPermissionsModal";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/pt-br";
@@ -52,6 +53,7 @@ const Config = () => {
   const [newUser, setNewUser] = useState(INITIAL_USER_FORM);
 
   const [showPassword, setShowPassword] = useState(false);
+  const [permUser, setPermUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [dataLoadError, setDataLoadError] = useState("");
@@ -416,8 +418,17 @@ const Config = () => {
           showPassword={showPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
           deletingUserId={deletingUserId}
+          onEditPermissions={setPermUser}
         />
       </div>
+
+      {permUser && (
+        <UserPermissionsModal
+          user={permUser}
+          onClose={() => setPermUser(null)}
+          onSaved={loadData}
+        />
+      )}
     </div>
   );
 };

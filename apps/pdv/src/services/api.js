@@ -374,6 +374,8 @@ const online = {
     deleteRole: async (id) => await http(`/roles/${id}`, { method: "DELETE" }),
     listUsers: async () => (await http("/users")).users || [],
     deleteUser: async (id) => await http(`/users/${id}`, { method: "DELETE" }),
+    saveUserPermissions: async (userId, overrides) =>
+      await http(`/users/${userId}/permissions`, { method: "PUT", body: { overrides } }),
   },
 
   config: {
@@ -551,6 +553,10 @@ const electron = {
     getRoles: () => safeCall(window.api.getRoles),
     listUsers: () => safeCall(window.api.getUsers),
     deleteUser: (id) => safeCall(window.api.deleteUser, id),
+    // Modo local (Electron): requer handler no main. Enforcement local é
+    // follow-up; no modo online o gating por capability já funciona.
+    saveUserPermissions: (userId, overrides) =>
+      safeCall(window.api.saveUserPermissions, { userId, overrides }),
   },
   config: {
     get: (key) => safeCall(window.api.getConfig, key),

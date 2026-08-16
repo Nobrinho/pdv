@@ -4,4 +4,5 @@
 module.exports = {
   ...require("./domain/tenant"),
   ...require("./domain/commission"),
+  ...require("./domain/permissions"),
 };

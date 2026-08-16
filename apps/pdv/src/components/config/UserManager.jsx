@@ -7,7 +7,7 @@ import StatusBadge from "../ui/StatusBadge";
 import { Card } from "../ui/Card";
 import ConfigCardHeader from "./ConfigCardHeader";
 
-const userColumns = ({ onDeleteUser, deletingUserId }) => [
+const userColumns = ({ onDeleteUser, deletingUserId, onEditPermissions }) => [
   { key: "nome", label: "Nome completo", bold: true },
   {
     key: "username",
@@ -42,17 +42,26 @@ const userColumns = ({ onDeleteUser, deletingUserId }) => [
     label: "Ações",
     align: "center",
     format: (_, row) => (
-      <button
-        onClick={() => onDeleteUser(row.id)}
-        className="text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] p-2 rounded-[var(--radius-md)] transition"
-        title="Excluir usuário"
-      >
-        <Icon
-          name={deletingUserId === row.id ? "refresh-cw" : "trash-2"}
-          size={16}
-          className={deletingUserId === row.id ? "animate-spin" : ""}
-        />
-      </button>
+      <div className="flex items-center justify-center gap-1">
+        <button
+          onClick={() => onEditPermissions(row)}
+          className="text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] p-2 rounded-[var(--radius-md)] transition"
+          title="Permissões"
+        >
+          <Icon name="shield" size={16} />
+        </button>
+        <button
+          onClick={() => onDeleteUser(row.id)}
+          className="text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] p-2 rounded-[var(--radius-md)] transition"
+          title="Excluir usuário"
+        >
+          <Icon
+            name={deletingUserId === row.id ? "refresh-cw" : "trash-2"}
+            size={16}
+            className={deletingUserId === row.id ? "animate-spin" : ""}
+          />
+        </button>
+      </div>
     ),
   },
 ];
@@ -67,6 +76,7 @@ const UserManager = ({
   showPassword = false,
   onTogglePassword,
   deletingUserId = null,
+  onEditPermissions,
 }) => {
   return (
     <Card padding="lg">
@@ -139,7 +149,7 @@ const UserManager = ({
 
         <div className="flex-1 overflow-hidden flex flex-col min-w-0">
           <DataTable
-            columns={userColumns({ onDeleteUser, deletingUserId })}
+            columns={userColumns({ onDeleteUser, deletingUserId, onEditPermissions })}
             data={users}
             loading={loading}
             emptyMessage="Nenhum usuário de acesso cadastrado."

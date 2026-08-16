@@ -1,5 +1,32 @@
 const { hashPassword, verifyPassword } = require("../security/password");
 const { createToken } = require("../security/token");
+const {
+  computeEffectivePermissions,
+  ALL_CAPABILITIES,
+} = require("../../../../packages/shared/domain/permissions");
+
+const CAPABILITY_SET = new Set(ALL_CAPABILITIES);
+
+// Lê a coluna usuarios.permissoes_json (jsonb ou string) como {grants,denies}.
+function parseOverrides(raw) {
+  try {
+    const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!obj || typeof obj !== "object") return {};
+    return {
+      grants: Array.isArray(obj.grants) ? obj.grants : [],
+      denies: Array.isArray(obj.denies) ? obj.denies : [],
+    };
+  } catch {
+    return {};
+  }
+}
+
+function userPermissions(user) {
+  return computeEffectivePermissions({
+    cargo: user.cargo,
+    overrides: parseOverrides(user.permissoes_json),
+  });
+}
 
 function publicStoreUser(user) {
   return {
@@ -8,7 +35,39 @@ function publicStoreUser(user) {
     nome: user.nome,
     username: user.username,
     cargo: user.cargo,
+    permissions: userPermissions(user),
   };
+}
+
+// Permissões efetivas a partir do `auth` do token (para enforcement no backend).
+// Sempre lê do banco → nunca fica "velho" após uma edição de permissões.
+async function getEffectivePermissions(knex, auth) {
+  if (String(auth?.cargo || "").toLowerCase() === "admin") {
+    return computeEffectivePermissions({ cargo: "admin" });
+  }
+  const user = await knex("usuarios").where({ id: auth.userId, loja_id: auth.lojaId }).first();
+  if (!user || !user.ativo) return [];
+  return userPermissions(user);
+}
+
+// Salva os overrides de permissão de um usuário (config.users).
+async function saveUserPermissions(knex, lojaId, userId, overrides = {}) {
+  const user = await knex("usuarios").where({ id: userId, loja_id: lojaId }).first();
+  if (!user || !user.ativo) return { success: false, error: "Usuario nao encontrado." };
+
+  // Só aceita capabilities conhecidas (ignora lixo).
+  const clean = {
+    grants: (Array.isArray(overrides.grants) ? overrides.grants : []).filter((c) => CAPABILITY_SET.has(c)),
+    denies: (Array.isArray(overrides.denies) ? overrides.denies : []).filter((c) => CAPABILITY_SET.has(c)),
+  };
+
+  await knex("usuarios").where({ id: userId, loja_id: lojaId }).update({
+    permissoes_json: JSON.stringify(clean),
+    updated_at: knex.fn.now(),
+  });
+
+  const updated = await knex("usuarios").where({ id: userId, loja_id: lojaId }).first();
+  return { success: true, id: userId, permissions: userPermissions(updated), overrides: clean };
 }
 
 const ALLOWED_STORE_ROLES = new Set(["admin", "gerente", "vendedor", "caixa"]);
@@ -231,10 +290,18 @@ function normalizeStoreUserPayload(user = {}, { requirePassword = true } = {}) {
 }
 
 async function listStoreUsers(knex, lojaId) {
-  return await knex("usuarios")
+  const rows = await knex("usuarios")
     .where({ loja_id: lojaId, ativo: true })
-    .select("id", "nome", "username", "cargo")
+    .select("id", "nome", "username", "cargo", "permissoes_json")
     .orderBy("nome", "asc");
+  return rows.map((u) => ({
+    id: u.id,
+    nome: u.nome,
+    username: u.username,
+    cargo: u.cargo,
+    overrides: parseOverrides(u.permissoes_json),
+    permissions: userPermissions(u),
+  }));
 }
 
 async function saveStoreUser(knex, lojaId, user = {}) {
@@ -359,4 +426,6 @@ module.exports = {
   listStoreUsers,
   saveStoreUser,
   deleteStoreUser,
+  getEffectivePermissions,
+  saveUserPermissions,
 };

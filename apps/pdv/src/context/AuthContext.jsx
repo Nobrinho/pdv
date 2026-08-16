@@ -9,6 +9,11 @@ import { Icon } from "../components/ui/Icon";
 import { useAlert } from "./AlertSystem";
 import { api } from "../services/api";
 import { queryClient } from "../lib/queryClient";
+import {
+  ROUTE_CAPABILITY,
+  hasCapability,
+  computeEffectivePermissions,
+} from "../../../../packages/shared/domain/permissions.mjs";
 
 // Limpa o cache de consultas (memória + persistido) ao encerrar a sessão,
 // para não vazar dados de uma loja para outra num navegador compartilhado.
@@ -20,16 +25,6 @@ const clearQueryCache = () => {
     /* ignore */
   }
 };
-
-// Definição de permissões por cargo
-const PERMISSOES_CAIXA = [
-  "/vendas",
-  "/servicos",
-  "/recibos",
-  "/historico",
-  "/produtos",
-  "/orcamentos",
-];
 
 const AuthContext = createContext(null);
 
@@ -97,16 +92,40 @@ export const AuthProvider = ({ children }) => {
     setUnlockedRoutes([]);
   }, []);
 
-  // --- Permissões ---
+  // --- Permissões (controle de acesso granular) ---
+
+  // Permissões efetivas do usuário. Fallback para o preset do cargo quando o
+  // backend ainda não envia `permissions` (sessão antiga / deploy em andamento),
+  // evitando travar usuários logados.
+  const effectivePermissions = useMemo(() => {
+    if (!user) return [];
+    if (Array.isArray(user.permissions)) return user.permissions;
+    return computeEffectivePermissions({ cargo: user.cargo });
+  }, [user]);
+
+  // can(capability) — o usuário tem a capability efetiva?
+  const can = useCallback(
+    (capability) => {
+      if (!user) return false;
+      if (user.cargo === "admin") return true;
+      return hasCapability(effectivePermissions, capability);
+    },
+    [user, effectivePermissions],
+  );
+
+  // hasAccess(path) — pode acessar a rota? Usa o mapa rota→capability.
   const hasAccess = useCallback(
     (path) => {
       if (!user) return false;
       if (user.cargo === "admin") return true;
-      if (PERMISSOES_CAIXA.includes(path)) return true;
-      if (unlockedRoutes.includes(path)) return true;
+      const cap = ROUTE_CAPABILITY[path];
+      if (cap === null) return true; // rota pública ao logado (painel)
+      if (cap && can(cap)) return true; // tem a capability
+      if (unlockedRoutes.includes(path)) return true; // liberado por supervisor
+      if (cap === undefined) return true; // rota não mapeada → não bloqueia (compat)
       return false;
     },
-    [user, unlockedRoutes],
+    [user, unlockedRoutes, can],
   );
 
   /**
@@ -195,13 +214,14 @@ export const AuthProvider = ({ children }) => {
     user,
     login,
     logout,
+    can,
     hasAccess,
     withPermission,
     requestRouteAccess,
     unlockedRoutes,
     onboardingRequired,
     setOnboardingRequired,
-  }), [user, login, logout, hasAccess, withPermission, requestRouteAccess, unlockedRoutes, onboardingRequired]);
+  }), [user, login, logout, can, hasAccess, withPermission, requestRouteAccess, unlockedRoutes, onboardingRequired]);
 
 
   return (

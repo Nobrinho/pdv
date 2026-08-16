@@ -10,6 +10,7 @@ const {
   isStoreAdmin,
   ensureStoreActive,
 } = require("./middleware/auth");
+const { hasCapability } = require("../../../packages/shared/domain/permissions");
 const {
   loginPlatform,
   loginStore,
@@ -19,7 +20,17 @@ const {
   listStoreUsers,
   saveStoreUser,
   deleteStoreUser,
+  getEffectivePermissions,
+  saveUserPermissions,
 } = require("./services/authService");
+
+// Enforcement granular: true se o usuário do token tem a capability.
+// Lê as permissões efetivas do banco (sempre atual). Admin/gerente já passam
+// via isStoreAdmin nos endpoints que ainda o usam.
+async function requirePerm(auth, capability) {
+  const eff = await getEffectivePermissions(knex, auth);
+  return hasCapability(eff, capability);
+}
 const {
   createStore,
   listStores,
@@ -534,9 +545,11 @@ async function handleRequest(req, res) {
         .select("id", "loja_id", "nome", "username", "cargo")
         .first();
 
+      const permissions = await getEffectivePermissions(knex, auth);
+
       return sendJson(res, 200, {
         success: true,
-        user,
+        user: user ? { ...user, permissions } : user,
         loja: {
           id: status.loja.id,
           nome: status.loja.nome,
@@ -548,7 +561,7 @@ async function handleRequest(req, res) {
     if (req.method === "GET" && pathname === "/users") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return sendError(res, 403, "Sem permissao para gerenciar usuarios.");
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -560,7 +573,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/users") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return sendError(res, 403, "Sem permissao para gerenciar usuarios.");
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -570,11 +583,26 @@ async function handleRequest(req, res) {
       return sendJson(res, result.success ? 200 : 400, result);
     }
 
+    // Overrides de permissão de um usuário (controle de acesso granular).
+    const userPermsParams = match(req.method, pathname, "PUT", /^\/users\/(?<id>\d+)\/permissions$/);
+    if (userPermsParams) {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "config.users"))) return sendError(res, 403, "Sem permissao para gerenciar usuarios.");
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const body = await readJson(req);
+      const result = await saveUserPermissions(knex, auth.lojaId, Number(userPermsParams.id), body.overrides || body);
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
     const deleteUserParams = match(req.method, pathname, "DELETE", /^\/users\/(?<id>\d+)$/);
     if (deleteUserParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return sendError(res, 403, "Sem permissao para gerenciar usuarios.");
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
