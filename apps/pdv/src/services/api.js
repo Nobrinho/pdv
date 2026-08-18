@@ -376,6 +376,13 @@ const online = {
     deleteUser: async (id) => await http(`/users/${id}`, { method: "DELETE" }),
     saveUserPermissions: async (userId, overrides) =>
       await http(`/users/${userId}/permissions`, { method: "PUT", body: { overrides } }),
+    listProfiles: async () => (await http("/profiles")).profiles || [],
+    saveProfile: async (payload) =>
+      await http(payload.id ? `/profiles/${payload.id}` : "/profiles", {
+        method: payload.id ? "PUT" : "POST",
+        body: payload,
+      }),
+    deleteProfile: async (id) => await http(`/profiles/${id}`, { method: "DELETE" }),
   },
 
   config: {
@@ -558,6 +565,9 @@ const electron = {
     // Enforcement por capability ativo nos dois modos (online e Electron local).
     saveUserPermissions: (userId, overrides) =>
       safeCall(window.api.saveUserPermissions, { userId, overrides }),
+    listProfiles: () => safeCall(window.api.getProfiles),
+    saveProfile: (payload) => safeCall(window.api.saveProfile, payload),
+    deleteProfile: (id) => safeCall(window.api.deleteProfile, id),
   },
   config: {
     get: (key) => safeCall(window.api.getConfig, key),

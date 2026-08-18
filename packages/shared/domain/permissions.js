@@ -85,6 +85,11 @@ const PERMISSION_MODULES = [
     caps: [{ key: "prices.audit.view", label: "Ver histórico de preços" }],
   },
   {
+    key: "visibility",
+    label: "Visibilidade de dados",
+    caps: [{ key: "data.view_all", label: "Ver dados de todos os usuários (não só os próprios)" }],
+  },
+  {
     key: "config",
     label: "Configurações e equipe",
     caps: [

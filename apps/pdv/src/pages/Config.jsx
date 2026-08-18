@@ -3,8 +3,11 @@ import { useAlert } from "../context/AlertSystem";
 import { useTenant } from "../context/TenantContext";
 import { processLogoForWeb } from "../context/TenantContext";
 import { api } from "../services/api";
+import { ROLE_PRESETS } from "../../../../packages/shared/domain/permissions.mjs";
 import CommissionSettings from "../components/config/CommissionSettings";
 import RoleManager from "../components/config/RoleManager";
+import ProfileManager from "../components/config/ProfileManager";
+import ProfileEditorModal from "../components/config/ProfileEditorModal";
 import StoreIdentitySettings from "../components/config/StoreIdentitySettings";
 import SystemToolsPanel from "../components/config/SystemToolsPanel";
 import UserManager from "../components/config/UserManager";
@@ -21,6 +24,8 @@ const INITIAL_USER_FORM = {
   username: "",
   password: "",
   cargo: "vendedor",
+  perfilId: null,
+  pessoaId: null,
 };
 
 // Marca fixa SysControl (sem white-label): a identidade guarda só os dados que
@@ -54,6 +59,12 @@ const Config = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [permUser, setPermUser] = useState(null);
+
+  // Perfis de acesso (custom roles)
+  const [profiles, setProfiles] = useState([]);
+  const [people, setPeople] = useState([]); // vendedores/técnicos p/ vínculo
+  const [editingProfile, setEditingProfile] = useState(null); // null | {} novo | perfil
+  const [deletingProfileId, setDeletingProfileId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [dataLoadError, setDataLoadError] = useState("");
@@ -107,6 +118,8 @@ const Config = () => {
         printerConfig,
         printersData,
         usersData,
+        profilesData,
+        peopleData,
       ] = await Promise.all([
         api.auth.getRoles(),
         api.config.get("comissao_padrao"),
@@ -114,11 +127,16 @@ const Config = () => {
         api.config.get("impressora_padrao"),
         api.print.printers(),
         api.auth.listUsers(),
+        // Requer config.roles; se o usuário não tiver, não quebra o painel.
+        api.auth.listProfiles().catch(() => []),
+        api.people.list().catch(() => []),
       ]);
 
       setRoles(rolesData);
       setPrinters(printersData);
       setSystemUsers(usersData);
+      setProfiles(Array.isArray(profilesData) ? profilesData : []);
+      setPeople(Array.isArray(peopleData) ? peopleData : []);
 
       if (configData) setDefaultCommission((parseFloat(configData) * 100).toString());
       if (configUsados) setUsedCommission((parseFloat(configUsados) * 100).toString());
@@ -195,6 +213,23 @@ const Config = () => {
     }
   };
 
+  const handleDeleteProfile = async (id) => {
+    const confirmed = await showConfirm("Excluir este perfil de acesso?");
+    if (!confirmed) return;
+    try {
+      setDeletingProfileId(id);
+      const result = await api.auth.deleteProfile(id);
+      if (result.success) {
+        loadData();
+        showAlert("Perfil excluído.", "Sucesso", "success");
+      } else {
+        showAlert("Erro: " + result.error, "Erro", "error");
+      }
+    } finally {
+      setDeletingProfileId(null);
+    }
+  };
+
   const handleBackup = async () => {
     if (isBackupRunning) return;
     try {
@@ -247,25 +282,53 @@ const Config = () => {
     }
   };
 
+  const handleEditUser = (row) => {
+    setNewUser({
+      id: row.id,
+      nome: row.nome || "",
+      username: row.username || "",
+      password: "",
+      cargo: row.cargo || "vendedor",
+      perfilId: row.perfilId ?? null,
+      pessoaId: row.pessoaId ?? null,
+    });
+  };
+
+  const handleCancelEditUser = () => setNewUser(INITIAL_USER_FORM);
+
   const handleAddUser = async (e) => {
     if (e) e.preventDefault();
     if (isAddingUser) return;
-    if (!newUser.nome || !newUser.username || !newUser.password) {
+    const editing = !!newUser.id;
+    if (!newUser.nome || !newUser.username || (!editing && !newUser.password)) {
       return showAlert("Preencha todos os campos.", "Atencao", "warning");
     }
-    if (newUser.password.length < 4) {
+    if (newUser.password && newUser.password.length < 4) {
       return showAlert("A senha deve ter pelo menos 4 caracteres.", "Senha Fraca", "warning");
+    }
+    // Vínculo com vendedor é obrigatório para usuário escopado (sem data.view_all),
+    // senão ele não conseguiria ver nenhum dado próprio.
+    const base = newUser.perfilId
+      ? profiles.find((p) => p.id === newUser.perfilId)?.permissoes || []
+      : ROLE_PRESETS[newUser.cargo] || [];
+    const scoped = newUser.cargo !== "admin" && !base.includes("data.view_all");
+    if (scoped && !newUser.pessoaId) {
+      return showAlert(
+        "Este acesso vê só os próprios dados. Vincule-o a um vendedor.",
+        "Vínculo necessário",
+        "warning",
+      );
     }
 
     try {
       setIsAddingUser(true);
       const result = await api.auth.register(newUser);
       if (result.success) {
-        showAlert("Usuario criado com sucesso!", "Sucesso", "success");
+        showAlert(editing ? "Usuário atualizado!" : "Usuario criado com sucesso!", "Sucesso", "success");
         setNewUser(INITIAL_USER_FORM);
         loadData();
       } else {
-        showAlert("Erro ao criar usuario: " + result.error, "Erro", "error");
+        showAlert("Erro ao salvar usuario: " + result.error, "Erro", "error");
       }
     } catch (error) {
       showAlert("Erro tecnico ao registrar usuario.", "Erro", "error");
@@ -393,6 +456,14 @@ const Config = () => {
               onDeleteRole={handleDeleteRole}
               deletingRoleId={deletingRoleId}
             />
+
+            <ProfileManager
+              profiles={profiles}
+              onNewProfile={() => setEditingProfile({})}
+              onEditProfile={setEditingProfile}
+              onDeleteProfile={handleDeleteProfile}
+              deletingProfileId={deletingProfileId}
+            />
           </div>
 
           <SystemToolsPanel
@@ -419,6 +490,10 @@ const Config = () => {
           onTogglePassword={() => setShowPassword(!showPassword)}
           deletingUserId={deletingUserId}
           onEditPermissions={setPermUser}
+          onEditUser={handleEditUser}
+          onCancelEdit={handleCancelEditUser}
+          profiles={profiles}
+          people={people}
         />
       </div>
 
@@ -426,6 +501,14 @@ const Config = () => {
         <UserPermissionsModal
           user={permUser}
           onClose={() => setPermUser(null)}
+          onSaved={loadData}
+        />
+      )}
+
+      {editingProfile && (
+        <ProfileEditorModal
+          profile={editingProfile}
+          onClose={() => setEditingProfile(null)}
           onSaved={loadData}
         />
       )}

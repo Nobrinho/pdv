@@ -1,11 +1,14 @@
 /**
  * Handlers de Serviços Avulsos
  */
-const { requirePerm } = require("../lib/authSession");
+const { requirePerm, getDataScope, scopedSellerId } = require("../lib/authSession");
 
 function register(safeHandle, knex, authSession) {
   const { logEvent } = require("../lib/eventLogger");
   safeHandle("get-services", async (event, filters = {}) => {
+    // Escopo: usuário sem data.view_all vê só os próprios serviços (trocador).
+    const scope = await getDataScope(knex, event, authSession);
+    filters = { ...filters, trocadorId: scopedSellerId(scope, filters.trocadorId) };
     const page = filters.page ? parseInt(filters.page, 10) : null;
     const limit = filters.limit ? parseInt(filters.limit, 10) : null;
     const hasPagination = Number.isInteger(page) && Number.isInteger(limit) && page > 0 && limit > 0;

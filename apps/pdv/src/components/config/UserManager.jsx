@@ -7,7 +7,7 @@ import StatusBadge from "../ui/StatusBadge";
 import { Card } from "../ui/Card";
 import ConfigCardHeader from "./ConfigCardHeader";
 
-const userColumns = ({ onDeleteUser, deletingUserId, onEditPermissions }) => [
+const userColumns = ({ onDeleteUser, deletingUserId, onEditPermissions, onEditUser }) => [
   { key: "nome", label: "Nome completo", bold: true },
   {
     key: "username",
@@ -22,7 +22,11 @@ const userColumns = ({ onDeleteUser, deletingUserId, onEditPermissions }) => [
     key: "cargo",
     label: "Permissão",
     align: "center",
-    format: (v) => {
+    format: (v, row) => {
+      // Usuário com perfil custom → mostra o nome do perfil.
+      if (row.perfilNome) {
+        return <StatusBadge preset="novo" label={row.perfilNome} />;
+      }
       let type = "success";
       let label = "Vendedor";
       if (v === "admin") {
@@ -43,6 +47,13 @@ const userColumns = ({ onDeleteUser, deletingUserId, onEditPermissions }) => [
     align: "center",
     format: (_, row) => (
       <div className="flex items-center justify-center gap-1">
+        <button
+          onClick={() => onEditUser(row)}
+          className="text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] p-2 rounded-[var(--radius-md)] transition"
+          title="Editar usuário"
+        >
+          <Icon name="pencil" size={16} />
+        </button>
         <button
           onClick={() => onEditPermissions(row)}
           className="text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] p-2 rounded-[var(--radius-md)] transition"
@@ -66,6 +77,13 @@ const userColumns = ({ onDeleteUser, deletingUserId, onEditPermissions }) => [
   },
 ];
 
+const BUILTIN_ROLES = [
+  { value: "vendedor", label: "Vendedor (básico)" },
+  { value: "caixa", label: "Caixa (restrito)" },
+  { value: "gerente", label: "Gerente (amplo)" },
+  { value: "admin", label: "Administrador (total)" },
+];
+
 const UserManager = ({
   users = [],
   loading = false,
@@ -77,7 +95,22 @@ const UserManager = ({
   onTogglePassword,
   deletingUserId = null,
   onEditPermissions,
+  onEditUser,
+  onCancelEdit,
+  profiles = [],
+  people = [],
 }) => {
+  const isEditing = !!newUser.id;
+  // Valor do select: perfil custom tem prioridade sobre o cargo interno.
+  const roleValue = newUser.perfilId ? `profile:${newUser.perfilId}` : `role:${newUser.cargo || "vendedor"}`;
+  const onRoleChange = (raw) => {
+    if (raw.startsWith("profile:")) {
+      // Perfil custom → cargo neutro não-admin, perfil dita as permissões.
+      onNewUserChange({ ...newUser, perfilId: Number(raw.slice(8)), cargo: "vendedor" });
+    } else {
+      onNewUserChange({ ...newUser, perfilId: null, cargo: raw.slice(5) });
+    }
+  };
   return (
     <Card padding="lg">
       <ConfigCardHeader
@@ -92,7 +125,7 @@ const UserManager = ({
           className="lg:w-80 xl:w-96 space-y-4 shrink-0 bg-[var(--muted)] p-5 rounded-[var(--radius-lg)] border border-[var(--border)]"
         >
           <span className="text-[10px] font-semibold uppercase tracking-[var(--tracking-caps)] text-[var(--muted-foreground)] block">
-            Novo acesso
+            {isEditing ? `Editando: ${newUser.nome || newUser.username}` : "Novo acesso"}
           </span>
           <FormField
             label="Nome completo"
@@ -111,12 +144,12 @@ const UserManager = ({
 
           <div className="relative">
             <FormField
-              label="Senha"
+              label={isEditing ? "Senha (deixe em branco p/ manter)" : "Senha"}
               type={showPassword ? "text" : "password"}
-              placeholder="••••••"
+              placeholder={isEditing ? "Manter senha atual" : "••••••"}
               value={newUser.password}
               onChange={(v) => onNewUserChange({ ...newUser, password: v })}
-              required
+              required={!isEditing}
             />
             <button
               type="button"
@@ -133,23 +166,71 @@ const UserManager = ({
             </label>
             <select
               className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
-              value={newUser.cargo}
-              onChange={(e) => onNewUserChange({ ...newUser, cargo: e.target.value })}
+              value={roleValue}
+              onChange={(e) => onRoleChange(e.target.value)}
             >
-              <option value="vendedor">Vendedor (básico)</option>
-              <option value="caixa">Caixa (restrito)</option>
-              <option value="admin">Administrador (total)</option>
+              <optgroup label="Cargos internos">
+                {BUILTIN_ROLES.map((r) => (
+                  <option key={r.value} value={`role:${r.value}`}>
+                    {r.label}
+                  </option>
+                ))}
+              </optgroup>
+              {profiles.length > 0 && (
+                <optgroup label="Perfis personalizados">
+                  {profiles.map((p) => (
+                    <option key={p.id} value={`profile:${p.id}`}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
-          <Button type="submit" variant="primary" size="lg" fullWidth icon="fa-user-plus" className="mt-2">
-            Criar usuário
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] ml-0.5">
+              Vincular ao vendedor
+            </label>
+            <select
+              className="w-full rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm font-medium outline-none transition focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
+              value={newUser.pessoaId ?? ""}
+              onChange={(e) =>
+                onNewUserChange({ ...newUser, pessoaId: e.target.value ? Number(e.target.value) : null })
+              }
+            >
+              <option value="">Sem vínculo (vê a loja toda)</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+            <span className="text-[10px] text-[var(--muted-foreground)] ml-0.5">
+              Obrigatório para quem vê só os próprios dados.
+            </span>
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            icon={isEditing ? "fa-check" : "fa-user-plus"}
+            className="mt-2"
+          >
+            {isEditing ? "Salvar alterações" : "Criar usuário"}
           </Button>
+          {isEditing && (
+            <Button type="button" variant="secondary" size="sm" fullWidth onClick={onCancelEdit}>
+              Cancelar edição
+            </Button>
+          )}
         </form>
 
         <div className="flex-1 overflow-hidden flex flex-col min-w-0">
           <DataTable
-            columns={userColumns({ onDeleteUser, deletingUserId, onEditPermissions })}
+            columns={userColumns({ onDeleteUser, deletingUserId, onEditPermissions, onEditUser })}
             data={users}
             loading={loading}
             emptyMessage="Nenhum usuário de acesso cadastrado."

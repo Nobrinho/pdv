@@ -2,7 +2,7 @@ const { logEvent } = require("../lib/eventLogger");
 const { buildBudgetCode } = require("../services/budgets/buildBudgetCode");
 const { normalizeBudgetTotals, fromCents } = require("../services/budgets/normalizeBudgetTotals");
 const { createSaleTransaction } = require("../services/sales/createSaleTransaction");
-const { requirePerm, requirePermAny } = require("../lib/authSession");
+const { requirePerm, requirePermAny, getDataScope, scopedSellerId } = require("../lib/authSession");
 
 const OPEN_STATUS = "ABERTO";
 const CONVERTED_STATUS = "CONVERTIDO";
@@ -222,6 +222,9 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("get-budgets", async (event, filters = {}) => {
+    // Escopo: usuário sem data.view_all vê só os próprios orçamentos.
+    const scope = await getDataScope(knex, event, authSession);
+    filters = { ...filters, sellerId: scopedSellerId(scope, filters.sellerId) };
     const page = filters.page ? parseInt(filters.page, 10) : null;
     const limit = filters.limit ? parseInt(filters.limit, 10) : null;
     const hasPagination = Number.isInteger(page) && Number.isInteger(limit) && page > 0 && limit > 0;

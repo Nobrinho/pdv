@@ -17,13 +17,20 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(normalized) ? normalized : fallback;
 }
 
-async function getDashboardStats(knex, lojaId) {
+// `sellerId` opcional: escopa o painel aos dados de um vendedor (pessoa). Quando
+// definido, filtra vendas por vendedor_id e serviços por trocador_id, e ignora
+// as despesas da loja (que não são atribuídas a um vendedor).
+async function getDashboardStats(knex, lojaId, sellerId = null) {
   const start = startOfDay();
   const end = endOfDay();
+  const scoped = sellerId !== null && sellerId !== undefined;
 
   const vendas = await knex("vendas")
     .where({ loja_id: lojaId, cancelada: false })
     .whereBetween("data_venda", [start, end])
+    .modify((q) => {
+      if (scoped) q.where("vendedor_id", sellerId);
+    })
     .select("*");
 
   const vendaIds = vendas.map((venda) => venda.id);
@@ -33,6 +40,9 @@ async function getDashboardStats(knex, lojaId) {
     knex("servicos_avulsos")
       .where({ loja_id: lojaId })
       .whereBetween("data_servico", [start, end])
+      .modify((q) => {
+        if (scoped) q.where("trocador_id", sellerId);
+      })
       .select("*"),
     vendedorIds.length > 0
       ? knex("pessoas").where({ loja_id: lojaId }).whereIn("id", vendedorIds).select("id", "comissao_fixa")
@@ -79,7 +89,8 @@ async function getDashboardStats(knex, lojaId) {
   }
 
   maoDeObra += servicos.reduce((total, servico) => total + toNumber(servico.valor), 0);
-  const despesas = toNumber(despesaRow?.total);
+  // Despesas são da loja (não atribuídas a vendedor); zeradas no painel escopado.
+  const despesas = scoped ? 0 : toNumber(despesaRow?.total);
   // Lucro líquido: resultado operacional menos as despesas cadastradas no dia.
   const lucro = faturamento - custoProdutos - comissoes - despesas;
 
@@ -93,7 +104,7 @@ async function getDashboardStats(knex, lojaId) {
   };
 }
 
-async function getWeeklySales(knex, lojaId) {
+async function getWeeklySales(knex, lojaId, sellerId = null) {
   const today = new Date();
   const start = startOfDay(today);
   start.setDate(start.getDate() - 6);
@@ -102,6 +113,9 @@ async function getWeeklySales(knex, lojaId) {
   const rows = await knex("vendas")
     .where({ loja_id: lojaId, cancelada: false })
     .whereBetween("data_venda", [start, end])
+    .modify((q) => {
+      if (sellerId !== null && sellerId !== undefined) q.where("vendedor_id", sellerId);
+    })
     .select("data_venda", "total_final", "mao_de_obra");
 
   const dayMap = {};

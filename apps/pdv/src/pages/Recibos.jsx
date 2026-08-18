@@ -336,16 +336,18 @@ const Recibos = () => {
           <FormField label="Início" type="date" value={filters.startDate} onChange={(v) => { setFilters({ ...filters, startDate: v }); setPeriodType("custom"); setPage(1); }} />
           <FormField label="Fim" type="date" value={filters.endDate} onChange={(v) => { setFilters({ ...filters, endDate: v }); setPeriodType("custom"); setPage(1); }} />
           
-          <div>
-            <label className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] mb-1 ml-0.5 block">Vendedor</label>
-            <Select
-              value={filters.sellerId}
-              onChange={(e) => { setFilters({ ...filters, sellerId: e.target.value }); setPage(1); }}
-            >
-              <option value="all">Todos os vendedores</option>
-              {sellers.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            </Select>
-          </div>
+          {can("data.view_all") && (
+            <div>
+              <label className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] mb-1 ml-0.5 block">Vendedor</label>
+              <Select
+                value={filters.sellerId}
+                onChange={(e) => { setFilters({ ...filters, sellerId: e.target.value }); setPage(1); }}
+              >
+                <option value="all">Todos os vendedores</option>
+                {sellers.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+              </Select>
+            </div>
+          )}
 
           <div className="relative">
             <label className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-[var(--tracking-caps)] mb-1 ml-0.5 block">Cliente</label>

@@ -6,6 +6,7 @@ import "dayjs/locale/pt-br";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import { formatCurrency } from "../utils/format";
 import useReportData, { standardizeMethod } from "../hooks/useReportData";
 import StatCard from "../components/ui/StatCard";
@@ -23,6 +24,7 @@ const CARD =
 
 const Relatorios = () => {
   const { showAlert } = useAlert();
+  const { can } = useAuth();
   const [page, setPage] = useState(1);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showFilters, setShowFilters] = useState(false); // avançados colapsados no mobile
@@ -285,22 +287,24 @@ const Relatorios = () => {
               }}
             />
           </div>
-          <div>
-            <label className={filterLabel}>Vendedor</label>
-            <Select
-              value={selectedSeller}
-              onChange={(e) => setSelectedSeller(e.target.value)}
-            >
-              <option value="all">Todos</option>
-              {allPeople
-                .filter((p) => p.cargo_nome === "Vendedor")
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-            </Select>
-          </div>
+          {can("data.view_all") && (
+            <div>
+              <label className={filterLabel}>Vendedor</label>
+              <Select
+                value={selectedSeller}
+                onChange={(e) => setSelectedSeller(e.target.value)}
+              >
+                <option value="all">Todos</option>
+                {allPeople
+                  .filter((p) => p.cargo_nome === "Vendedor")
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+              </Select>
+            </div>
+          )}
           <div>
             <label className={filterLabel}>Pagamento</label>
             <Select

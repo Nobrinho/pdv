@@ -3,7 +3,7 @@
  */
 const { carregarTaxas, calcularComissaoVenda } = require("../services/commission");
 const { logEvent } = require("../lib/eventLogger");
-const { requirePerm, getEffectivePermissions } = require("../lib/authSession");
+const { requirePerm, getEffectivePermissions, getDataScope, scopedSellerId } = require("../lib/authSession");
 const { hasCapability } = require("../../../../packages/shared/domain/permissions");
 const { createSaleTransaction, fromCents } = require("../services/sales/createSaleTransaction");
 
@@ -64,6 +64,9 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("get-sales", async (event, filters = {}) => {
+    // Escopo de visibilidade: usuário sem data.view_all vê só as próprias vendas.
+    const scope = await getDataScope(knex, event, authSession);
+    filters = { ...filters, sellerId: scopedSellerId(scope, filters.sellerId) };
     const page = filters.page ? parseInt(filters.page, 10) : null;
     const limit = filters.limit ? parseInt(filters.limit, 10) : null;
     const hasPagination = Number.isInteger(page) && Number.isInteger(limit) && page > 0 && limit > 0;

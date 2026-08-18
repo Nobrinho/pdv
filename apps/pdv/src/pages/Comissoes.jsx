@@ -20,7 +20,7 @@ dayjs.locale("pt-br");
 
 const Comissoes = () => {
   const { showAlert } = useAlert();
-  const { withPermission } = useAuth();
+  const { withPermission, can } = useAuth();
   const {
     allPeople,
     filteredSales,
@@ -222,22 +222,24 @@ const Comissoes = () => {
               }}
             />
           </div>
-          <div>
-            <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Vendedor</label>
-            <Select
-              value={selectedSeller}
-              onChange={(e) => setSelectedSeller(e.target.value)}
-            >
-              <option value="all">Todos</option>
-              {allPeople
-                .filter((p) => p.cargo_nome === "Vendedor")
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-            </Select>
-          </div>
+          {can("data.view_all") && (
+            <div>
+              <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Vendedor</label>
+              <Select
+                value={selectedSeller}
+                onChange={(e) => setSelectedSeller(e.target.value)}
+              >
+                <option value="all">Todos</option>
+                {allPeople
+                  .filter((p) => p.cargo_nome === "Vendedor")
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+              </Select>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold text-surface-500 uppercase mb-1">Status de Repasse</label>
             <Select

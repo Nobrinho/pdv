@@ -20,6 +20,10 @@ const {
   listStoreUsers,
   saveStoreUser,
   deleteStoreUser,
+  getDataScope,
+  listProfiles,
+  saveProfile,
+  deleteProfile,
   getEffectivePermissions,
   saveUserPermissions,
 } = require("./services/authService");
@@ -42,6 +46,13 @@ async function requirePermAny(auth, capabilities) {
 // Resposta padrão de acesso negado por falta de capability.
 function denyPerm(res) {
   return sendError(res, 403, "Voce nao tem permissao para esta acao.");
+}
+
+// Filtro de vendedor conforme o escopo de visibilidade. Escopado sem vínculo →
+// -1 (nenhum registro), para não vazar dados da loja.
+function scopedSellerId(scope, requested) {
+  if (scope.all) return requested;
+  return scope.pessoaId ?? -1;
 }
 const {
   createStore,
@@ -623,6 +634,59 @@ async function handleRequest(req, res) {
       return sendJson(res, result.success ? 200 : 400, result);
     }
 
+    // ------- Perfis de acesso (custom roles) -------
+    if (req.method === "GET" && pathname === "/profiles") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "config.roles"))) return denyPerm(res);
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const profiles = await listProfiles(knex, auth.lojaId);
+      return sendJson(res, 200, { success: true, profiles });
+    }
+
+    if (req.method === "POST" && pathname === "/profiles") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "config.roles"))) return denyPerm(res);
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const body = await readJson(req);
+      const result = await saveProfile(knex, auth.lojaId, body);
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const updateProfileParams = match(req.method, pathname, "PUT", /^\/profiles\/(?<id>\d+)$/);
+    if (updateProfileParams) {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "config.roles"))) return denyPerm(res);
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const body = await readJson(req);
+      const result = await saveProfile(knex, auth.lojaId, { ...body, id: Number(updateProfileParams.id) });
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
+    const deleteProfileParams = match(req.method, pathname, "DELETE", /^\/profiles\/(?<id>\d+)$/);
+    if (deleteProfileParams) {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "config.roles"))) return denyPerm(res);
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const result = await deleteProfile(knex, auth.lojaId, Number(deleteProfileParams.id));
+      return sendJson(res, result.success ? 200 : 400, result);
+    }
+
     if (req.method === "GET" && pathname === "/products") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
@@ -932,12 +996,13 @@ async function handleRequest(req, res) {
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
 
+      const salesScope = await getDataScope(knex, auth);
       const result = await listSales(knex, auth.lojaId, {
         page: url.searchParams.get("page"),
         limit: url.searchParams.get("limit"),
         startDate: url.searchParams.get("startDate"),
         endDate: url.searchParams.get("endDate"),
-        sellerId: url.searchParams.get("sellerId"),
+        sellerId: scopedSellerId(salesScope, url.searchParams.get("sellerId")),
         clientId: url.searchParams.get("clientId"),
       });
 
@@ -993,12 +1058,13 @@ async function handleRequest(req, res) {
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
 
+      const servicesScope = await getDataScope(knex, auth);
       const result = await listServices(knex, auth.lojaId, {
         page: url.searchParams.get("page"),
         limit: url.searchParams.get("limit"),
         startDate: url.searchParams.get("startDate"),
         endDate: url.searchParams.get("endDate"),
-        trocadorId: url.searchParams.get("trocadorId"),
+        trocadorId: scopedSellerId(servicesScope, url.searchParams.get("trocadorId")),
         includeSales: url.searchParams.get("includeSales"),
       });
       return sendJson(res, 200, Array.isArray(result) ? { success: true, services: result } : { success: true, ...result });
@@ -1022,6 +1088,7 @@ async function handleRequest(req, res) {
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
+      const budgetsScope = await getDataScope(knex, auth);
       const result = await listBudgets(knex, auth.lojaId, {
         page: url.searchParams.get("page"),
         limit: url.searchParams.get("limit"),
@@ -1029,7 +1096,7 @@ async function handleRequest(req, res) {
         endDate: url.searchParams.get("endDate"),
         status: url.searchParams.get("status"),
         clientId: url.searchParams.get("clientId"),
-        sellerId: url.searchParams.get("sellerId"),
+        sellerId: scopedSellerId(budgetsScope, url.searchParams.get("sellerId")),
       });
       return sendJson(res, 200, Array.isArray(result) ? { success: true, budgets: result } : { success: true, ...result });
     }
@@ -1206,10 +1273,11 @@ async function handleRequest(req, res) {
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
+      const reportScope = await getDataScope(knex, auth);
       const result = await getSalesReport(knex, auth.lojaId, {
         startDate: url.searchParams.get("startDate"),
         endDate: url.searchParams.get("endDate"),
-        sellerId: url.searchParams.get("sellerId"),
+        sellerId: scopedSellerId(reportScope, url.searchParams.get("sellerId")),
         payment: url.searchParams.get("payment"),
       });
       return sendJson(res, 200, result);
@@ -1220,7 +1288,9 @@ async function handleRequest(req, res) {
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
-      return sendJson(res, 200, { success: true, stats: await getDashboardStats(knex, auth.lojaId) });
+      const statsScope = await getDataScope(knex, auth);
+      const statsSeller = statsScope.all ? null : (statsScope.pessoaId ?? -1);
+      return sendJson(res, 200, { success: true, stats: await getDashboardStats(knex, auth.lojaId, statsSeller) });
     }
 
     if (req.method === "GET" && pathname === "/dashboard/weekly-sales") {
@@ -1228,7 +1298,9 @@ async function handleRequest(req, res) {
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
-      return sendJson(res, 200, { success: true, data: await getWeeklySales(knex, auth.lojaId) });
+      const weeklyScope = await getDataScope(knex, auth);
+      const weeklySeller = weeklyScope.all ? null : (weeklyScope.pessoaId ?? -1);
+      return sendJson(res, 200, { success: true, data: await getWeeklySales(knex, auth.lojaId, weeklySeller) });
     }
 
     if (req.method === "GET" && pathname === "/dashboard/low-stock") {

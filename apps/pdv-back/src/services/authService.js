@@ -2,6 +2,7 @@ const { hashPassword, verifyPassword } = require("../security/password");
 const { createToken } = require("../security/token");
 const {
   computeEffectivePermissions,
+  hasCapability,
   ALL_CAPABILITIES,
 } = require("../../../../packages/shared/domain/permissions");
 
@@ -21,21 +22,52 @@ function parseOverrides(raw) {
   }
 }
 
-function userPermissions(user) {
+// Lê perfis_acesso.permissoes_json (jsonb ou string) como array de capabilities.
+function parseProfileCaps(raw) {
+  try {
+    const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return Array.isArray(arr) ? arr.filter((c) => CAPABILITY_SET.has(c)) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Conjunto-base de capabilities do perfil atribuído ao usuário (ou null → cai no
+// preset do cargo). Carrega do banco para refletir edições de perfil na hora.
+async function loadProfileCaps(knex, lojaId, perfilId) {
+  if (!perfilId) return null;
+  const perfil = await knex("perfis_acesso").where({ id: perfilId, loja_id: lojaId }).first();
+  return perfil ? parseProfileCaps(perfil.permissoes_json) : null;
+}
+
+// Permissões efetivas: base(perfil | preset do cargo) ∪ grants − denies.
+function computeUserPermissions(user, roleTemplate) {
   return computeEffectivePermissions({
     cargo: user.cargo,
+    roleTemplate,
     overrides: parseOverrides(user.permissoes_json),
   });
 }
 
-function publicStoreUser(user) {
+// Versão que resolve o perfil no banco (admin → tudo, sem consultar).
+async function resolveUserPermissions(knex, user) {
+  if (String(user?.cargo || "").toLowerCase() === "admin") {
+    return computeEffectivePermissions({ cargo: "admin" });
+  }
+  const template = await loadProfileCaps(knex, user.loja_id, user.perfil_id);
+  return computeUserPermissions(user, template);
+}
+
+async function publicStoreUser(knex, user) {
   return {
     id: user.id,
     lojaId: user.loja_id,
     nome: user.nome,
     username: user.username,
     cargo: user.cargo,
-    permissions: userPermissions(user),
+    perfilId: user.perfil_id ?? null,
+    pessoaId: user.pessoa_id ?? null,
+    permissions: await resolveUserPermissions(knex, user),
   };
 }
 
@@ -47,7 +79,17 @@ async function getEffectivePermissions(knex, auth) {
   }
   const user = await knex("usuarios").where({ id: auth.userId, loja_id: auth.lojaId }).first();
   if (!user || !user.ativo) return [];
-  return userPermissions(user);
+  return resolveUserPermissions(knex, user);
+}
+
+// Escopo de visibilidade de dados do usuário do token.
+//   { all: true }               → vê tudo (admin ou data.view_all)
+//   { all: false, pessoaId }    → vê só os próprios (pessoa vinculada; null se sem vínculo)
+async function getDataScope(knex, auth) {
+  const eff = await getEffectivePermissions(knex, auth);
+  if (hasCapability(eff, "data.view_all")) return { all: true, pessoaId: null };
+  const user = await knex("usuarios").where({ id: auth.userId, loja_id: auth.lojaId }).first();
+  return { all: false, pessoaId: user?.pessoa_id ?? null };
 }
 
 // Salva os overrides de permissão de um usuário (config.users).
@@ -67,7 +109,12 @@ async function saveUserPermissions(knex, lojaId, userId, overrides = {}) {
   });
 
   const updated = await knex("usuarios").where({ id: userId, loja_id: lojaId }).first();
-  return { success: true, id: userId, permissions: userPermissions(updated), overrides: clean };
+  return {
+    success: true,
+    id: userId,
+    permissions: await resolveUserPermissions(knex, updated),
+    overrides: clean,
+  };
 }
 
 const ALLOWED_STORE_ROLES = new Set(["admin", "gerente", "vendedor", "caixa"]);
@@ -132,7 +179,7 @@ async function loginStore(knex, credentials = {}) {
     return { success: false, error: "Senha incorreta." };
   }
 
-  const publicUser = publicStoreUser(user);
+  const publicUser = await publicStoreUser(knex, user);
   return {
     success: true,
     user: publicUser,
@@ -243,7 +290,7 @@ async function joinStore(knex, payload = {}) {
 
   return {
     success: true,
-    user: publicStoreUser(user),
+    user: await publicStoreUser(knex, user),
     loja: { id: loja.id, nome: loja.nome, status: loja.status },
     device: deviceResult.device,
     token: createToken({ type: "store", lojaId: loja.id, userId: user.id, cargo: user.cargo }),
@@ -272,7 +319,7 @@ async function createStoreAdmin(knex, lojaId, admin = {}) {
     })
     .returning(["id", "loja_id", "nome", "username", "cargo"]);
 
-  return { success: true, user: publicStoreUser(user) };
+  return { success: true, user: await publicStoreUser(knex, user) };
 }
 
 function normalizeStoreUserPayload(user = {}, { requirePassword = true } = {}) {
@@ -280,35 +327,67 @@ function normalizeStoreUserPayload(user = {}, { requirePassword = true } = {}) {
   const username = String(user.username || "").trim();
   const password = String(user.password || "");
   const cargo = String(user.cargo || "vendedor").trim().toLowerCase();
+  // Perfil custom é opcional; quando presente, ele fornece a base de permissões.
+  const perfilRaw = user.perfilId ?? user.perfil_id;
+  const perfilId = perfilRaw === null || perfilRaw === undefined || perfilRaw === "" ? null : Number(perfilRaw);
+  // Vínculo com a pessoa/vendedor (para escopo "próprios dados").
+  const pessoaRaw = user.pessoaId ?? user.pessoa_id;
+  const pessoaId = pessoaRaw === null || pessoaRaw === undefined || pessoaRaw === "" ? null : Number(pessoaRaw);
 
   if (!nome) return { error: "Nome obrigatorio." };
   if (!username) return { error: "Nome de usuario obrigatorio." };
   if (requirePassword && password.length < 4) return { error: "Senha deve ter pelo menos 4 caracteres." };
   if (!ALLOWED_STORE_ROLES.has(cargo)) return { error: "Cargo de usuario invalido." };
+  if (perfilId !== null && !Number.isInteger(perfilId)) return { error: "Perfil invalido." };
+  if (pessoaId !== null && !Number.isInteger(pessoaId)) return { error: "Vendedor vinculado invalido." };
+  // Admin nunca usa perfil custom (tem acesso total por definição).
+  if (cargo === "admin" && perfilId !== null) return { error: "Administrador nao usa perfil custom." };
 
-  return { value: { nome, username, password, cargo } };
+  return { value: { nome, username, password, cargo, perfilId, pessoaId } };
 }
 
 async function listStoreUsers(knex, lojaId) {
-  const rows = await knex("usuarios")
-    .where({ loja_id: lojaId, ativo: true })
-    .select("id", "nome", "username", "cargo", "permissoes_json")
-    .orderBy("nome", "asc");
-  return rows.map((u) => ({
-    id: u.id,
-    nome: u.nome,
-    username: u.username,
-    cargo: u.cargo,
-    overrides: parseOverrides(u.permissoes_json),
-    permissions: userPermissions(u),
-  }));
+  const rows = await knex("usuarios as u")
+    .leftJoin("perfis_acesso as p", function () {
+      this.on("u.perfil_id", "=", "p.id").andOn("p.loja_id", "=", "u.loja_id");
+    })
+    .leftJoin("pessoas as ps", function () {
+      this.on("u.pessoa_id", "=", "ps.id").andOn("ps.loja_id", "=", "u.loja_id");
+    })
+    .where({ "u.loja_id": lojaId, "u.ativo": true })
+    .select(
+      "u.id",
+      "u.nome",
+      "u.username",
+      "u.cargo",
+      "u.perfil_id",
+      "u.pessoa_id",
+      "u.permissoes_json",
+      "p.nome as perfil_nome",
+      "ps.nome as pessoa_nome",
+    )
+    .orderBy("u.nome", "asc");
+  return Promise.all(
+    rows.map(async (u) => ({
+      id: u.id,
+      nome: u.nome,
+      username: u.username,
+      cargo: u.cargo,
+      perfilId: u.perfil_id ?? null,
+      perfilNome: u.perfil_nome ?? null,
+      pessoaId: u.pessoa_id ?? null,
+      pessoaNome: u.pessoa_nome ?? null,
+      overrides: parseOverrides(u.permissoes_json),
+      permissions: await resolveUserPermissions(knex, u),
+    })),
+  );
 }
 
 async function saveStoreUser(knex, lojaId, user = {}) {
   const normalized = normalizeStoreUserPayload(user, { requirePassword: !user.id });
   if (normalized.error) return { success: false, error: normalized.error };
 
-  const { nome, username, password, cargo } = normalized.value;
+  const { nome, username, password, cargo, perfilId, pessoaId } = normalized.value;
   const existing = await knex("usuarios")
     .where("loja_id", lojaId)
     .whereRaw("LOWER(username) = LOWER(?)", [username])
@@ -319,8 +398,19 @@ async function saveStoreUser(knex, lojaId, user = {}) {
 
   if (existing) return { success: false, error: "Este nome de usuario ja esta em uso. Escolha outro." };
 
+  // Valida que o perfil pertence à loja.
+  if (perfilId !== null) {
+    const perfil = await knex("perfis_acesso").where({ id: perfilId, loja_id: lojaId }).first();
+    if (!perfil) return { success: false, error: "Perfil nao encontrado." };
+  }
+  // Valida que a pessoa/vendedor pertence à loja.
+  if (pessoaId !== null) {
+    const pessoa = await knex("pessoas").where({ id: pessoaId, loja_id: lojaId }).first();
+    if (!pessoa) return { success: false, error: "Vendedor vinculado nao encontrado." };
+  }
+
   if (user.id) {
-    const payload = { nome, username, cargo, updated_at: knex.fn.now() };
+    const payload = { nome, username, cargo, perfil_id: perfilId, pessoa_id: pessoaId, updated_at: knex.fn.now() };
     if (password) {
       const { salt, hash } = hashPassword(password);
       payload.salt = salt;
@@ -340,6 +430,8 @@ async function saveStoreUser(knex, lojaId, user = {}) {
       password_hash: hash,
       salt,
       cargo,
+      perfil_id: perfilId,
+      pessoa_id: pessoaId,
       ativo: true,
     })
     .returning(["id"]);
@@ -415,6 +507,59 @@ async function setStoreUserActive(knex, lojaId, userId, ativo) {
   return { success: true, ativo: !!ativo };
 }
 
+// ------- Perfis de acesso (custom roles) -------
+
+async function listProfiles(knex, lojaId) {
+  const rows = await knex("perfis_acesso")
+    .where("loja_id", lojaId)
+    .select("id", "nome", "permissoes_json")
+    .orderBy("nome", "asc");
+  return rows.map((p) => ({
+    id: p.id,
+    nome: p.nome,
+    permissoes: parseProfileCaps(p.permissoes_json) || [],
+  }));
+}
+
+async function saveProfile(knex, lojaId, payload = {}) {
+  const nome = String(payload.nome || "").trim();
+  if (!nome) return { success: false, error: "Nome do perfil obrigatorio." };
+
+  const caps = (Array.isArray(payload.permissoes) ? payload.permissoes : []).filter((c) => CAPABILITY_SET.has(c));
+  const permissoes_json = JSON.stringify(caps);
+
+  const existing = await knex("perfis_acesso")
+    .where("loja_id", lojaId)
+    .whereRaw("LOWER(nome) = LOWER(?)", [nome])
+    .modify((q) => {
+      if (payload.id) q.whereNot("id", payload.id);
+    })
+    .first();
+  if (existing) return { success: false, error: "Ja existe um perfil com esse nome." };
+
+  if (payload.id) {
+    const updated = await knex("perfis_acesso")
+      .where({ id: Number(payload.id), loja_id: lojaId })
+      .update({ nome, permissoes_json, updated_at: knex.fn.now() });
+    if (!updated) return { success: false, error: "Perfil nao encontrado." };
+    return { success: true, id: Number(payload.id) };
+  }
+
+  const [created] = await knex("perfis_acesso")
+    .insert({ loja_id: lojaId, nome, permissoes_json })
+    .returning(["id"]);
+  return { success: true, id: created.id };
+}
+
+async function deleteProfile(knex, lojaId, id) {
+  const inUse = await knex("usuarios").where({ loja_id: lojaId, perfil_id: id, ativo: true }).first();
+  if (inUse) return { success: false, error: "Perfil em uso por usuarios. Reatribua antes de excluir." };
+
+  const deleted = await knex("perfis_acesso").where({ id, loja_id: lojaId }).del();
+  if (!deleted) return { success: false, error: "Perfil nao encontrado." };
+  return { success: true };
+}
+
 module.exports = {
   loginPlatform,
   loginStore,
@@ -427,5 +572,9 @@ module.exports = {
   saveStoreUser,
   deleteStoreUser,
   getEffectivePermissions,
+  getDataScope,
   saveUserPermissions,
+  listProfiles,
+  saveProfile,
+  deleteProfile,
 };

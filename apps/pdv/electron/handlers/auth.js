@@ -2,7 +2,7 @@
  * Handlers de autenticacao e usuarios.
  */
 const { hashPassword, verifyPassword } = require("../services/auth");
-const { requireAdmin, requirePerm, parseOverrides } = require("../lib/authSession");
+const { requireAdmin, requirePerm, parseOverrides, loadProfileCaps } = require("../lib/authSession");
 const {
   computeEffectivePermissions,
   ALL_CAPABILITIES,
@@ -19,25 +19,36 @@ function sanitizeOverrides(overrides) {
   };
 }
 
-function buildPublicUser(user) {
+// Filtra uma lista de capabilities (para salvar um perfil).
+function sanitizeCaps(caps) {
+  return (Array.isArray(caps) ? caps : []).filter((c) => CAPABILITY_SET.has(c));
+}
+
+async function buildPublicUser(knex, user) {
   const overrides = parseOverrides(user.permissoes_json);
+  const roleTemplate = await loadProfileCaps(knex, user.perfil_id);
   return {
     id: user.id,
     nome: user.nome,
     username: user.username,
     cargo: user.cargo,
+    perfilId: user.perfil_id ?? null,
     overrides,
-    permissions: computeEffectivePermissions({ cargo: user.cargo, overrides }),
+    permissions: computeEffectivePermissions({ cargo: user.cargo, roleTemplate, overrides }),
   };
 }
 
 const ALLOWED_ROLES = new Set(["admin", "gerente", "vendedor", "caixa"]);
 
-function normalizeUserPayload(userData = {}) {
+function normalizeUserPayload(userData = {}, { requirePassword = true } = {}) {
   const nome = String(userData.nome || "").trim();
   const username = String(userData.username || "").trim();
   const password = String(userData.password || "");
   const cargo = String(userData.cargo || "admin").trim().toLowerCase();
+  const perfilRaw = userData.perfilId ?? userData.perfil_id;
+  const perfilId = perfilRaw === null || perfilRaw === undefined || perfilRaw === "" ? null : Number(perfilRaw);
+  const pessoaRaw = userData.pessoaId ?? userData.pessoa_id;
+  const pessoaId = pessoaRaw === null || pessoaRaw === undefined || pessoaRaw === "" ? null : Number(pessoaRaw);
 
   if (!nome) {
     return { error: "Nome obrigatorio." };
@@ -45,14 +56,24 @@ function normalizeUserPayload(userData = {}) {
   if (!username) {
     return { error: "Nome de usuario obrigatorio." };
   }
-  if (password.length < 4) {
+  // No update a senha é opcional (vazia = mantém a atual).
+  if ((requirePassword || password) && password.length < 4) {
     return { error: "Senha deve ter pelo menos 4 caracteres." };
   }
   if (!ALLOWED_ROLES.has(cargo)) {
     return { error: "Cargo de usuario invalido." };
   }
+  if (perfilId !== null && !Number.isInteger(perfilId)) {
+    return { error: "Perfil invalido." };
+  }
+  if (pessoaId !== null && !Number.isInteger(pessoaId)) {
+    return { error: "Vendedor vinculado invalido." };
+  }
+  if (cargo === "admin" && perfilId !== null) {
+    return { error: "Administrador nao usa perfil custom." };
+  }
 
-  return { nome, username, password, cargo };
+  return { nome, username, password, cargo, perfilId, pessoaId };
 }
 
 async function attemptLogin(knex, { username, password }) {
@@ -78,7 +99,7 @@ async function attemptLogin(knex, { username, password }) {
     console.log(`Senha re-hasheada para usuario: ${user.username}`);
   }
 
-  return { success: true, user: buildPublicUser(user) };
+  return { success: true, user: await buildPublicUser(knex, user) };
 }
 
 function register(safeHandle, knex, authSession) {
@@ -101,13 +122,55 @@ function register(safeHandle, knex, authSession) {
     const authError = await requireAdmin(event, knex, authSession, { allowBootstrap: true });
     if (authError) return authError;
 
-    const normalized = normalizeUserPayload(userData);
+    const userId = userData?.id ? Number(userData.id) : null;
+    const isUpdate = Number.isInteger(userId) && userId > 0;
+
+    const normalized = normalizeUserPayload(userData, { requirePassword: !isUpdate });
     if (normalized.error) {
       return { success: false, error: normalized.error };
     }
 
-    const { salt, hash } = hashPassword(normalized.password);
+    // Valida que o perfil existe (se informado).
+    if (normalized.perfilId !== null) {
+      const perfil = await knex("perfis_acesso").where("id", normalized.perfilId).first();
+      if (!perfil) return { success: false, error: "Perfil nao encontrado." };
+    }
+    // Valida que a pessoa/vendedor existe (se informado).
+    if (normalized.pessoaId !== null) {
+      const pessoa = await knex("pessoas").where("id", normalized.pessoaId).first();
+      if (!pessoa) return { success: false, error: "Vendedor vinculado nao encontrado." };
+    }
+
     const usernameTratado = normalized.username;
+
+    // --- Edição de usuário existente ---
+    if (isUpdate) {
+      const current = await knex("usuarios").where("id", userId).first();
+      if (!current) return { success: false, error: "Usuario nao encontrado." };
+
+      const dup = await knex("usuarios")
+        .whereRaw("LOWER(username) = LOWER(?)", [usernameTratado])
+        .whereNot("id", userId)
+        .first();
+      if (dup) return { success: false, error: "Este nome de usuario ja esta em uso. Escolha outro." };
+
+      const patch = {
+        nome: normalized.nome,
+        username: usernameTratado,
+        cargo: normalized.cargo,
+        perfil_id: normalized.perfilId,
+        pessoa_id: normalized.pessoaId,
+      };
+      if (normalized.password) {
+        const { salt, hash } = hashPassword(normalized.password);
+        patch.password_hash = hash;
+        patch.salt = salt;
+      }
+      await knex("usuarios").where("id", userId).update(patch);
+      return { success: true, id: userId };
+    }
+
+    const { salt, hash } = hashPassword(normalized.password);
 
     const existing = await knex("usuarios")
       .whereRaw("LOWER(username) = LOWER(?)", [usernameTratado])
@@ -120,6 +183,8 @@ function register(safeHandle, knex, authSession) {
           password_hash: hash,
           salt,
           cargo: normalized.cargo,
+          perfil_id: normalized.perfilId,
+          pessoa_id: normalized.pessoaId,
           ativo: 1,
         });
         return { success: true };
@@ -138,6 +203,8 @@ function register(safeHandle, knex, authSession) {
         password_hash: hash,
         salt,
         cargo: normalized.cargo,
+        perfil_id: normalized.perfilId,
+        pessoa_id: normalized.pessoaId,
         ativo: 1,
       });
       return { success: true };
@@ -177,23 +244,37 @@ function register(safeHandle, knex, authSession) {
     const authError = await requireAdmin(event, knex, authSession);
     if (authError) return authError;
 
-    const rows = await knex("usuarios")
+    const rows = await knex("usuarios as u")
+      .leftJoin("perfis_acesso as p", "u.perfil_id", "p.id")
       .where(function () {
-        this.where("ativo", 1).orWhere("ativo", true);
+        this.where("u.ativo", 1).orWhere("u.ativo", true);
       })
-      .select("id", "nome", "username", "cargo", "permissoes_json");
+      .select(
+        "u.id",
+        "u.nome",
+        "u.username",
+        "u.cargo",
+        "u.perfil_id",
+        "u.permissoes_json",
+        "p.nome as perfil_nome",
+      );
 
-    return rows.map((row) => {
-      const overrides = parseOverrides(row.permissoes_json);
-      return {
-        id: row.id,
-        nome: row.nome,
-        username: row.username,
-        cargo: row.cargo,
-        overrides,
-        permissions: computeEffectivePermissions({ cargo: row.cargo, overrides }),
-      };
-    });
+    return Promise.all(
+      rows.map(async (row) => {
+        const overrides = parseOverrides(row.permissoes_json);
+        const roleTemplate = await loadProfileCaps(knex, row.perfil_id);
+        return {
+          id: row.id,
+          nome: row.nome,
+          username: row.username,
+          cargo: row.cargo,
+          perfilId: row.perfil_id ?? null,
+          perfilNome: row.perfil_nome ?? null,
+          overrides,
+          permissions: computeEffectivePermissions({ cargo: row.cargo, roleTemplate, overrides }),
+        };
+      }),
+    );
   });
 
   // Salva os overrides de permissão de um usuário (controle de acesso granular).
@@ -247,6 +328,67 @@ function register(safeHandle, knex, authSession) {
     }
 
     await knex("usuarios").where("id", id).update({ ativo: 0 });
+    return { success: true };
+  });
+
+  // ------- Perfis de acesso (custom roles) -------
+  safeHandle("get-profiles", async (event) => {
+    const authError = await requirePerm(event, knex, authSession, "config.roles");
+    if (authError) return authError;
+
+    const rows = await knex("perfis_acesso").select("id", "nome", "permissoes_json").orderBy("nome", "asc");
+    return rows.map((p) => {
+      let permissoes = [];
+      try {
+        const arr = JSON.parse(p.permissoes_json || "[]");
+        permissoes = Array.isArray(arr) ? arr.filter((c) => CAPABILITY_SET.has(c)) : [];
+      } catch {
+        permissoes = [];
+      }
+      return { id: p.id, nome: p.nome, permissoes };
+    });
+  });
+
+  safeHandle("save-profile", async (event, payload = {}) => {
+    const authError = await requirePerm(event, knex, authSession, "config.roles");
+    if (authError) return authError;
+
+    const nome = String(payload.nome || "").trim();
+    if (!nome) return { success: false, error: "Nome do perfil obrigatorio." };
+    const permissoes_json = JSON.stringify(sanitizeCaps(payload.permissoes));
+
+    const existing = await knex("perfis_acesso")
+      .whereRaw("LOWER(nome) = LOWER(?)", [nome])
+      .modify((q) => {
+        if (payload.id) q.whereNot("id", Number(payload.id));
+      })
+      .first();
+    if (existing) return { success: false, error: "Ja existe um perfil com esse nome." };
+
+    if (payload.id) {
+      const updated = await knex("perfis_acesso").where("id", Number(payload.id)).update({ nome, permissoes_json });
+      if (!updated) return { success: false, error: "Perfil nao encontrado." };
+      return { success: true, id: Number(payload.id) };
+    }
+
+    const [id] = await knex("perfis_acesso").insert({ nome, permissoes_json });
+    return { success: true, id };
+  });
+
+  safeHandle("delete-profile", async (event, id) => {
+    const authError = await requirePerm(event, knex, authSession, "config.roles");
+    if (authError) return authError;
+
+    const inUse = await knex("usuarios")
+      .where("perfil_id", id)
+      .where(function () {
+        this.where("ativo", 1).orWhere("ativo", true);
+      })
+      .first();
+    if (inUse) return { success: false, error: "Perfil em uso por usuarios. Reatribua antes de excluir." };
+
+    const deleted = await knex("perfis_acesso").where("id", id).del();
+    if (!deleted) return { success: false, error: "Perfil nao encontrado." };
     return { success: true };
   });
 }

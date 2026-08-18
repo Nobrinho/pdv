@@ -2,9 +2,15 @@
  * Handlers de Dashboard, Estatísticas e Estoque
  */
 const { carregarTaxas, calcularComissaoItem } = require("../services/commission");
+const { getDataScope } = require("../lib/authSession");
 
-function register(safeHandle, knex) {
-  safeHandle("get-dashboard-stats", async () => {
+function register(safeHandle, knex, authSession) {
+  safeHandle("get-dashboard-stats", async (event) => {
+    // Escopo: usuário sem data.view_all vê só o próprio desempenho.
+    const scope = await getDataScope(knex, event, authSession);
+    const scoped = !scope.all;
+    const scopeSeller = scoped ? (scope.pessoaId ?? -1) : null;
+
     const now = new Date();
     const startOfDay = new Date(
       now.getFullYear(), now.getMonth(), now.getDate(),
@@ -15,11 +21,16 @@ function register(safeHandle, knex) {
 
     const vendas = await knex("vendas")
       .whereBetween("data_venda", [startOfDay, endOfDay])
-      .where("cancelada", 0);
+      .where("cancelada", 0)
+      .modify((q) => {
+        if (scoped) q.where("vendedor_id", scopeSeller);
+      });
 
-    const servicos = await knex("servicos_avulsos").whereBetween(
-      "data_servico", [startOfDay, endOfDay],
-    );
+    const servicos = await knex("servicos_avulsos")
+      .whereBetween("data_servico", [startOfDay, endOfDay])
+      .modify((q) => {
+        if (scoped) q.where("trocador_id", scopeSeller);
+      });
 
     const { comissaoPadrao, comissaoUsados } = await carregarTaxas(knex);
 
@@ -66,10 +77,13 @@ function register(safeHandle, knex) {
       totalMaoDeObra += s.valor;
     });
 
-    const despesaRow = await knex("despesas")
-      .whereBetween("data_despesa", [startOfDay, endOfDay])
-      .sum("valor as total")
-      .first();
+    // Despesas são da loja (não atribuídas a vendedor); zeradas no painel escopado.
+    const despesaRow = scoped
+      ? null
+      : await knex("despesas")
+          .whereBetween("data_despesa", [startOfDay, endOfDay])
+          .sum("valor as total")
+          .first();
     const despesas = Number(despesaRow?.total || 0);
 
     // Lucro líquido: resultado operacional menos as despesas do dia.
@@ -86,7 +100,11 @@ function register(safeHandle, knex) {
     };
   });
 
-  safeHandle("get-weekly-sales", async () => {
+  safeHandle("get-weekly-sales", async (event) => {
+    const scope = await getDataScope(knex, event, authSession);
+    const scoped = !scope.all;
+    const scopeSeller = scoped ? (scope.pessoaId ?? -1) : null;
+
     const today = new Date();
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 6);
@@ -97,6 +115,9 @@ function register(safeHandle, knex) {
     const rows = await knex("vendas")
       .whereBetween("data_venda", [sevenDaysAgo.getTime(), endOfToday.getTime()])
       .where("cancelada", 0)
+      .modify((q) => {
+        if (scoped) q.where("vendedor_id", scopeSeller);
+      })
       .select("data_venda", "total_final", "mao_de_obra");
 
     const dayMap = {};
