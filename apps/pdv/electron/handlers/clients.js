@@ -1,7 +1,7 @@
 /**
  * Handlers de Clientes e Contas a Receber (Fiado)
  */
-const { requireAdmin } = require("../lib/authSession");
+const { requirePerm } = require("../lib/authSession");
 
 function register(safeHandle, knex, authSession) {
   const cleanDocument = (documento) => String(documento || "").replace(/\D/g, "");
@@ -50,6 +50,9 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("save-client", async (event, client) => {
+    const authError = await requirePerm(event, knex, authSession, "clients.edit");
+    if (authError) return authError;
+
     if (!client || typeof client !== "object") {
       return { success: false, error: "Cliente invalido." };
     }
@@ -113,7 +116,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("delete-client", async (event, id) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "clients.edit");
     if (authError) return authError;
 
     const dividas = await knex("contas_receber")
@@ -139,7 +142,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("pay-debt", async (event, { contaId, valorPago }) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "clients.payment");
     if (authError) return authError;
 
     const valor = Number(valorPago);

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import DataTable from "../components/ui/DataTable";
@@ -14,6 +15,7 @@ import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Servicos = () => {
   const { showAlert } = useAlert();
+  const { withPermission } = useAuth();
 
   // Dados Gerais
   const queryClient = useQueryClient();
@@ -87,21 +89,26 @@ const Servicos = () => {
       forma_pagamento: "Saída",
     };
 
-    try {
-      setIsSavingService(true);
-      const result = await api.services.create(serviceData);
-      if (result.success) {
-        showAlert("Serviço registrado com sucesso!", "Sucesso", "success");
-        setFormData({ ...formData, descricao: "", valor: "" });
-        queryClient.invalidateQueries({ queryKey: ["services"] });
-      } else {
-        showAlert("Erro ao registrar: " + result.error, "Erro", "error");
+    const persist = async () => {
+      try {
+        setIsSavingService(true);
+        const result = await api.services.create(serviceData);
+        if (result.success) {
+          showAlert("Serviço registrado com sucesso!", "Sucesso", "success");
+          setFormData({ ...formData, descricao: "", valor: "" });
+          queryClient.invalidateQueries({ queryKey: ["services"] });
+        } else {
+          showAlert("Erro ao registrar: " + result.error, "Erro", "error");
+        }
+      } catch (err) {
+        showAlert("Erro técnico ao salvar.", "Erro", "error");
+      } finally {
+        setIsSavingService(false);
       }
-    } catch (err) {
-      showAlert("Erro técnico ao salvar.", "Erro", "error");
-    } finally {
-      setIsSavingService(false);
-    }
+    };
+
+    // Exige a capability; sem ela, um administrador autoriza na hora.
+    withPermission(persist, "services.manage");
   };
 
   const handlePeriodChange = (type) => {

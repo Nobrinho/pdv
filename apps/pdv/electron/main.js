@@ -105,15 +105,15 @@ app.whenReady().then(async () => {
     require("./handlers/people").register(safeHandle, knex, authSession);
     require("./handlers/sales").register(safeHandle, knex, authSession);
     require("./handlers/clients").register(safeHandle, knex, authSession);
-    require("./handlers/services").register(safeHandle, knex);
-    require("./handlers/budgets").register(safeHandle, knex);
+    require("./handlers/services").register(safeHandle, knex, authSession);
+    require("./handlers/budgets").register(safeHandle, knex, authSession);
     require("./handlers/dashboard").register(safeHandle, knex);
     require("./handlers/auth").register(safeHandle, knex, authSession);
     require("./handlers/config").register(safeHandle, knex, mainWindow, authSession);
     require("./handlers/print").register(safeHandle, knex, mainWindow);
     require("./handlers/update").register(safeHandle, knex, mainWindow, isDev);
     require("./handlers/eventLogs").register(safeHandle, knex);
-    require("./handlers/expenses").register(safeHandle, knex);
+    require("./handlers/expenses").register(safeHandle, knex, authSession);
     require("./handlers/migration").register(safeHandle, knex, authSession);
   } else {
     // Se falhar, você pode mostrar um erro na splash ou logar

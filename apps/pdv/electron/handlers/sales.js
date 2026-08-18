@@ -3,11 +3,28 @@
  */
 const { carregarTaxas, calcularComissaoVenda } = require("../services/commission");
 const { logEvent } = require("../lib/eventLogger");
-const { requireAdmin } = require("../lib/authSession");
+const { requirePerm, getEffectivePermissions } = require("../lib/authSession");
+const { hasCapability } = require("../../../../packages/shared/domain/permissions");
 const { createSaleTransaction, fromCents } = require("../services/sales/createSaleTransaction");
 
 function register(safeHandle, knex, authSession) {
   safeHandle("create-sale", async (event, saleData) => {
+    const eff = await getEffectivePermissions(knex, event, authSession);
+    if (!hasCapability(eff, "sales.create")) {
+      return { success: false, error: "Voce nao tem permissao para esta acao." };
+    }
+    // Desconto e fiado são capabilities próprias dentro da venda.
+    if (Number(saleData?.desconto_valor) > 0 && !hasCapability(eff, "sales.discount")) {
+      return { success: false, error: "Voce nao tem permissao para aplicar desconto." };
+    }
+    if (
+      Array.isArray(saleData?.pagamentos) &&
+      saleData.pagamentos.some((p) => String(p?.metodo || "").toLowerCase() === "fiado") &&
+      !hasCapability(eff, "sales.fiado")
+    ) {
+      return { success: false, error: "Voce nao tem permissao para vender no fiado." };
+    }
+
     const trx = await knex.transaction();
     try {
       const { saleId, totalCents, totalPaidCents, itemCount } = await createSaleTransaction(
@@ -142,7 +159,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("cancel-sale", async (event, { vendaId, motivo }) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "sales.cancel");
     if (authError) return authError;
 
     const trx = await knex.transaction();
@@ -199,7 +216,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("pay-commissions", async (event, vendaIds) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "commissions.pay");
     if (authError) return authError;
 
     if (!vendaIds || vendaIds.length === 0) return { success: true };

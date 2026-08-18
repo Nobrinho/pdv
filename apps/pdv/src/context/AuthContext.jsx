@@ -130,12 +130,15 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * withPermission — Executa uma ação protegida.
-   * Se o usuário é admin, executa imediatamente.
-   * Se não, abre o modal de supervisor.
+   * Executa imediatamente se o usuário é admin OU já possui a capability
+   * exigida (`capability`). Caso contrário abre o modal de supervisor para
+   * que um administrador autorize na hora.
+   * @param {Function} action  ação a executar
+   * @param {string} [capability]  capability que dispensa o supervisor
    */
   const withPermission = useCallback(
-    (action) => {
-      if (user?.cargo === "admin") {
+    (action, capability) => {
+      if (user?.cargo === "admin" || (capability && can(capability))) {
         action();
       } else {
         setPendingAction(() => action);
@@ -145,7 +148,7 @@ export const AuthProvider = ({ children }) => {
         setShowSupervisorModal(true);
       }
     },
-    [user],
+    [user, can],
   );
 
   /**

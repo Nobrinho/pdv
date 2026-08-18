@@ -31,6 +31,18 @@ async function requirePerm(auth, capability) {
   const eff = await getEffectivePermissions(knex, auth);
   return hasCapability(eff, capability);
 }
+
+// true se o usuário tem QUALQUER uma das capabilities (ex.: editar OU dar entrada
+// de estoque batem no mesmo endpoint PUT /products/:id).
+async function requirePermAny(auth, capabilities) {
+  const eff = await getEffectivePermissions(knex, auth);
+  return capabilities.some((c) => hasCapability(eff, c));
+}
+
+// Resposta padrão de acesso negado por falta de capability.
+function denyPerm(res) {
+  return sendError(res, 403, "Voce nao tem permissao para esta acao.");
+}
 const {
   createStore,
   listStores,
@@ -655,7 +667,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/products") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "products.create"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -668,7 +680,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/products/import") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "products.import"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -683,7 +695,8 @@ async function handleRequest(req, res) {
     if (updateProductParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      // Mesmo endpoint atende edição completa e entrada de estoque.
+      if (!(await requirePermAny(auth, ["products.edit", "products.stock_entry"]))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -700,7 +713,7 @@ async function handleRequest(req, res) {
     if (deleteProductParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "products.delete"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -734,6 +747,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/clients") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "clients.edit"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -747,6 +761,7 @@ async function handleRequest(req, res) {
     if (updateClientParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "clients.edit"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -763,7 +778,7 @@ async function handleRequest(req, res) {
     if (deleteClientParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "clients.edit"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -787,7 +802,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/clients/pay-debt") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "clients.payment"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -811,7 +826,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/people") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -825,7 +840,7 @@ async function handleRequest(req, res) {
     if (updatePersonParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -839,7 +854,7 @@ async function handleRequest(req, res) {
     if (deletePersonParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -862,7 +877,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/roles") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -876,7 +891,7 @@ async function handleRequest(req, res) {
     if (deleteRoleParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -888,11 +903,24 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/sales") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      const eff = await getEffectivePermissions(knex, auth);
+      if (!hasCapability(eff, "sales.create")) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
 
       const body = await readJson(req);
+      // Desconto e fiado são capabilities próprias dentro da venda.
+      if (Number(body?.desconto_valor) > 0 && !hasCapability(eff, "sales.discount")) {
+        return sendError(res, 403, "Voce nao tem permissao para aplicar desconto.");
+      }
+      if (
+        Array.isArray(body?.pagamentos) &&
+        body.pagamentos.some((p) => String(p?.metodo || "").toLowerCase() === "fiado") &&
+        !hasCapability(eff, "sales.fiado")
+      ) {
+        return sendError(res, 403, "Voce nao tem permissao para vender no fiado.");
+      }
       const result = await createSale(knex, auth.lojaId, auth.userId, body);
       return sendJson(res, result.success ? 201 : 400, result);
     }
@@ -932,7 +960,7 @@ async function handleRequest(req, res) {
     if (cancelSaleParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "sales.cancel"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -948,7 +976,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/sales/commissions/pay") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "commissions.pay"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -979,6 +1007,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/services") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "services.manage"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -1008,6 +1037,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/budgets") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "budgets.manage"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const body = await readJson(req);
@@ -1039,6 +1069,7 @@ async function handleRequest(req, res) {
     if (updateBudgetParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "budgets.manage"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const body = await readJson(req);
@@ -1050,6 +1081,7 @@ async function handleRequest(req, res) {
     if (cancelBudgetParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "budgets.manage"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const result = await cancelBudget(knex, auth.lojaId, Number(cancelBudgetParams.id));
@@ -1060,6 +1092,7 @@ async function handleRequest(req, res) {
     if (duplicateBudgetParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "budgets.manage"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const result = await duplicateBudget(knex, auth.lojaId, Number(duplicateBudgetParams.id));
@@ -1070,6 +1103,8 @@ async function handleRequest(req, res) {
     if (convertBudgetParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      // Converter gera venda: exige gerir orçamentos e criar vendas.
+      if (!(await requirePermAny(auth, ["budgets.manage", "sales.create"]))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const body = await readJson(req);
@@ -1083,7 +1118,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/invites") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const body = await readJson(req);
@@ -1094,7 +1129,7 @@ async function handleRequest(req, res) {
     if (req.method === "GET" && pathname === "/invites") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       return sendJson(res, 200, await listInvites(knex, auth.lojaId));
@@ -1104,7 +1139,7 @@ async function handleRequest(req, res) {
     if (revokeInviteParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "config.users"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const result = await revokeInvite(knex, auth.lojaId, Number(revokeInviteParams.id));
@@ -1135,7 +1170,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/expenses") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "expenses.manage"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const body = await readJson(req);
@@ -1147,7 +1182,7 @@ async function handleRequest(req, res) {
     if (updateExpenseParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "expenses.manage"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const body = await readJson(req);
@@ -1159,7 +1194,7 @@ async function handleRequest(req, res) {
     if (deleteExpenseParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "expenses.manage"))) return denyPerm(res);
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
       const result = await deleteExpense(knex, auth.lojaId, Number(deleteExpenseParams.id));
@@ -1265,13 +1300,16 @@ async function handleRequest(req, res) {
     if (saveConfigParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      const cfgKey = decodeURIComponent(saveConfigParams.key);
+      // Chaves de comissão exigem config.commissions; demais, config.identity.
+      const cfgCap = cfgKey.startsWith("comissao") ? "config.commissions" : "config.identity";
+      if (!(await requirePerm(auth, cfgCap))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
 
       const body = await readJson(req);
-      const result = await saveConfig(knex, auth.lojaId, decodeURIComponent(saveConfigParams.key), body.valor ?? body.value);
+      const result = await saveConfig(knex, auth.lojaId, cfgKey, body.valor ?? body.value);
       return sendJson(res, result.success ? 200 : 400, result);
     }
 
@@ -1289,7 +1327,7 @@ async function handleRequest(req, res) {
     if (req.method === "GET" && pathname === "/backup/export") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "backup.run"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -1302,7 +1340,7 @@ async function handleRequest(req, res) {
     if (req.method === "GET" && pathname === "/backup/list") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "backup.run"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -1315,7 +1353,7 @@ async function handleRequest(req, res) {
     if (backupItemParams) {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "backup.run"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -1346,7 +1384,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/store/import-sqlite") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "backup.run"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);
@@ -1359,7 +1397,7 @@ async function handleRequest(req, res) {
     if (req.method === "POST" && pathname === "/backup/restore") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");
-      if (!isStoreAdmin(auth)) return sendError(res, 403, "Permissao administrativa necessaria.");
+      if (!(await requirePerm(auth, "backup.run"))) return denyPerm(res);
 
       const status = await ensureStoreActive(knex, auth);
       if (!status.ok) return sendError(res, 403, status.error);

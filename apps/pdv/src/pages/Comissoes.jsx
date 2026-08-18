@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import { formatCurrency } from "../utils/format";
 import useReportData from "../hooks/useReportData";
 import PageSkeleton from "../components/ui/PageSkeleton";
@@ -19,6 +20,7 @@ dayjs.locale("pt-br");
 
 const Comissoes = () => {
   const { showAlert } = useAlert();
+  const { withPermission } = useAuth();
   const {
     allPeople,
     filteredSales,
@@ -156,7 +158,7 @@ const Comissoes = () => {
             variant="primary"
             loading={processing}
             disabled={hasInvalidDateRange}
-            onClick={handlePaySelected}
+            onClick={() => withPermission(handlePaySelected, "commissions.pay")}
             className="w-full sm:w-auto gap-2"
           >
             <Icon name="check" size={16} /> Baixar {selectedIds.length} selecionada(s)

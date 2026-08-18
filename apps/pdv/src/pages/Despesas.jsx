@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import { formatCurrency } from "../utils/format";
 import Button from "../components/ui/Button";
 import { Checkbox } from "../components/ui/Checkbox";
@@ -32,6 +33,7 @@ const emptyForm = {
 
 const Despesas = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { withPermission } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [totals, setTotals] = useState({ total: 0, qtd: 0 });
   const [categories, setCategories] = useState([]);
@@ -221,7 +223,7 @@ const Despesas = () => {
                 <textarea className={inputClass} rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button variant="primary" loading={saving} onClick={save} className="flex-1 gap-2">
+                <Button variant="primary" loading={saving} onClick={() => withPermission(save, "expenses.manage")} className="flex-1 gap-2">
                   <Icon name={form.id ? "save" : "plus"} size={16} /> {form.id ? "Salvar" : "Adicionar"}
                 </Button>
                 {form.id && (
@@ -275,8 +277,8 @@ const Despesas = () => {
                       <td className="px-[18px] py-3 text-[var(--muted-foreground)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>{dayjs(Number(e.data_despesa) || e.data_despesa).format("DD/MM/YYYY")}</td>
                       <td className="px-[18px] py-3 text-right font-semibold text-[var(--money-negative)]" style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>{formatCurrency(e.valor)}</td>
                       <td className="px-[18px] py-3 text-right whitespace-nowrap">
-                        <button onClick={() => editExpense(e)} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] px-2" title="Editar"><Icon name="pencil" size={15} /></button>
-                        <button onClick={() => remove(e)} className="text-[var(--muted-foreground)] hover:text-[var(--danger)] px-2" title="Excluir"><Icon name="trash-2" size={15} /></button>
+                        <button onClick={() => withPermission(() => editExpense(e), "expenses.manage")} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] px-2" title="Editar"><Icon name="pencil" size={15} /></button>
+                        <button onClick={() => withPermission(() => remove(e), "expenses.manage")} className="text-[var(--muted-foreground)] hover:text-[var(--danger)] px-2" title="Excluir"><Icon name="trash-2" size={15} /></button>
                       </td>
                     </tr>
                   ))}

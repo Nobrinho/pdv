@@ -12,7 +12,9 @@ const DEFAULT_CATEGORIES = [
   "Outros",
 ];
 
-function register(safeHandle, knex) {
+const { requirePerm } = require("../lib/authSession");
+
+function register(safeHandle, knex, authSession) {
   const { logEvent } = require("../lib/eventLogger");
 
   safeHandle("get-expense-categories", async () => DEFAULT_CATEGORIES);
@@ -34,6 +36,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("save-expense", async (event, data = {}) => {
+    const authError = await requirePerm(event, knex, authSession, "expenses.manage");
+    if (authError) return authError;
+
     const descricao = String(data.descricao || "").trim();
     const valor = Number(data.valor);
     if (!descricao) return { success: false, error: "Descricao obrigatoria." };
@@ -78,6 +83,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("delete-expense", async (event, id) => {
+    const authError = await requirePerm(event, knex, authSession, "expenses.manage");
+    if (authError) return authError;
+
     const removed = await knex("despesas").where("id", id).del();
     if (!removed) return { success: false, error: "Despesa nao encontrada." };
     return { success: true };

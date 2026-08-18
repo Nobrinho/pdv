@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 import { formatCurrency } from "../utils/format";
 import Button from "../components/ui/Button";
@@ -20,6 +21,10 @@ import { buildDateRangeTimestamps, getPeriodRange } from "../utils/dateFilters";
 
 const Recibos = () => {
   const { showAlert } = useAlert();
+  const { can, user } = useAuth();
+  // Usuário com a capability cancela informando só o motivo; sem ela, exige
+  // credenciais de um administrador no próprio modal (autorização na hora).
+  const canCancelDirect = can("sales.cancel");
 
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -182,24 +187,31 @@ const Recibos = () => {
     if (cancelForm.reason.trim().length < 10) {
       return showAlert("O motivo deve ter no mínimo 10 caracteres.", "Atenção", "warning");
     }
-    if (!cancelForm.adminUser || !cancelForm.adminPass) {
-      return showAlert("Preencha as credenciais do administrador.", "Autenticação", "warning");
-    }
 
     try {
       setIsCancellingSale(true);
-      const authResult = await api.auth.verifyAdmin({
-        username: cancelForm.adminUser,
-        password: cancelForm.adminPass,
-      });
 
-      if (!authResult.success || authResult.user.cargo !== "admin") {
-        return showAlert("Apenas administradores podem cancelar vendas.", "Acesso Negado", "error");
+      // Nome de quem autorizou o cancelamento (para a trilha do motivo).
+      let authorName = user?.nome;
+
+      if (!canCancelDirect) {
+        // Sem a capability: exige e valida credenciais de um administrador.
+        if (!cancelForm.adminUser || !cancelForm.adminPass) {
+          return showAlert("Preencha as credenciais do administrador.", "Autenticação", "warning");
+        }
+        const authResult = await api.auth.verifyAdmin({
+          username: cancelForm.adminUser,
+          password: cancelForm.adminPass,
+        });
+        if (!authResult.success || authResult.user.cargo !== "admin") {
+          return showAlert("Apenas administradores podem cancelar vendas.", "Acesso Negado", "error");
+        }
+        authorName = authResult.user.nome;
       }
 
       const result = await api.sales.cancel({
         vendaId: saleToCancel.id,
-        motivo: `${cancelForm.reason} (Por: ${authResult.user.nome})`,
+        motivo: `${cancelForm.reason} (Por: ${authorName})`,
       });
 
       if (result.success) {
@@ -479,21 +491,23 @@ const Recibos = () => {
                 required
              />
              
-             <div className="grid grid-cols-2 gap-3 p-4 bg-surface-50 rounded-2xl border border-surface-200">
-                <FormField
-                   label="Usuário Admin"
-                   value={cancelForm.adminUser}
-                   onChange={(v) => setCancelForm({ ...cancelForm, adminUser: v })}
-                   required
-                />
-                <FormField
-                   label="Senha"
-                   type="password"
-                   value={cancelForm.adminPass}
-                   onChange={(v) => setCancelForm({ ...cancelForm, adminPass: v })}
-                   required
-                />
-             </div>
+             {!canCancelDirect && (
+               <div className="grid grid-cols-2 gap-3 p-4 bg-surface-50 rounded-2xl border border-surface-200">
+                  <FormField
+                     label="Usuário Admin"
+                     value={cancelForm.adminUser}
+                     onChange={(v) => setCancelForm({ ...cancelForm, adminUser: v })}
+                     required
+                  />
+                  <FormField
+                     label="Senha"
+                     type="password"
+                     value={cancelForm.adminPass}
+                     onChange={(v) => setCancelForm({ ...cancelForm, adminPass: v })}
+                     required
+                  />
+               </div>
+             )}
           </div>
         </div>
       </Modal>

@@ -1,7 +1,9 @@
 /**
  * Handlers de Serviços Avulsos
  */
-function register(safeHandle, knex) {
+const { requirePerm } = require("../lib/authSession");
+
+function register(safeHandle, knex, authSession) {
   const { logEvent } = require("../lib/eventLogger");
   safeHandle("get-services", async (event, filters = {}) => {
     const page = filters.page ? parseInt(filters.page, 10) : null;
@@ -125,6 +127,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("create-service", async (event, data) => {
+    const authError = await requirePerm(event, knex, authSession, "services.manage");
+    if (authError) return authError;
+
     const valor = Number(data?.valor);
     if (!Number.isFinite(valor) || valor <= 0) {
       return { success: false, error: "Valor invalido. Informe um valor maior que zero." };

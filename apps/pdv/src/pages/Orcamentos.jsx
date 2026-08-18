@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { api } from "../services/api";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import DataTable from "../components/ui/DataTable";
 import { Badge } from "../components/ui/Badge";
 import { Icon } from "../components/ui/Icon";
@@ -69,6 +70,7 @@ const selectProductsCoerced = (rows) =>
 
 const Orcamentos = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { withPermission } = useAuth();
   const { tenant } = useTenant();
   const queryClient = useQueryClient();
   const budgetsQuery = useQuery({ queryKey: ["budgets"], queryFn: () => api.budgets.list(), select: selectBudgets });
@@ -693,7 +695,7 @@ const Orcamentos = () => {
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                handleDuplicateBudget(row.id);
+                withPermission(() => handleDuplicateBudget(row.id), "budgets.manage");
               }}
               className="h-8 w-8 rounded-[var(--radius-md)] border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
               title="Duplicar"
@@ -704,7 +706,7 @@ const Orcamentos = () => {
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                handleCancelBudget(row.id);
+                withPermission(() => handleCancelBudget(row.id), "budgets.manage");
               }}
               disabled={row.status !== "ABERTO"}
               className={`h-8 w-8 rounded-[var(--radius-md)] border flex items-center justify-center transition ${
@@ -742,7 +744,7 @@ const Orcamentos = () => {
             comissoes.
           </p>
         </div>
-        <Button variant="primary" size="lg" icon="fa-plus" onClick={openNewBudgetEditor}>
+        <Button variant="primary" size="lg" icon="fa-plus" onClick={() => withPermission(openNewBudgetEditor, "budgets.manage")}>
           Novo Orçamento
         </Button>
       </div>
@@ -831,7 +833,7 @@ const Orcamentos = () => {
             validityDate={validityDate}
             onValidityDateChange={setValidityDate}
             totals={editorTotals}
-            onSave={handleSaveBudget}
+            onSave={() => withPermission(handleSaveBudget, "budgets.manage")}
             isSaving={isSaving}
             editingCode={editingBudgetCode}
           />
@@ -900,7 +902,7 @@ const Orcamentos = () => {
             <Button variant="secondary" onClick={closeConvertModal} className="flex-1">
               Cancelar
             </Button>
-            <Button variant="success" icon="fa-check" loading={isConverting} onClick={handleConvertBudget} className="flex-[2]">
+            <Button variant="success" icon="fa-check" loading={isConverting} onClick={() => withPermission(handleConvertBudget, "budgets.manage")} className="flex-[2]">
               {isConverting ? "Convertendo..." : "Confirmar Conversao"}
             </Button>
           </div>

@@ -457,21 +457,21 @@ const Produtos = () => {
       format: (_, row) => (
         <div className="flex justify-center items-center gap-1">
           <button
-            onClick={() => withPermission(() => openStockModal(row))}
+            onClick={() => withPermission(() => openStockModal(row), "products.stock_entry")}
             className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--success)] hover:bg-[var(--hover-surface)] transition"
             title="Entrada de estoque"
           >
             <Icon name="plus" size={16} />
           </button>
           <button
-            onClick={() => withPermission(() => handleEdit(row))}
+            onClick={() => withPermission(() => handleEdit(row), "products.edit")}
             className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--hover-surface)] transition"
             title="Editar produto"
           >
             <Icon name="pencil" size={16} />
           </button>
           <button
-            onClick={() => withPermission(() => handleDelete(row.id))}
+            onClick={() => withPermission(() => handleDelete(row.id), "products.delete")}
             disabled={deletingProductId === row.id}
             className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50"
             title="Excluir"
@@ -490,8 +490,8 @@ const Produtos = () => {
         onSearchTermChange={setSearchTerm}
         sortBy={sortBy}
         onSortByChange={setSortBy}
-        onImportClick={() => withPermission(openImportModal)}
-        onNewProductClick={() => withPermission(openNewProductModal)}
+        onImportClick={() => withPermission(openImportModal, "products.import")}
+        onNewProductClick={() => withPermission(openNewProductModal, "products.create")}
       />
 
       <ProductListPanel

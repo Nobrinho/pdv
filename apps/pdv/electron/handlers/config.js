@@ -3,7 +3,7 @@
  */
 const fs = require("fs");
 const { dialog } = require("electron");
-const { requireAdmin } = require("../lib/authSession");
+const { requirePerm, hasUsers } = require("../lib/authSession");
 const {
   TENANT_CONFIG_KEYS,
   buildTenantResponse,
@@ -34,8 +34,13 @@ function register(safeHandle, knex, mainWindow, authSession) {
     if (!ALLOWED_CONFIG_KEYS.has(k)) {
       return { success: false, error: "Configuracao nao permitida." };
     }
-    const authError = await requireAdmin(event, knex, authSession, { allowBootstrap: true });
-    if (authError) return authError;
+    // Bootstrap (onboarding, ainda sem usuários) é liberado. Depois disso,
+    // chaves de comissão exigem config.commissions; demais, config.identity.
+    if (await hasUsers(knex)) {
+      const cap = String(k).startsWith("comissao") ? "config.commissions" : "config.identity";
+      const authError = await requirePerm(event, knex, authSession, cap);
+      if (authError) return authError;
+    }
 
     const ex = await knex("configuracoes").where("chave", k).first();
     ex
@@ -45,7 +50,7 @@ function register(safeHandle, knex, mainWindow, authSession) {
   });
 
   safeHandle("backup-database", async (event) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "backup.run");
     if (authError) return authError;
 
     const { dbPath } = require("../lib/db");
@@ -58,7 +63,7 @@ function register(safeHandle, knex, mainWindow, authSession) {
   });
 
   safeHandle("restore-database", async (event) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "backup.run");
     if (authError) return authError;
 
     const { app } = require("electron");

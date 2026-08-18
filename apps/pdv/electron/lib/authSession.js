@@ -1,3 +1,21 @@
+const {
+  computeEffectivePermissions,
+  hasCapability,
+} = require("../../../../packages/shared/domain/permissions");
+
+// Interpreta o permissoes_json do usuário → { grants:[], denies:[] }.
+function parseOverrides(raw) {
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw || "{}") : raw || {};
+    return {
+      grants: Array.isArray(parsed.grants) ? parsed.grants : [],
+      denies: Array.isArray(parsed.denies) ? parsed.denies : [],
+    };
+  } catch {
+    return { grants: [], denies: [] };
+  }
+}
+
 function createAuthSession() {
   const sessions = new Map();
   const adminGrants = new Map();
@@ -57,4 +75,47 @@ async function requireAdmin(event, knex, authSession, options = {}) {
   };
 }
 
-module.exports = { createAuthSession, hasUsers, requireAdmin };
+// Permissões efetivas do usuário logado nesta janela (lê o banco a cada
+// checagem, como no backend online). Admin — ou grant de supervisor ativo —
+// recebe tudo. Sem sessão → sem permissões.
+async function getEffectivePermissions(knex, event, authSession) {
+  if (authSession?.isAdmin(event)) {
+    return computeEffectivePermissions({ cargo: "admin" });
+  }
+
+  const sessionUser = authSession?.getUser(event);
+  if (!sessionUser?.id) return [];
+
+  const row = await knex("usuarios").where("id", sessionUser.id).first();
+  if (!row) return [];
+
+  return computeEffectivePermissions({
+    cargo: row.cargo,
+    overrides: parseOverrides(row.permissoes_json),
+  });
+}
+
+// Retorna null se autorizado; senão o objeto de erro padrão (mesmo formato de
+// requireAdmin). Uso: `const err = await requirePerm(...); if (err) return err;`
+async function requirePerm(event, knex, authSession, capability) {
+  const eff = await getEffectivePermissions(knex, event, authSession);
+  if (hasCapability(eff, capability)) return null;
+  return { success: false, error: "Voce nao tem permissao para esta acao." };
+}
+
+// Autoriza se o usuário tem QUALQUER uma das capabilities.
+async function requirePermAny(event, knex, authSession, capabilities) {
+  const eff = await getEffectivePermissions(knex, event, authSession);
+  if (capabilities.some((c) => hasCapability(eff, c))) return null;
+  return { success: false, error: "Voce nao tem permissao para esta acao." };
+}
+
+module.exports = {
+  createAuthSession,
+  hasUsers,
+  requireAdmin,
+  parseOverrides,
+  getEffectivePermissions,
+  requirePerm,
+  requirePermAny,
+};

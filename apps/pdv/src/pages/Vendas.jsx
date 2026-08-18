@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import SaleCartPanel from "../components/sales/SaleCartPanel";
 import SaleEntryBar from "../components/sales/SaleEntryBar";
 import SalePaymentPanel from "../components/sales/SalePaymentPanel";
@@ -36,6 +37,7 @@ const EMPTY_ARRAY = [];
 
 const Vendas = () => {
   const { showAlert } = useAlert();
+  const { withPermission, can } = useAuth();
 
   // --- DADOS (TanStack Query: cache + stale-while-revalidate) ---
   const queryClient = useQueryClient();
@@ -402,6 +404,8 @@ const Vendas = () => {
       onDiscountTypeChange={setDiscountType}
       discountValue={discountValue}
       onDiscountValueChange={setDiscountValue}
+      canDiscount={can("sales.discount")}
+      canFiado={can("sales.fiado")}
       totals={totals}
       payments={payments}
       onRemovePayment={removePayment}
@@ -425,7 +429,7 @@ const Vendas = () => {
       receiptClientFound={receiptClientFound}
       receiptSearching={receiptSearching}
       onHandleReceiptCpfChange={handleReceiptCpfChange}
-      onFinishSale={handleFinishSale}
+      onFinishSale={() => withPermission(handleFinishSale, "sales.create")}
       isFinishingSale={isFinishingSale}
     />
   );

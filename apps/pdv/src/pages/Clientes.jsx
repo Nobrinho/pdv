@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import {
   applyCpfCnpjMask,
   applyNameMask,
@@ -21,6 +22,7 @@ import { Icon } from "../components/ui/Icon";
 
 const Clientes = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { withPermission } = useAuth();
 
   const queryClient = useQueryClient();
   const { data: clients = [], isLoading: loading } = useQuery({
@@ -265,7 +267,7 @@ const Clientes = () => {
             <Icon name="pencil" size={16} />
           </button>
           <button
-            onClick={() => handleDelete(row.id)}
+            onClick={() => withPermission(() => handleDelete(row.id), "clients.edit")}
             disabled={deletingClientId === row.id}
             className="p-2 rounded-[var(--radius-md)] text-[var(--muted-foreground)] hover:text-[var(--danger)] hover:bg-[var(--hover-surface)] transition disabled:opacity-50"
             title="Excluir"
@@ -512,11 +514,11 @@ const Clientes = () => {
                           onChange={(e) => setPaymentValue(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter")
-                              handlePayDebt(row.id, restante);
+                              withPermission(() => handlePayDebt(row.id, restante), "clients.payment");
                           }}
                         />
                         <button
-                          onClick={() => handlePayDebt(row.id, restante)}
+                          onClick={() => withPermission(() => handlePayDebt(row.id, restante), "clients.payment")}
                           disabled={payingDebtId === row.id}
                           className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition shadow-sm active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Pagar"

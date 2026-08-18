@@ -24,6 +24,8 @@ const SalePaymentPanel = ({
   onDiscountTypeChange,
   discountValue = "",
   onDiscountValueChange,
+  canDiscount = true,
+  canFiado = true,
   totals,
   payments = [],
   onRemovePayment,
@@ -110,30 +112,32 @@ const SalePaymentPanel = ({
           />
         </div>
 
-        <div className="flex gap-2 items-center">
-          <div className="flex bg-[var(--content2)] rounded-[var(--radius-md)] p-0.5 border border-[var(--border)]">
-            <button
-              onClick={() => onDiscountTypeChange("fixed")}
-              className={`text-xs px-2 py-1 rounded ${discountType === "fixed" ? "bg-[var(--card)] shadow-sm text-[var(--danger)] font-bold" : "text-[var(--muted-foreground)]"}`}
-            >
-              R$
-            </button>
-            <button
-              onClick={() => onDiscountTypeChange("percent")}
-              className={`text-xs px-2 py-1 rounded ${discountType === "percent" ? "bg-[var(--card)] shadow-sm text-[var(--danger)] font-bold" : "text-[var(--muted-foreground)]"}`}
-            >
-              %
-            </button>
+        {canDiscount && (
+          <div className="flex gap-2 items-center">
+            <div className="flex bg-[var(--content2)] rounded-[var(--radius-md)] p-0.5 border border-[var(--border)]">
+              <button
+                onClick={() => onDiscountTypeChange("fixed")}
+                className={`text-xs px-2 py-1 rounded ${discountType === "fixed" ? "bg-[var(--card)] shadow-sm text-[var(--danger)] font-bold" : "text-[var(--muted-foreground)]"}`}
+              >
+                R$
+              </button>
+              <button
+                onClick={() => onDiscountTypeChange("percent")}
+                className={`text-xs px-2 py-1 rounded ${discountType === "percent" ? "bg-[var(--card)] shadow-sm text-[var(--danger)] font-bold" : "text-[var(--muted-foreground)]"}`}
+              >
+                %
+              </button>
+            </div>
+            <Input
+              type="number"
+              size="sm"
+              className="flex-1 text-right text-sm text-[var(--danger)]"
+              placeholder="Desconto"
+              value={discountValue}
+              onChange={(e) => onDiscountValueChange(e.target.value)}
+            />
           </div>
-          <Input
-            type="number"
-            size="sm"
-            className="flex-1 text-right text-sm text-[var(--danger)]"
-            placeholder="Desconto"
-            value={discountValue}
-            onChange={(e) => onDiscountValueChange(e.target.value)}
-          />
-        </div>
+        )}
 
         <div className="flex justify-between items-center pt-2 border-t border-dashed border-[var(--border)]">
           <span className={CAPS}>Total a pagar</span>
@@ -189,7 +193,7 @@ const SalePaymentPanel = ({
               <option>Pix</option>
               <option>Crédito</option>
               <option>Débito</option>
-              <option>Fiado</option>
+              {canFiado && <option>Fiado</option>}
             </Select>
             {currentPaymentMethod === "Crédito" && (
               <Select

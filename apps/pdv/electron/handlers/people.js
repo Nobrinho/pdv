@@ -1,7 +1,7 @@
 /**
  * Handlers de Pessoas e Cargos
  */
-const { requireAdmin } = require("../lib/authSession");
+const { requirePerm } = require("../lib/authSession");
 
 function register(safeHandle, knex, authSession) {
   const sanitizePersonPayload = (person = {}, { forUpdate = false } = {}) => {
@@ -29,7 +29,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("save-person", async (event, person) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "config.users");
     if (authError) return authError;
 
     if (!person?.nome || !String(person.nome).trim()) {
@@ -74,7 +74,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("delete-person", async (event, id) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "config.users");
     if (authError) return authError;
 
     const updated = await knex("pessoas").where("id", id).update({ ativo: false });
@@ -89,7 +89,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("save-role", async (event, nome) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "config.users");
     if (authError) return authError;
 
     const cleanName = String(nome || "").trim();
@@ -107,7 +107,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("delete-role", async (event, id) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "config.users");
     if (authError) return authError;
 
     const peopleUsingRole = await knex("pessoas").where("cargo_id", id).first();

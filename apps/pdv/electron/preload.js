@@ -51,6 +51,8 @@ contextBridge.exposeInMainWorld("api", {
   logoutSession: () => ipcRenderer.invoke("logout-session"),
   getUsers: () => ipcRenderer.invoke("get-users"),
   deleteUser: (id) => ipcRenderer.invoke("delete-user", id),
+  saveUserPermissions: ({ userId, overrides }) =>
+    ipcRenderer.invoke("save-user-permissions", { userId, overrides }),
 
 
   // --- BACKUP & IMPRESSÃO ---

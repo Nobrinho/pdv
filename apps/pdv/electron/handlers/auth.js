@@ -2,14 +2,32 @@
  * Handlers de autenticacao e usuarios.
  */
 const { hashPassword, verifyPassword } = require("../services/auth");
-const { requireAdmin } = require("../lib/authSession");
+const { requireAdmin, requirePerm, parseOverrides } = require("../lib/authSession");
+const {
+  computeEffectivePermissions,
+  ALL_CAPABILITIES,
+} = require("../../../../packages/shared/domain/permissions");
+
+const CAPABILITY_SET = new Set(ALL_CAPABILITIES);
+
+// Filtra os overrides para conter só capabilities conhecidas (evita lixo no DB).
+function sanitizeOverrides(overrides) {
+  const { grants, denies } = parseOverrides(overrides);
+  return {
+    grants: grants.filter((c) => CAPABILITY_SET.has(c)),
+    denies: denies.filter((c) => CAPABILITY_SET.has(c)),
+  };
+}
 
 function buildPublicUser(user) {
+  const overrides = parseOverrides(user.permissoes_json);
   return {
     id: user.id,
     nome: user.nome,
     username: user.username,
     cargo: user.cargo,
+    overrides,
+    permissions: computeEffectivePermissions({ cargo: user.cargo, overrides }),
   };
 }
 
@@ -159,10 +177,50 @@ function register(safeHandle, knex, authSession) {
     const authError = await requireAdmin(event, knex, authSession);
     if (authError) return authError;
 
-    return await knex("usuarios")
-      .where("ativo", 1)
-      .orWhere("ativo", true)
-      .select("id", "nome", "username", "cargo");
+    const rows = await knex("usuarios")
+      .where(function () {
+        this.where("ativo", 1).orWhere("ativo", true);
+      })
+      .select("id", "nome", "username", "cargo", "permissoes_json");
+
+    return rows.map((row) => {
+      const overrides = parseOverrides(row.permissoes_json);
+      return {
+        id: row.id,
+        nome: row.nome,
+        username: row.username,
+        cargo: row.cargo,
+        overrides,
+        permissions: computeEffectivePermissions({ cargo: row.cargo, overrides }),
+      };
+    });
+  });
+
+  // Salva os overrides de permissão de um usuário (controle de acesso granular).
+  // Espelha PUT /users/:id/permissions do backend online.
+  safeHandle("save-user-permissions", async (event, payload = {}) => {
+    const authError = await requirePerm(event, knex, authSession, "config.users");
+    if (authError) return authError;
+
+    const userId = Number(payload.userId);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return { success: false, error: "Usuario invalido." };
+    }
+
+    const user = await knex("usuarios").where("id", userId).first();
+    if (!user) return { success: false, error: "Usuario nao encontrado." };
+
+    // Admin sempre tem acesso total — não faz sentido gravar overrides nele.
+    if (String(user.cargo).toLowerCase() === "admin") {
+      return { success: false, error: "Administrador tem acesso total." };
+    }
+
+    const overrides = sanitizeOverrides(payload.overrides);
+    await knex("usuarios")
+      .where("id", userId)
+      .update({ permissoes_json: JSON.stringify(overrides) });
+
+    return { success: true, overrides };
   });
 
   safeHandle("delete-user", async (event, id) => {

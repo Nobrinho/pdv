@@ -2,6 +2,7 @@ const { logEvent } = require("../lib/eventLogger");
 const { buildBudgetCode } = require("../services/budgets/buildBudgetCode");
 const { normalizeBudgetTotals, fromCents } = require("../services/budgets/normalizeBudgetTotals");
 const { createSaleTransaction } = require("../services/sales/createSaleTransaction");
+const { requirePerm, requirePermAny } = require("../lib/authSession");
 
 const OPEN_STATUS = "ABERTO";
 const CONVERTED_STATUS = "CONVERTIDO";
@@ -101,8 +102,11 @@ async function persistBudgetItems(trx, budgetId, normalizedItems) {
   );
 }
 
-function register(safeHandle, knex) {
+function register(safeHandle, knex, authSession) {
   safeHandle("create-budget", async (event, budgetData) => {
+    const authError = await requirePerm(event, knex, authSession, "budgets.manage");
+    if (authError) return authError;
+
     const trx = await knex.transaction();
     try {
       const { vendedorId, trocadorId } = await validateBudgetActors(trx, budgetData);
@@ -165,6 +169,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("update-budget", async (event, budgetData) => {
+    const authError = await requirePerm(event, knex, authSession, "budgets.manage");
+    if (authError) return authError;
+
     const trx = await knex.transaction();
     try {
       const budgetId = Number(budgetData?.id);
@@ -313,6 +320,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("cancel-budget", async (event, id) => {
+    const authError = await requirePerm(event, knex, authSession, "budgets.manage");
+    if (authError) return authError;
+
     try {
       const budgetId = Number(id);
       const current = await knex("orcamentos").where("id", budgetId).first();
@@ -338,6 +348,9 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("duplicate-budget", async (event, id) => {
+    const authError = await requirePerm(event, knex, authSession, "budgets.manage");
+    if (authError) return authError;
+
     const trx = await knex.transaction();
     try {
       const budgetId = Number(id);
@@ -394,6 +407,10 @@ function register(safeHandle, knex) {
   });
 
   safeHandle("convert-budget-to-sale", async (event, payload = {}) => {
+    // Converter gera venda: exige gerir orçamentos ou criar vendas.
+    const authError = await requirePermAny(event, knex, authSession, ["budgets.manage", "sales.create"]);
+    if (authError) return authError;
+
     const trx = await knex.transaction();
     try {
       const budgetId = Number(payload?.budgetId ?? payload?.id);

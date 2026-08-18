@@ -551,10 +551,11 @@ const electron = {
     },
     logout: () => safeCall(window.api.logoutSession),
     getRoles: () => safeCall(window.api.getRoles),
+    saveRole: (name) => safeCall(window.api.saveRole, name),
+    deleteRole: (id) => safeCall(window.api.deleteRole, id),
     listUsers: () => safeCall(window.api.getUsers),
     deleteUser: (id) => safeCall(window.api.deleteUser, id),
-    // Modo local (Electron): requer handler no main. Enforcement local é
-    // follow-up; no modo online o gating por capability já funciona.
+    // Enforcement por capability ativo nos dois modos (online e Electron local).
     saveUserPermissions: (userId, overrides) =>
       safeCall(window.api.saveUserPermissions, { userId, overrides }),
   },

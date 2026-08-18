@@ -1,7 +1,7 @@
 /**
  * Handlers de Produtos (CRUD + Histórico)
  */
-const { requireAdmin } = require("../lib/authSession");
+const { requirePerm, requirePermAny } = require("../lib/authSession");
 
 function register(safeHandle, knex, authSession) {
   const { logEvent } = require("../lib/eventLogger");
@@ -60,7 +60,10 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("save-product", async (event, product) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    // Novo produto exige products.create; edição/entrada de estoque, edit OU stock_entry.
+    const authError = product?.id
+      ? await requirePermAny(event, knex, authSession, ["products.edit", "products.stock_entry"])
+      : await requirePerm(event, knex, authSession, "products.create");
     if (authError) return authError;
 
     const precoVenda = Number(product?.preco_venda ?? 0);
@@ -144,7 +147,7 @@ function register(safeHandle, knex, authSession) {
   });
 
   safeHandle("delete-product", async (event, id) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "products.delete");
     if (authError) return authError;
 
     await knex("produtos").where("id", id).update({ ativo: false });
@@ -201,7 +204,7 @@ function register(safeHandle, knex, authSession) {
 
   // === IMPORTAÇÃO EM LOTE ===
   safeHandle("import-products-batch", async (event, { products, conflictMode }) => {
-    const authError = await requireAdmin(event, knex, authSession);
+    const authError = await requirePerm(event, knex, authSession, "products.import");
     if (authError) return authError;
 
     // conflictMode: "skip" | "update"
