@@ -357,6 +357,7 @@ async function listStoreUsers(knex, lojaId) {
     .where({ "u.loja_id": lojaId, "u.ativo": true })
     .select(
       "u.id",
+      "u.loja_id",
       "u.nome",
       "u.username",
       "u.cargo",
