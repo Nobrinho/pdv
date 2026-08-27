@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { Icon } from "../components/ui/Icon";
+import { roleLabel } from "../utils/format";
 
 // Aba "Mais" (mobile) — as seções que não cabem na barra inferior, em grupos.
 // Fornecedores fica de fora enquanto não houver tela/back (pendência do handoff).
@@ -52,7 +53,7 @@ const MoreMenu = () => {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[var(--foreground)] truncate">{user.nome}</p>
               <p className="text-[11px] text-[var(--muted-foreground)] capitalize">
-                {user.cargo === "admin" ? "Admin" : "Caixa"}
+                {roleLabel(user)}
               </p>
             </div>
           </div>

@@ -8,6 +8,7 @@ import DataTable from "../components/ui/DataTable";
 import { Badge } from "../components/ui/Badge";
 import { Icon } from "../components/ui/Icon";
 import Modal from "../components/ui/Modal";
+import { Input, Select } from "../components/ui/Input";
 import SaleEntryBar from "../components/sales/SaleEntryBar";
 import SaleCartPanel from "../components/sales/SaleCartPanel";
 import BudgetSummaryPanel from "../components/budgets/BudgetSummaryPanel";
@@ -87,6 +88,35 @@ const Orcamentos = () => {
     () => queryClient.invalidateQueries({ queryKey: ["budgets"] }),
     [queryClient],
   );
+
+  // --- Busca / filtro / paginação da lista (client-side) ---
+  const LIST_PAGE_SIZE = 50;
+  const [listSearch, setListSearch] = useState("");
+  const [listStatus, setListStatus] = useState("todos");
+  const [listPage, setListPage] = useState(1);
+
+  const filteredBudgets = useMemo(() => {
+    const term = listSearch.trim().toLowerCase();
+    return budgets.filter((b) => {
+      if (listStatus !== "todos" && b.status !== listStatus) return false;
+      if (!term) return true;
+      return (
+        String(b.codigo || "").toLowerCase().includes(term) ||
+        String(b.cliente_nome || "").toLowerCase().includes(term) ||
+        String(b.vendedor_nome || "").toLowerCase().includes(term)
+      );
+    });
+  }, [budgets, listSearch, listStatus]);
+
+  const listTotalPages = Math.max(1, Math.ceil(filteredBudgets.length / LIST_PAGE_SIZE));
+  const paginatedBudgets = useMemo(
+    () => filteredBudgets.slice((listPage - 1) * LIST_PAGE_SIZE, listPage * LIST_PAGE_SIZE),
+    [filteredBudgets, listPage],
+  );
+  useEffect(() => {
+    setListPage(1);
+  }, [listSearch, listStatus]);
+
   const [showEditor, setShowEditor] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -749,16 +779,64 @@ const Orcamentos = () => {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        <DataTable
-          columns={columns}
-          data={budgets}
-          loading={loading}
-          error={loadError}
-          onRefresh={refreshBudgets}
-          emptyIcon="fa-file-invoice-dollar"
-          emptyMessage="Nenhum orcamento cadastrado ainda."
-        />
+      <div className="bg-[var(--card)] p-3 rounded-[var(--radius-xl)] shadow-[var(--shadow-xs)] border border-[var(--border)] mb-4 flex flex-col md:flex-row gap-3 items-center">
+        <div className="relative flex-1 w-full">
+          <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] pointer-events-none" />
+          <Input
+            className="pl-9"
+            placeholder="Buscar por código, cliente ou vendedor..."
+            value={listSearch}
+            onChange={(e) => setListSearch(e.target.value)}
+          />
+        </div>
+        <Select className="w-full md:w-52" value={listStatus} onChange={(e) => setListStatus(e.target.value)}>
+          <option value="todos">Todos os status</option>
+          <option value="ABERTO">Aberto</option>
+          <option value="CONVERTIDO">Convertido</option>
+          <option value="CANCELADO">Cancelado</option>
+          <option value="EXPIRADO">Expirado</option>
+        </Select>
+      </div>
+
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden">
+          <DataTable
+            columns={columns}
+            data={paginatedBudgets}
+            loading={loading}
+            error={loadError}
+            onRefresh={refreshBudgets}
+            emptyIcon="fa-file-invoice-dollar"
+            emptyMessage={
+              budgets.length === 0
+                ? "Nenhum orcamento cadastrado ainda."
+                : "Nenhum orçamento para o filtro selecionado."
+            }
+          />
+        </div>
+        {listTotalPages > 1 && (
+          <div className="p-4 border-t border-surface-50 bg-surface-50/30 flex justify-between items-center shrink-0">
+            <span className="text-[10px] font-black text-surface-400 uppercase tracking-widest">
+              Pag {listPage} de {listTotalPages} • {filteredBudgets.length} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setListPage((p) => Math.max(1, p - 1))}
+                disabled={listPage <= 1}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setListPage((p) => Math.min(listTotalPages, p + 1))}
+                disabled={listPage >= listTotalPages}
+                className="bg-surface-100 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-surface-200 disabled:opacity-30"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal

@@ -59,6 +59,14 @@ async function resolveUserPermissions(knex, user) {
 }
 
 async function publicStoreUser(knex, user) {
+  // Nome do perfil (para o rótulo de acesso na UI), quando houver perfil custom.
+  let perfilNome = null;
+  if (user.perfil_id) {
+    const perfil = await knex("perfis_acesso")
+      .where({ id: user.perfil_id, loja_id: user.loja_id })
+      .first();
+    perfilNome = perfil?.nome ?? null;
+  }
   return {
     id: user.id,
     lojaId: user.loja_id,
@@ -66,6 +74,7 @@ async function publicStoreUser(knex, user) {
     username: user.username,
     cargo: user.cargo,
     perfilId: user.perfil_id ?? null,
+    perfilNome,
     pessoaId: user.pessoa_id ?? null,
     permissions: await resolveUserPermissions(knex, user),
   };

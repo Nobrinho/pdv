@@ -1453,6 +1453,30 @@ async function handleRequest(req, res) {
       return sendJson(res, result.success ? 201 : 400, result);
     }
 
+    if (req.method === "GET" && pathname === "/store/migration-status") {
+      const auth = requireStore(req);
+      if (!auth) return sendError(res, 401, "Token de loja invalido.");
+      if (!(await requirePerm(auth, "backup.run"))) return denyPerm(res);
+
+      const status = await ensureStoreActive(knex, auth);
+      if (!status.ok) return sendError(res, 403, status.error);
+
+      const [prod, vendas, marcoEm, marcoQtd] = await Promise.all([
+        knex("produtos").where({ loja_id: auth.lojaId }).count("id as t").first(),
+        knex("vendas").where({ loja_id: auth.lojaId }).count("id as t").first(),
+        knex("configuracoes").where({ loja_id: auth.lojaId, chave: "migracao_local_em" }).first(),
+        knex("configuracoes").where({ loja_id: auth.lojaId, chave: "migracao_local_registros" }).first(),
+      ]);
+      const temDados = Number(prod?.t || 0) > 0 || Number(vendas?.t || 0) > 0;
+      return sendJson(res, 200, {
+        success: true,
+        jaMigrou: !!marcoEm?.valor,
+        migradoEm: marcoEm?.valor || null,
+        registros: marcoQtd?.valor ? Number(marcoQtd.valor) : null,
+        temDados,
+      });
+    }
+
     if (req.method === "POST" && pathname === "/store/import-sqlite") {
       const auth = requireStore(req);
       if (!auth) return sendError(res, 401, "Token de loja invalido.");

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAlert } from "../context/AlertSystem";
+import { useAuth } from "../context/AuthContext";
 import { useTenant } from "../context/TenantContext";
 import { processLogoForWeb } from "../context/TenantContext";
 import { api } from "../services/api";
@@ -44,6 +45,7 @@ const INITIAL_IDENTITY = {
 
 const Config = () => {
   const { showAlert, showConfirm } = useAlert();
+  const { can } = useAuth();
   const { tenant, saveTenantBatch } = useTenant();
 
   const [roles, setRoles] = useState([]);
@@ -126,7 +128,8 @@ const Config = () => {
         api.config.get("comissao_usados"),
         api.config.get("impressora_padrao"),
         api.print.printers(),
-        api.auth.listUsers(),
+        // Requer config.users; se o usuário não tiver, não quebra o painel.
+        api.auth.listUsers().catch(() => []),
         // Requer config.roles; se o usuário não tiver, não quebra o painel.
         api.auth.listProfiles().catch(() => []),
         api.people.list().catch(() => []),
@@ -190,6 +193,8 @@ const Config = () => {
       } else {
         showAlert("Erro ao criar cargo: " + result.error, "Erro", "error");
       }
+    } catch (error) {
+      showAlert(error.message || "Não foi possível criar o cargo.", "Erro", "error");
     } finally {
       setIsAddingRole(false);
     }
@@ -207,6 +212,8 @@ const Config = () => {
         } else {
           showAlert("Erro: " + result.error, "Erro", "error");
         }
+      } catch (error) {
+        showAlert(error.message || "Não foi possível excluir o cargo.", "Erro", "error");
       } finally {
         setDeletingRoleId(null);
       }
@@ -225,6 +232,8 @@ const Config = () => {
       } else {
         showAlert("Erro: " + result.error, "Erro", "error");
       }
+    } catch (error) {
+      showAlert(error.message || "Não foi possível excluir o perfil.", "Erro", "error");
     } finally {
       setDeletingProfileId(null);
     }
@@ -439,31 +448,37 @@ const Config = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="flex flex-col gap-6">
-            <CommissionSettings
-              defaultCommission={defaultCommission}
-              usedCommission={usedCommission}
-              onDefaultCommissionChange={setDefaultCommission}
-              onUsedCommissionChange={setUsedCommission}
-              onSave={handleSaveCommission}
-              isSaving={isLoading}
-            />
+            {can("config.commissions") && (
+              <CommissionSettings
+                defaultCommission={defaultCommission}
+                usedCommission={usedCommission}
+                onDefaultCommissionChange={setDefaultCommission}
+                onUsedCommissionChange={setUsedCommission}
+                onSave={handleSaveCommission}
+                isSaving={isLoading}
+              />
+            )}
 
-            <RoleManager
-              roles={roles}
-              newRole={newRole}
-              onNewRoleChange={setNewRole}
-              onAddRole={handleAddRole}
-              onDeleteRole={handleDeleteRole}
-              deletingRoleId={deletingRoleId}
-            />
+            {can("config.users") && (
+              <RoleManager
+                roles={roles}
+                newRole={newRole}
+                onNewRoleChange={setNewRole}
+                onAddRole={handleAddRole}
+                onDeleteRole={handleDeleteRole}
+                deletingRoleId={deletingRoleId}
+              />
+            )}
 
-            <ProfileManager
-              profiles={profiles}
-              onNewProfile={() => setEditingProfile({})}
-              onEditProfile={setEditingProfile}
-              onDeleteProfile={handleDeleteProfile}
-              deletingProfileId={deletingProfileId}
-            />
+            {can("config.roles") && (
+              <ProfileManager
+                profiles={profiles}
+                onNewProfile={() => setEditingProfile({})}
+                onEditProfile={setEditingProfile}
+                onDeleteProfile={handleDeleteProfile}
+                deletingProfileId={deletingProfileId}
+              />
+            )}
           </div>
 
           <SystemToolsPanel
@@ -479,6 +494,7 @@ const Config = () => {
           />
         </div>
 
+        {can("config.users") && (
         <UserManager
           users={systemUsers}
           loading={loadingData}
@@ -495,6 +511,7 @@ const Config = () => {
           profiles={profiles}
           people={people}
         />
+        )}
       </div>
 
       {permUser && (

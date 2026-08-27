@@ -111,6 +111,7 @@ const http = async (path, { method = "GET", body, token = getOnlineToken() } = {
     const error = new Error(data.error || `Erro HTTP ${response.status}`);
     error.response = data;
     error.status = response.status;
+    error.isApiError = true;
     throw error;
   }
   return data;
@@ -121,8 +122,16 @@ const safeCall = async (fn, ...args) => {
     return await fn(...args);
   } catch (error) {
     console.error("[API Error]", error);
+    if (error && typeof error === "object") error.isApiError = true;
     throw error;
   }
+};
+
+// Handlers Electron podem devolver { success:false, error } (ex.: sem permissão)
+// em vez de um array. Normaliza para lista, evitando quebrar tabelas/listas.
+const asArray = async (promise) => {
+  const r = await promise;
+  return Array.isArray(r) ? r : [];
 };
 
 const readJsonFileFromPicker = () =>
@@ -521,7 +530,7 @@ const electron = {
     payDebt: (data) => safeCall(window.api.payDebt, data),
   },
   people: {
-    list: () => safeCall(window.api.getPeople),
+    list: () => asArray(safeCall(window.api.getPeople)),
     save: (data) => safeCall(window.api.savePerson, data),
     delete: (id) => safeCall(window.api.deletePerson, id),
   },
@@ -557,15 +566,15 @@ const electron = {
       return safeCall(window.api.verifyAdmin, data);
     },
     logout: () => safeCall(window.api.logoutSession),
-    getRoles: () => safeCall(window.api.getRoles),
+    getRoles: () => asArray(safeCall(window.api.getRoles)),
     saveRole: (name) => safeCall(window.api.saveRole, name),
     deleteRole: (id) => safeCall(window.api.deleteRole, id),
-    listUsers: () => safeCall(window.api.getUsers),
+    listUsers: () => asArray(safeCall(window.api.getUsers)),
     deleteUser: (id) => safeCall(window.api.deleteUser, id),
     // Enforcement por capability ativo nos dois modos (online e Electron local).
     saveUserPermissions: (userId, overrides) =>
       safeCall(window.api.saveUserPermissions, { userId, overrides }),
-    listProfiles: () => safeCall(window.api.getProfiles),
+    listProfiles: () => asArray(safeCall(window.api.getProfiles)),
     saveProfile: (payload) => safeCall(window.api.saveProfile, payload),
     deleteProfile: (id) => safeCall(window.api.deleteProfile, id),
   },
@@ -630,11 +639,18 @@ const migrateLocalToOnline = async ({ force = false } = {}) => {
   });
 };
 
+// Status de migração da loja online logada (se já migrou, se tem dados).
+const migrationStatus = async () => {
+  if (!getOnlineToken()) return null;
+  return await http("/store/migration-status");
+};
+
 export const api = new Proxy(
   {},
   {
     get(_target, prop) {
       if (prop === "migrateLocalToOnline") return migrateLocalToOnline;
+      if (prop === "migrationStatus") return migrationStatus;
       if (prop === "isRemote") return isRemoteMode();
       if (prop === "isElectron") return hasElectronApi();
       if (prop === "dataMode") return getDataMode();

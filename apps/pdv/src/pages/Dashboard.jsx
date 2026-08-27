@@ -242,7 +242,7 @@ const Dashboard = () => {
             Situação do estoque
           </span>
           <button
-            onClick={() => navigate("/produtos")}
+            onClick={() => navigate("/produtos?filtro=zerados")}
             className="flex items-center justify-between rounded-[var(--radius-md)] px-3 py-2 hover:bg-[var(--hover-surface)] transition text-left"
           >
             <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">
@@ -251,7 +251,7 @@ const Dashboard = () => {
             <span className="text-sm font-semibold text-[var(--danger)]" style={MONO}>{inventoryStats.qtdZerados}</span>
           </button>
           <button
-            onClick={() => navigate("/produtos")}
+            onClick={() => navigate("/produtos?filtro=baixo")}
             className="flex items-center justify-between rounded-[var(--radius-md)] px-3 py-2 hover:bg-[var(--hover-surface)] transition text-left"
           >
             <span className="flex items-center gap-2 text-sm text-[var(--foreground)]">

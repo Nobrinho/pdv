@@ -8,6 +8,10 @@ import { Icon } from "../components/ui/Icon";
 import Button from "../components/ui/Button";
 import FormField from "../components/ui/FormField";
 import Modal from "../components/ui/Modal";
+import { SkeletonBar } from "../components/ui/Skeleton";
+
+// Exibe a taxa de comissão sem casas decimais (ex.: "5%" em vez de "5,00%").
+const formatCommissionPct = (v) => `${Math.round(Number(v) || 0)}%`;
 
 const Pessoas = () => {
   const { showAlert, showConfirm } = useAlert();
@@ -166,8 +170,8 @@ const Pessoas = () => {
       label: "Taxa de Comissão",
       align: "center",
       format: (v) => v
-        ? <Badge variant="success">{`${v}% (Individual)`}</Badge>
-        : <Badge variant="neutral">{`${defaultCommission}% (Sistema)`}</Badge>
+        ? <Badge variant="success">{`${formatCommissionPct(v)} (Individual)`}</Badge>
+        : <Badge variant="neutral">{`${formatCommissionPct(defaultCommission)} (Sistema)`}</Badge>
     }] : []),
     {
       key: "actions",
@@ -199,6 +203,23 @@ const Pessoas = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-8 pr-1 custom-scrollbar pb-10">
+        {loading && peopleByRole.length === 0 &&
+          [0, 1].map((g) => (
+            <div key={`sk-${g}`} className="flex flex-col gap-3">
+              <div className="flex items-center gap-3 ml-2">
+                <div className="w-2 h-2 rounded-full bg-surface-300" />
+                <SkeletonBar className="h-4 w-28" />
+                <div className="h-px bg-surface-300 grow" />
+                <SkeletonBar className="h-5 w-24 rounded-lg" />
+              </div>
+              <div className="bg-surface-100 rounded-2xl shadow-sm border border-surface-200 p-4 space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <SkeletonBar key={i} className="h-9 w-full rounded-lg" />
+                ))}
+              </div>
+            </div>
+          ))}
+
         {peopleByRole.map((group) => (
           <div key={group.role} className="flex flex-col gap-3">
              <div className="flex items-center gap-3 ml-2">
@@ -258,7 +279,7 @@ const Pessoas = () => {
                 icon="fa-percent"
               />
               <p className="text-[9px] font-bold text-primary-400 uppercase tracking-tight mt-2 ml-1">
-                Vazio utiliza a taxa padrão do sistema ({defaultCommission}%).
+                Vazio utiliza a taxa padrão do sistema ({formatCommissionPct(defaultCommission)}).
               </p>
             </div>
           )}

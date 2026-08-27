@@ -8,6 +8,8 @@ const ProductsToolbar = ({
   onSearchTermChange,
   sortBy = "descricao",
   onSortByChange,
+  stockFilter = "todos",
+  onStockFilterChange,
   onImportClick,
   onNewProductClick,
 }) => {
@@ -37,7 +39,12 @@ const ProductsToolbar = ({
             onChange={(e) => onSearchTermChange(e.target.value)}
           />
         </div>
-        <Select className="w-full md:w-56" value={sortBy} onChange={(e) => onSortByChange(e.target.value)}>
+        <Select className="w-full md:w-52" value={stockFilter} onChange={(e) => onStockFilterChange(e.target.value)}>
+          <option value="todos">Todos os produtos</option>
+          <option value="zerados">Produtos zerados</option>
+          <option value="baixo">Baixo estoque</option>
+        </Select>
+        <Select className="w-full md:w-52" value={sortBy} onChange={(e) => onSortByChange(e.target.value)}>
           <option value="descricao">Nome (A-Z)</option>
           <option value="estoque_asc">Estoque (menor)</option>
           <option value="estoque_desc">Estoque (maior)</option>

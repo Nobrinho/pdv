@@ -114,19 +114,39 @@ const AccessLinkCard = () => {
 const MigrateLocalCard = () => {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState(null);
+  const [status, setStatus] = useState(null); // { jaMigrou, migradoEm, registros, temDados }
+  const [forceText, setForceText] = useState("");
 
-  const run = async () => {
+  const loadStatus = async () => {
+    try {
+      setStatus(await api.migrationStatus());
+    } catch {
+      setStatus(null);
+    }
+  };
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  const blocked = !!status && (status.temDados || status.jaMigrou);
+  const canForce = forceText.trim().toUpperCase() === "FORCAR";
+
+  const doMigrate = async (force) => {
     const confirmed = window.confirm(
-      "Isto vai enviar TODOS os dados desta instalacao local (produtos, clientes, vendas, etc.) para a loja online em que voce esta logado.\n\nUse apenas em uma loja online recem-criada e vazia. Continuar?",
+      force
+        ? "FORÇAR SUBSTITUIÇÃO: isto vai APAGAR os dados da loja online atual e colocar os dados locais no lugar. Não pode ser desfeito. Continuar?"
+        : "Isto vai enviar TODOS os dados desta instalação local (produtos, clientes, vendas, etc.) para a loja online logada.\n\nUse apenas em uma loja nova e vazia. Continuar?",
     );
     if (!confirmed) return;
     setRunning(true);
     setResult(null);
     try {
-      const res = await api.migrateLocalToOnline();
+      const res = await api.migrateLocalToOnline({ force });
       if (res.success) {
         const total = Object.values(res.summary || {}).reduce((a, b) => a + Number(b || 0), 0);
         setResult({ ok: true, msg: `Migração concluída: ${total} registros importados.` });
+        setForceText("");
+        loadStatus();
       } else {
         setResult({ ok: false, msg: res.error || "Falha na migração." });
       }
@@ -136,6 +156,31 @@ const MigrateLocalCard = () => {
       setRunning(false);
     }
   };
+
+  // Banner de estado da loja online.
+  let stateBanner = null;
+  if (status) {
+    if (status.jaMigrou) {
+      const quando = status.migradoEm ? new Date(status.migradoEm).toLocaleString("pt-BR") : "—";
+      stateBanner = {
+        cls: "bg-[var(--warning-soft)] text-[var(--warning-soft-foreground)]",
+        icon: "history",
+        msg: `Esta loja já recebeu uma migração em ${quando}${status.registros ? ` (${status.registros} registros)` : ""}.`,
+      };
+    } else if (status.temDados) {
+      stateBanner = {
+        cls: "bg-[var(--danger-soft)] text-[var(--danger-soft-foreground)]",
+        icon: "alert-triangle",
+        msg: "A loja online já possui produtos ou vendas.",
+      };
+    } else {
+      stateBanner = {
+        cls: "bg-[var(--success-soft)] text-[var(--success-soft-foreground)]",
+        icon: "circle-check",
+        msg: "Loja online vazia — pronta para migração.",
+      };
+    }
+  }
 
   return (
     <Card padding="lg" className="border-[var(--danger-soft-border)]">
@@ -148,6 +193,14 @@ const MigrateLocalCard = () => {
         Envia os dados desta instalação local para a loja online atual. Recomendado apenas em uma loja
         online nova e vazia.
       </p>
+
+      {stateBanner && (
+        <div className={`text-xs font-semibold mb-3 p-3 rounded-[var(--radius-md)] flex items-center gap-2 ${stateBanner.cls}`}>
+          <Icon name={stateBanner.icon} size={15} className="shrink-0" />
+          <span>{stateBanner.msg}</span>
+        </div>
+      )}
+
       {result && (
         <div
           className={`text-xs font-semibold mb-3 p-3 rounded-[var(--radius-md)] ${
@@ -159,9 +212,44 @@ const MigrateLocalCard = () => {
           {result.msg}
         </div>
       )}
-      <Button variant="outline" fullWidth icon="fa-cloud-arrow-up" loading={running} onClick={run} className="!text-[var(--danger)] !border-[var(--danger-soft-border)]">
-        {running ? "Migrando..." : "Migrar para a loja online"}
-      </Button>
+
+      {blocked ? (
+        // Fluxo de forçar (substituir): exige digitar FORCAR.
+        <div className="rounded-[var(--radius-md)] border border-[var(--danger-soft-border)] bg-[var(--danger-soft)]/40 p-3">
+          <p className="text-[11px] font-semibold text-[var(--danger)] mb-2 leading-relaxed">
+            Para substituir, os dados atuais da loja online serão <strong>apagados</strong> e trocados
+            pelos locais. Digite <strong>FORCAR</strong> para liberar.
+          </p>
+          <input
+            className="w-full mb-2 rounded-[var(--radius-md)] border border-[var(--input)] bg-[var(--card)] text-[var(--foreground)] h-9 px-3 text-sm outline-none focus:border-[var(--ring)] focus:ring-4 focus:ring-[var(--ring)]/20"
+            placeholder="Digite FORCAR"
+            value={forceText}
+            onChange={(e) => setForceText(e.target.value)}
+          />
+          <Button
+            variant="outline"
+            fullWidth
+            icon="alert-triangle"
+            loading={running}
+            disabled={!canForce}
+            onClick={() => doMigrate(true)}
+            className="!text-[var(--danger)] !border-[var(--danger-soft-border)] disabled:opacity-40"
+          >
+            {running ? "Substituindo..." : "Substituir dados e migrar"}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          variant="outline"
+          fullWidth
+          icon="cloud-upload"
+          loading={running}
+          onClick={() => doMigrate(false)}
+          className="!text-[var(--danger)] !border-[var(--danger-soft-border)]"
+        >
+          {running ? "Migrando..." : "Migrar para a loja online"}
+        </Button>
+      )}
     </Card>
   );
 };

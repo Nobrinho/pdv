@@ -25,3 +25,15 @@ export const formatDate = (ts, fmt = "DD/MM/YYYY HH:mm") =>
  */
 export const formatNumber = (val, decimals = 2) =>
   (val || 0).toFixed(decimals).replace(".", ",");
+
+const CARGO_LABELS = { admin: "Admin", gerente: "Gerente", caixa: "Caixa", vendedor: "Vendedor" };
+
+/**
+ * Rótulo de acesso do usuário para a UI. Prioriza o nome do perfil custom;
+ * senão usa o cargo interno; fallback "Usuário".
+ * @param {{cargo?: string, perfilNome?: string}} user
+ */
+export const roleLabel = (user = {}) => {
+  if (user.cargo === "admin") return "Admin";
+  return user.perfilNome || CARGO_LABELS[user.cargo] || "Usuário";
+};

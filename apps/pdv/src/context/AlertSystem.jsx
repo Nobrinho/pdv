@@ -74,6 +74,22 @@ export const AlertProvider = ({ children }) => {
     setAlertState((prev) => ({ ...prev, isOpen: false }));
   };
 
+  // Rede de segurança: qualquer erro de API que "vazou" de um handler sem
+  // try/catch vira um alerta visível (em vez de sumir no console). Só dispara
+  // para rejeições NÃO tratadas — handlers que já mostram o próprio erro não
+  // caem aqui. 401 é ignorado (o http já derruba a sessão e volta ao login).
+  useEffect(() => {
+    const onRejection = (event) => {
+      const err = event?.reason;
+      if (err && err.isApiError && err.status !== 401) {
+        event.preventDefault();
+        showAlert(err.message || "Ocorreu um erro na operação.", "Erro", "error");
+      }
+    };
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, [showAlert]);
+
   // Cores baseadas no tipo
   const getTypeStyles = () => {
     switch (alertState.type) {

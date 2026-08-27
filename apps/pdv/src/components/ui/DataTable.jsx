@@ -31,6 +31,9 @@ const DataTable = ({
   const primaryCol = columns.find((c) => c.bold) || columns[0];
   const otherCols = columns.filter((c) => c !== primaryCol);
   const ptr = usePullToRefresh(onRefresh);
+  // Blindagem: nunca confiar que `data` é array (ex.: endpoint que retorna
+  // { success:false, error } quando o usuário não tem permissão).
+  const rows = Array.isArray(data) ? data : [];
 
   const ErrorBlock = () => (
     <div className="flex flex-col items-center justify-center gap-2 py-20 text-[var(--danger)]">
@@ -39,7 +42,7 @@ const DataTable = ({
     </div>
   );
 
-  const showEmpty = !loading && !error && data.length === 0;
+  const showEmpty = !loading && !error && rows.length === 0;
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden md:bg-[var(--card)] md:border md:border-[var(--border)] md:rounded-[var(--radius-xl)] md:shadow-[var(--shadow-xs)]">
@@ -89,7 +92,7 @@ const DataTable = ({
                   </td>
                 </tr>
               ) : (
-                data.map((row, idx) => (
+                rows.map((row, idx) => (
                   <tr
                     key={row.id || idx}
                     onClick={() => onRowClick && onRowClick(row)}
@@ -150,7 +153,7 @@ const DataTable = ({
         ) : showEmpty ? (
           <EmptyState icon={emptyIcon} title={emptyMessage} />
         ) : (
-          data.map((row, idx) => {
+          rows.map((row, idx) => {
             const clickable = !!onRowClick;
             const Tag = clickable ? "button" : "div";
             return (

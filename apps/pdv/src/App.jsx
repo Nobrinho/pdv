@@ -11,6 +11,7 @@ import Updater from "./components/Updater";
 import BottomNav from "./components/ui/BottomNav";
 import { Icon } from "./components/ui/Icon";
 
+import { roleLabel } from "./utils/format";
 import { useAuth } from "./context/AuthContext";
 import { useTenant } from "./context/TenantContext";
 import { useTheme } from "./context/ThemeContext";
@@ -246,7 +247,7 @@ function App() {
                   {user.nome.split(" ")[0]}
                 </p>
                 <p className="text-[10px] text-[var(--sidebar-muted)] mt-1 capitalize flex items-center font-black">
-                  {user.cargo === "admin" ? "Admin" : "Caixa"}
+                  {roleLabel(user)}
                 </p>
               </div>
             )}

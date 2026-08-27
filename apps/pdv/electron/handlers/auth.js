@@ -27,12 +27,18 @@ function sanitizeCaps(caps) {
 async function buildPublicUser(knex, user) {
   const overrides = parseOverrides(user.permissoes_json);
   const roleTemplate = await loadProfileCaps(knex, user.perfil_id);
+  let perfilNome = null;
+  if (user.perfil_id) {
+    const perfil = await knex("perfis_acesso").where("id", user.perfil_id).first();
+    perfilNome = perfil?.nome ?? null;
+  }
   return {
     id: user.id,
     nome: user.nome,
     username: user.username,
     cargo: user.cargo,
     perfilId: user.perfil_id ?? null,
+    perfilNome,
     overrides,
     permissions: computeEffectivePermissions({ cargo: user.cargo, roleTemplate, overrides }),
   };

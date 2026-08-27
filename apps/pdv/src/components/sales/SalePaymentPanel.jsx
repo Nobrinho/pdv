@@ -58,26 +58,30 @@ const SalePaymentPanel = ({
         <h2 className={`${CAPS} border-b border-[var(--border)] pb-2`}>Ajustes</h2>
 
         <div className="border-b border-dashed border-[var(--border)] pb-3">
-          <label className={`block mb-1 ${CAPS}`}>Mão de obra (R$)</label>
-          <div className="flex gap-2">
-            <Input
-              id="labor-input"
-              type="number"
-              size="sm"
-              className="flex-1 text-right text-sm font-medium"
-              value={laborInput}
-              onChange={(e) => onLaborInputChange(e.target.value)}
-              placeholder="0.00"
-              min="0"
-            />
+          <label className={`block mb-1.5 ${CAPS}`}>Mão de obra (R$)</label>
+          <div className="flex flex-col gap-2">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--muted-foreground)]">
+                R$
+              </span>
+              <Input
+                id="labor-input"
+                type="number"
+                size="lg"
+                className="pl-9 text-right text-base font-semibold tabular-nums"
+                value={laborInput}
+                onChange={(e) => onLaborInputChange(e.target.value)}
+                placeholder="0,00"
+                min="0"
+              />
+            </div>
             <Select
               id="mechanic-select"
-              size="sm"
-              className="w-1/2"
+              size="md"
               value={selectedMechanic}
               onChange={(e) => onMechanicChange(e.target.value)}
             >
-              <option value="">Técnico...</option>
+              <option value="">Técnico responsável...</option>
               {mechanics.map((mechanic) => (
                 <option key={mechanic.id} value={mechanic.id}>
                   {mechanic.nome}

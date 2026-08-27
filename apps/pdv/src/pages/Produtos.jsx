@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useAlert } from "../context/AlertSystem";
@@ -36,6 +37,9 @@ const INITIAL_STOCK_FORM = {
   quantidade_adicionar: "",
 };
 
+// Limiar de "baixo estoque" (alinhado ao dashboard e ao backend getInventoryStats).
+const LOW_STOCK_THRESHOLD = 5;
+
 const Produtos = () => {
   const { showAlert, showConfirm } = useAlert();
   const { withPermission } = useAuth();
@@ -56,8 +60,14 @@ const Produtos = () => {
   const [showStockModal, setShowStockModal] = useState(false);
 
   // Filtros e Ordenação
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("descricao");
+  // Filtro de situação de estoque; pode vir pré-aplicado do painel (?filtro=zerados|baixo).
+  const [stockFilter, setStockFilter] = useState(() => {
+    const f = searchParams.get("filtro");
+    return f === "zerados" || f === "baixo" ? f : "todos";
+  });
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 
@@ -77,12 +87,33 @@ const Produtos = () => {
   const [conflictMode, setConflictMode] = useState("skip");
   const [showImportHelp, setShowImportHelp] = useState(false);
 
+  // URL é a fonte de verdade do filtro de estoque (permite pré-aplicar do painel).
+  const changeStockFilter = (val) => {
+    const next = new URLSearchParams(searchParams);
+    if (val === "todos") next.delete("filtro");
+    else next.set("filtro", val);
+    setSearchParams(next, { replace: true });
+  };
+  useEffect(() => {
+    const f = searchParams.get("filtro");
+    setStockFilter(f === "zerados" || f === "baixo" ? f : "todos");
+  }, [searchParams]);
+
   const filteredAndSortedProducts = useMemo(() => {
     let result = products.filter(
       (p) =>
         p.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.codigo.toLowerCase().includes(searchTerm.toLowerCase()),
     );
+
+    if (stockFilter === "zerados") {
+      result = result.filter((p) => Number(p.estoque_atual || 0) <= 0);
+    } else if (stockFilter === "baixo") {
+      result = result.filter((p) => {
+        const stock = Number(p.estoque_atual || 0);
+        return stock > 0 && stock <= LOW_STOCK_THRESHOLD;
+      });
+    }
 
     result.sort((a, b) => {
       switch (sortBy) {
@@ -102,7 +133,7 @@ const Produtos = () => {
     });
 
     return result;
-  }, [products, searchTerm, sortBy]);
+  }, [products, searchTerm, sortBy, stockFilter]);
 
   const totalPages = Math.ceil(filteredAndSortedProducts.length / PAGE_SIZE);
   const paginatedProducts = useMemo(() => {
@@ -112,7 +143,7 @@ const Produtos = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, sortBy]);
+  }, [searchTerm, sortBy, stockFilter]);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -490,6 +521,8 @@ const Produtos = () => {
         onSearchTermChange={setSearchTerm}
         sortBy={sortBy}
         onSortByChange={setSortBy}
+        stockFilter={stockFilter}
+        onStockFilterChange={changeStockFilter}
         onImportClick={() => withPermission(openImportModal, "products.import")}
         onNewProductClick={() => withPermission(openNewProductModal, "products.create")}
       />

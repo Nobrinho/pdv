@@ -105,6 +105,17 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
   const result = await knex.transaction(async (trx) => {
     const idMaps = {}; // tabela -> { oldId: newId }
 
+    // force = "substituir": apaga os dados atuais da loja (só desta loja_id),
+    // em ordem reversa de FK (filhos antes dos pais), ANTES de importar.
+    // `usuarios` é preservado para não trancar o admin logado — o import
+    // reaproveita as contas por username (uniqueBy).
+    if (options.force) {
+      for (const step of [...IMPORT_PLAN].reverse()) {
+        if (step.table === "usuarios") continue;
+        await trx(step.table).where({ loja_id: lojaId }).del();
+      }
+    }
+
     for (const step of IMPORT_PLAN) {
       const { table, pk, fks } = step;
       const rows = Array.isArray(tables[table]) ? tables[table] : [];
@@ -197,6 +208,20 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
         inserted += mappedChunk.length;
       }
       summary[table] = inserted;
+    }
+
+    // Marcador de "loja já migrada" (lido pelo status/UI). Gravado depois do
+    // import — sobrevive ao wipe (que roda antes) e não é sobrescrito pelo loop.
+    const totalRegistros = Object.values(summary).reduce((a, b) => a + Number(b || 0), 0);
+    const marker = [
+      { chave: "migracao_local_em", valor: new Date().toISOString() },
+      { chave: "migracao_local_registros", valor: String(totalRegistros) },
+    ];
+    for (const m of marker) {
+      await trx("configuracoes")
+        .insert({ loja_id: lojaId, chave: m.chave, valor: m.valor })
+        .onConflict(["loja_id", "chave"])
+        .merge();
     }
 
     return { success: true, summary };
