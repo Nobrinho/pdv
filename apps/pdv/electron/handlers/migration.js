@@ -12,6 +12,7 @@ const LOCAL_TABLES = [
   "contas_receber",
   "produtos",
   "historico_produtos",
+  "perfis_acesso",
   "usuarios",
   "vendas",
   "venda_itens",

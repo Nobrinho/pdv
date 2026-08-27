@@ -296,10 +296,10 @@ const SystemToolsPanel = ({
       <Card padding="lg">
         <ConfigCardHeader icon="database" title="Manutenção local" subtitle="Backup e restauração dos dados" />
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="success" size="lg" icon="fa-download" loading={isBackupRunning} onClick={onBackup} fullWidth>
+          <Button variant="success" size="lg" icon="download" loading={isBackupRunning} onClick={onBackup} fullWidth>
             {isBackupRunning ? "Executando" : "Backup"}
           </Button>
-          <Button variant="outline" size="lg" icon="fa-upload" loading={isRestoreRunning} onClick={onRestore} fullWidth>
+          <Button variant="outline" size="lg" icon="upload" loading={isRestoreRunning} onClick={onRestore} fullWidth>
             {isRestoreRunning ? "Restaurando" : "Restaurar"}
           </Button>
         </div>

@@ -15,7 +15,11 @@ const IMPORT_PLAN = [
   { table: "pessoas", pk: true, fks: { cargo_id: "cargos" } },
   { table: "clientes", pk: true, fks: {} },
   { table: "produtos", pk: true, fks: {} },
-  { table: "usuarios", pk: true, fks: {}, uniqueBy: ["username"] },
+  // Perfis de acesso antes de usuarios (usuarios.perfil_id referencia perfis_acesso).
+  { table: "perfis_acesso", pk: true, fks: {}, uniqueBy: ["nome"] },
+  // usuarios: remapeia pessoa_id (→pessoas) e perfil_id (→perfis_acesso). Quando o
+  // dump não traz o pai (ex.: perfis_acesso ausente), o remap cai para null (seguro).
+  { table: "usuarios", pk: true, fks: { pessoa_id: "pessoas", perfil_id: "perfis_acesso" }, uniqueBy: ["username"] },
   {
     table: "vendas",
     pk: true,
@@ -110,6 +114,9 @@ async function importSqliteBackup(knex, lojaId, payload = {}, options = {}) {
     // `usuarios` é preservado para não trancar o admin logado — o import
     // reaproveita as contas por username (uniqueBy).
     if (options.force) {
+      // usuarios é preservado, mas referencia pessoas/perfis_acesso (que serão
+      // apagados). Zera esses FKs antes para o delete não violar constraint.
+      await trx("usuarios").where({ loja_id: lojaId }).update({ pessoa_id: null, perfil_id: null });
       for (const step of [...IMPORT_PLAN].reverse()) {
         if (step.table === "usuarios") continue;
         await trx(step.table).where({ loja_id: lojaId }).del();
